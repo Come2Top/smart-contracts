@@ -324,6 +324,7 @@ contract $256 {
         );
     }
 
+    //! INCORRECT => USING LOGICS INSIDE OF THE UPPER FUNCTION!
     function getCurrentGameStatus()
         public
         view
