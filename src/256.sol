@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-v3
 pragma solidity 0.8.18;
 
-import {IUSDC} from "./interface/IUSDC.sol";
+import {IUSDC} from "./interfaces/IUSDC.sol";
 
 contract $256 {
     /*******************************\
