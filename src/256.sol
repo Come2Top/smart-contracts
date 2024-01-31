@@ -3,7 +3,7 @@ pragma solidity 0.8.18;
 
 import {IUSDC} from "./interfaces/IUSDC.sol";
 
-contract $256 {
+contract $256$ {
     /*******************************\
     |-*-*-*-*-*   TYPES   *-*-*-*-*-|
     \*******************************/
