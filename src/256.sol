@@ -227,7 +227,6 @@ contract $256 {
     // wave 2: 32 => 16
     // wave 3: 8 => 4
     // wave 4: 2 => 1
-    
 
     // function receiveLotteryWagedPrize(uint8[] memory ticketIds, uint8[] memory indexes)
     //     external
@@ -520,28 +519,3 @@ contract $256 {
         }
     }
 }
-
-// function scopicalBytedWinner(uint256 totalScopes, uint256 randomSeed)
-//         external
-//         view
-//         returns (bytes memory)
-//     {
-//         uint256 to;
-//         bytes memory players = BYTES256;
-//         uint256 maxWinners = MAX_PARTIES;
-
-//         while (totalScopes != 0) {
-//             if (players.length > 3) to = maxWinners / 2;
-//             else if (players.length != 1) to = 1;
-//             else break;
-
-//             players = _bytedArrayShuffler(players, randomSeed, to);
-
-//             unchecked {
-//                 maxWinners /= 2;
-//                 totalScopes--;
-//             }
-//         }
-
-//         return players;
-//     }
