@@ -304,10 +304,6 @@ contract $256$ {
                 ticketIds[0] = uint8(tickets[indexes[0]]);
 
                 updatedTickets = _deleteOneIndex(indexes[0], tickets);
-
-                unchecked {
-                    eligibleWaveWithdrawns--;
-                }
             } else {
                 updatedTickets = this._returnBytedCalldataArray(
                     tickets,
@@ -361,6 +357,10 @@ contract $256$ {
 
             USDC.transfer(sender, idealWinnerPrize - fee);
             USDC.transfer(ADMIN, fee);
+
+            unchecked {
+                eligibleWaveWithdrawns -= int8(uint8(length));
+            }
 
             gameConfig[gameId].BYTES256 = updatedTickets;
             gameConfig[gameId].eligibleWaveWithdrawns = int8(
