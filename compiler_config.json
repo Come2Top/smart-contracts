@@ -1,9 +1,10 @@
 {
 	"language": "Solidity",
 	"settings": {
+		"viaIR": true,
 		"optimizer": {
 			"enabled": true,
-			"runs": 10
+			"runs": 200
 		},
 		"outputSelection": {
 			"*": {
