@@ -87,7 +87,8 @@ contract $256$ {
 
     modifier onlyPaused() {
         require(
-            gameConfig[_currentGameID].BYTES256.length == 1 && _pausy == true,
+            gameConfig[_currentGameID].eligibleWaveWithdrawns == -1 &&
+                _pausy == true,
             "ONLY_PAUSED"
         );
 
@@ -161,10 +162,7 @@ contract $256$ {
         uint256 neededUSDC = _neededUSDC;
         uint256 totalTickets = ticketIDs.length;
 
-        if (
-            gameConfig[gameId].BYTES256.length < 3 &&
-            gameConfig[gameId].eligibleWaveWithdrawns == -1
-        ) {
+        if (gameConfig[gameId].eligibleWaveWithdrawns == -1) {
             unchecked {
                 gameId++;
                 _currentGameID++;
@@ -236,13 +234,11 @@ contract $256$ {
             bytes memory tickets
         ) = getLatestUpdate();
 
-        require(length != 0, "PROVIDE_TICKET-IDS_WITH_INDEXES");
+        require(length != 0, "PROVIDE_INDEXES");
         require(stat != Status.notStarted, "NOT_STARTED");
-        require(
-            eligibleWaveWithdrawns != 0 || tickets.length != 2,
-            "NOT_ELIGIBLE"
-        );
-        require(eligibleWaveWithdrawns != -1, "CLAIMED_BEFORE");
+        require(currentWave != 0, "WAIT_FOR_WAVE_1");
+        require(eligibleWaveWithdrawns != 0, "NOT_ELIGIBLE");
+        require(stat != Status.finished, "FINISHED");
         require(
             length <= uint256(eligibleWaveWithdrawns),
             "OUT_OF_ELIGIBLE_WITHDRAWNS"
@@ -359,7 +355,7 @@ contract $256$ {
             USDC.transfer(ADMIN, fee);
 
             unchecked {
-                eligibleWaveWithdrawns -= int8(uint8(length));
+                eligibleWaveWithdrawns -= int256(length);
             }
 
             gameConfig[gameId].BYTES256 = updatedTickets;
@@ -391,16 +387,13 @@ contract $256$ {
         uint256 gameId = _currentGameID;
         GameData memory GD = gameConfig[gameId];
 
-        if (
-            GD.startedBN == 0 ||
-            GD.BYTES256.length == 0 ||
-            GD.BYTES256.length == 1
-        ) {
+        eligibleWaveWithdrawns = GD.eligibleWaveWithdrawns;
+        currentWave = GD.updatedWave;
+        tickets = GD.BYTES256;
+
+        if (GD.startedBN == 0 || GD.eligibleWaveWithdrawns == -1)
             stat = GD.startedBN == 0 ? Status.notStarted : Status.finished;
-            eligibleWaveWithdrawns = GD.eligibleWaveWithdrawns;
-            currentWave = GD.updatedWave;
-            tickets = GD.BYTES256;
-        } else {
+        else {
             stat = Status.inProcess;
 
             uint256 bn = block.number;
@@ -411,10 +404,8 @@ contract $256$ {
                 // while (true) {
                 //     unchecked {}
                 // }
-            } else {
-                eligibleWaveWithdrawns = GD.eligibleWaveWithdrawns;
-                currentWave = GD.updatedWave;
-                tickets = GD.BYTES256;
+
+                eligibleWaveWithdrawns = int256(tickets.length / 2);
             }
         }
     }
