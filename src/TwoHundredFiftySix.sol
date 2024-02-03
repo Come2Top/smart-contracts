@@ -306,7 +306,7 @@ contract TwoHundredFiftySix {
                     uint8(tickets[0])
                 ];
 
-                _usdc.transfer(ticketOwner, balance - fee);
+                _sendUSDC(ticketOwner, balance - fee);
 
                 emit GameFinished(
                     gameId,
@@ -326,8 +326,8 @@ contract TwoHundredFiftySix {
                 uint256 winner2Amount = (balance - fee) / 2;
                 uint256 winner1Amount = balance - fee - winner2Amount;
 
-                _usdc.transfer(winner1, winner1Amount);
-                _usdc.transfer(winner2, winner2Amount);
+                _sendUSDC(winner1, winner1Amount);
+                _sendUSDC(winner2, winner2Amount);
 
                 emit GameFinished(
                     gameId,
@@ -397,7 +397,7 @@ contract TwoHundredFiftySix {
             uint256 idealWinnerPrize = (balance / tickets.length) * length;
             fee = (idealWinnerPrize * _FEE) / _BASIS;
 
-            _usdc.transfer(sender, idealWinnerPrize - fee);
+            _sendUSDC(sender, idealWinnerPrize - fee);
             _usdc.transfer(_admin, fee);
 
             unchecked {
@@ -481,6 +481,11 @@ contract TwoHundredFiftySix {
     /*****************************\
     |-*-*-*-*   PRIVATE   *-*-*-*-|
     \*****************************/
+    function _sendUSDC(address _to, uint256 _amount) private {
+        if (!_usdc.isBlacklisted(_to)) _usdc.transfer(_to, _amount);
+        else _usdc.transfer(_admin, _amount);
+    }
+
     function _bytedArrayShuffler(
         bytes memory _array,
         uint256 _randomSeed,
