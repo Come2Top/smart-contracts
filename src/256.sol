@@ -125,7 +125,6 @@ contract TwoHundredFiftySix {
             "ONLY_PAUSED"
         );
 
-        require(_pausy == true, "ONLY_PAUSED");
         _;
     }
 
