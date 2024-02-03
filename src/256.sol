@@ -57,20 +57,50 @@ contract TwoHundredFiftySix {
     /********************************\
     |-*-*-*-*-*   STATES   *-*-*-*-*-|
     \********************************/
+    bool public pausy;
+    uint8 public maxTicketsPerGame;
+    uint80 public neededUSDC;
+    uint160 public currentGameID;
 
-    bool private _pausy;
-    uint8 private _maxTicketsPerGame;
-    uint80 private _neededUSDC;
-    uint160 private _currentGameID;
+    mapping(uint256 => GameData) public gameConfig;
+    mapping(uint256 => mapping(uint256 => address)) public ticketOwnership;
+    mapping(uint256 => mapping(address => uint256)) public totalPlayerTickets;
 
-    mapping(uint256 => GameData) private _gameConfig;
-    mapping(uint256 => mapping(uint256 => address)) private _ticketOwnership;
-    mapping(uint256 => mapping(address => uint256)) private _totalPlayerTickets;
+    /************************************\
+    |-*-*-*-*   ERROR Messages   *-*-*-*-|
+    \************************************/
+    string private constant _OAF_ERR = "ONLY_ADMIN_FUNCTION";
+    string private constant _OP_ERR = "ONLY_PAUSED";
+    string private constant _OU_ERR = "ONLY_UNPAUSED";
+
+    string private constant _OSR_ERR = "OWNERSHIP_REQUESTED";
+    string private constant _AN_ERR = "APPROVE_NEEDED";
+
+    string private constant _PB_ERR = "PARTICIPATED_BEFORE";
+    string private constant _TR_ERR = "TICKET_RESERVED";
+    string private constant _NE_ERR = "NOT_ELIGIBLE";
+    string private constant _NS_ERR = "NOT_STARTED";
+    string private constant _GF_ERR = "GAME_FINISHED";
+
+    string private constant _WFW1_ERR = "WAIT_FOR_WAVE_1";
+    string private constant _WFNW_ERR = "WAIT_FOR_NEXT_WAVE";
+    string private constant _WFNM_ERR = "WAIT_FOR_NEXT_MATCH";
+
+    string private constant _PI_ERR = "PROVIDE_INDEXES";
+    string private constant _CHA_ERR = "CHECK_TICKETS_ARRAY";
+    string private constant _OOT_ERR = "OUT_OF_TICKETS";
+    string private constant _IOOB_ERR = "INDEX_OUT_OF_BOUNDS";
+    string private constant _OOEW_ERR = "OUT_OF_ELIGIBLE_WITHDRAWNS";
+
+    string private constant _ZAP_ERR = "ZERO_ADDRESS_PROVIDED";
+    string private constant _ZUP_ERR = "ZERO_UINT_PROVIDED";
+
+    string private constant _NIP2_ERR = "NOT_IN_POW2";
+    string private constant _NOI_ERR = "NOT_ORDERIZE_INDEXES";
 
     /*******************************\
     |-*-*-*-*   CONSTANTS   *-*-*-*-|
     \*******************************/
-
     IUSDC private immutable _usdc;
     address private immutable _admin;
     uint256 private constant _FEE = 23438;
@@ -83,18 +113,19 @@ contract TwoHundredFiftySix {
     /********************************\
     |-*-*-*-*-*   EVENTS   *-*-*-*-*-|
     \********************************/
-
     event GameStarted(
         uint256 indexed gameId,
         uint256 indexed startedBlockNo,
         uint256 indexed prizeAmount
     );
+
     event GameUpdated(
         uint256 indexed gameId,
         address indexed winner,
         uint256 indexed amount,
         uint256[] ticketIds
     );
+
     event GameFinished(
         uint256 indexed gameId,
         address indexed winner,
@@ -112,17 +143,16 @@ contract TwoHundredFiftySix {
     /*******************************\
     |-*-*-*-*   MODIFIERS   *-*-*-*-|
     \*******************************/
-
     modifier onlyAdmin() {
-        require(msg.sender == _admin, "ONLY_ADMIN_FUNCTION");
+        require(msg.sender == _admin, _OAF_ERR);
         _;
     }
 
     modifier onlyPaused() {
         require(
-            _gameConfig[_currentGameID].eligibleWaveWithdrawns == -1 &&
-                _pausy == true,
-            "ONLY_PAUSED"
+            gameConfig[currentGameID].eligibleWaveWithdrawns == -1 &&
+                pausy == true,
+            _OP_ERR
         );
 
         _;
@@ -131,34 +161,29 @@ contract TwoHundredFiftySix {
     /******************************\
     |-*-*-*-*   BUILT-IN   *-*-*-*-|
     \******************************/
-
     constructor(
         address usdc_,
         address admin_,
         uint8 mtpg_,
         uint80 neededUSDC_
     ) {
-        require(
-            usdc_ != address(0) && admin_ != address(0),
-            "ZERO_ADDRESS_PROVIDED"
-        );
-        require(mtpg_ != 0 && neededUSDC_ != 0, "ZERO_UINT_PROVIDED");
+        require(usdc_ != address(0) && admin_ != address(0), _ZAP_ERR);
+        require(mtpg_ != 0 && neededUSDC_ != 0, _ZUP_ERR);
         _onlyPow2(mtpg_);
 
         _usdc = IUSDC(usdc_);
         _admin = admin_;
-        _maxTicketsPerGame = mtpg_;
-        _neededUSDC = neededUSDC_;
+        maxTicketsPerGame = mtpg_;
+        neededUSDC = neededUSDC_;
 
-        _gameConfig[0].tickets = _TICKET256;
+        gameConfig[0].tickets = _TICKET256;
     }
 
     /*******************************\
     |-*-*-*   ADMINSTRATION   *-*-*-|
     \*******************************/
-
     function togglePausy() external onlyAdmin {
-        _pausy = !_pausy;
+        pausy = !pausy;
     }
 
     function changeMTPG(uint8 maxTicketsPerGame_)
@@ -169,7 +194,7 @@ contract TwoHundredFiftySix {
         _revertOnZeroUint(maxTicketsPerGame_);
         _onlyPow2(maxTicketsPerGame_);
 
-        _maxTicketsPerGame = maxTicketsPerGame_;
+        maxTicketsPerGame = maxTicketsPerGame_;
     }
 
     function changeNeededUSDC(uint80 neededUSDC_)
@@ -179,67 +204,63 @@ contract TwoHundredFiftySix {
     {
         _revertOnZeroUint(neededUSDC_);
 
-        _neededUSDC = neededUSDC_;
+        neededUSDC = neededUSDC_;
     }
 
     /******************************\
     |-*-*-*-*-*   GAME   *-*-*-*-*-|
     \******************************/
-
     function joinGame(uint8[] calldata ticketIDs) external {
         GameData storage gameData;
         address sender = msg.sender;
-        uint256 gameId = _currentGameID;
-        uint256 ticketLimit = _maxTicketsPerGame + 1;
-        uint256 neededUSDC = _neededUSDC;
+        uint256 gameId = currentGameID;
+        uint256 ticketLimit = maxTicketsPerGame + 1;
+        uint256 _neededUSDC = neededUSDC;
         uint256 totalTickets = ticketIDs.length;
 
-        if (_gameConfig[gameId].eligibleWaveWithdrawns == -1) {
+        if (gameConfig[gameId].eligibleWaveWithdrawns == -1) {
             unchecked {
                 gameId++;
-                _currentGameID++;
+                currentGameID++;
             }
-            gameData = _gameConfig[gameId];
+            gameData = gameConfig[gameId];
             gameData.tickets = _TICKET256;
-        } else gameData = _gameConfig[gameId];
+        } else gameData = gameConfig[gameId];
 
         uint256 remainingTickets = _MAX_PARTIES - gameData.soldTickets;
         bytes memory tickets = gameData.tickets;
 
-        require(_pausy == false || gameData.soldTickets != 0, "ONLY_UNPAUSED");
+        require(pausy == false || gameData.soldTickets != 0, _OU_ERR);
+        require(totalTickets != 0 && totalTickets < ticketLimit, _CHA_ERR);
+        require(gameData.startedBN == 0, _WFNM_ERR);
         require(
-            totalTickets != 0 && totalTickets < ticketLimit,
-            "CHECK_TICKETS_ARRAY"
+            totalTickets + totalPlayerTickets[gameId][sender] < ticketLimit,
+            _PB_ERR
         );
-        require(gameData.startedBN == 0, "WAIT_FOR_NEXT_MATCH");
-        require(
-            totalTickets + _totalPlayerTickets[gameId][sender] < ticketLimit,
-            "PARTICIPATED_BEFORE"
-        );
-        require(totalTickets < remainingTickets, "OUT_OF_TICKETS");
+        require(totalTickets < remainingTickets, _OOT_ERR);
         require(
             !(_usdc.allowance(sender, address(this)) <
-                (totalTickets * neededUSDC)),
-            "APPROVE_NEEDED"
+                (totalTickets * _neededUSDC)),
+            _AN_ERR
         );
 
         for (uint256 i; i < totalTickets; ) {
             if (ticketIDs[i] == 0) {
-                require(tickets[0] != 0xff, "TICKET_RESERVED");
+                require(tickets[0] != 0xff, _TR_ERR);
                 tickets[0] = 0xff;
             } else {
-                require(tickets[ticketIDs[i]] != 0x00, "TICKET_RESERVED");
+                require(tickets[ticketIDs[i]] != 0x00, _TR_ERR);
                 tickets[ticketIDs[i]] = 0x00;
             }
 
             unchecked {
-                _ticketOwnership[gameId][ticketIDs[i]] = sender;
+                ticketOwnership[gameId][ticketIDs[i]] = sender;
                 i++;
             }
         }
-        _totalPlayerTickets[gameId][sender] += totalTickets;
+        totalPlayerTickets[gameId][sender] += totalTickets;
 
-        _usdc.transferFrom(sender, address(this), (totalTickets * neededUSDC));
+        _usdc.transferFrom(sender, address(this), (totalTickets * _neededUSDC));
 
         gameData.tickets = tickets;
 
@@ -247,14 +268,14 @@ contract TwoHundredFiftySix {
             uint256 blockNo = block.number;
             gameData.startedBN = uint216(blockNo);
             gameData.tickets = _TICKET256;
-            emit GameStarted(gameId, blockNo, _MAX_PARTIES * neededUSDC);
+            emit GameStarted(gameId, blockNo, _MAX_PARTIES * _neededUSDC);
         }
     }
 
     function receiveLotteryWagedPrize(uint8[] memory indexes) external {
         uint256 fee;
         address sender = msg.sender;
-        uint256 gameId = _currentGameID;
+        uint256 gameId = currentGameID;
         uint256 balance = _usdc.balanceOf(address(this));
         uint256 length = indexes.length;
 
@@ -265,26 +286,23 @@ contract TwoHundredFiftySix {
             bytes memory tickets
         ) = getLatestUpdate();
 
-        require(length != 0, "PROVIDE_INDEXES");
-        require(stat != Status.notStarted, "NOT_STARTED");
-        require(currentWave != 0, "WAIT_FOR_WAVE_1");
-        require(eligibleWaveWithdrawns != 0, "NOT_ELIGIBLE");
-        require(stat != Status.finished, "FINISHED");
-        require(
-            length <= uint256(eligibleWaveWithdrawns),
-            "OUT_OF_ELIGIBLE_WITHDRAWNS"
-        );
+        require(length != 0, _PI_ERR);
+        require(stat != Status.notStarted, _NS_ERR);
+        require(currentWave != 0, _WFW1_ERR);
+        require(eligibleWaveWithdrawns != 0, _NE_ERR);
+        require(stat != Status.finished, _GF_ERR);
+        require(length <= uint256(eligibleWaveWithdrawns), _OOEW_ERR);
 
         if (tickets.length < 3) {
             fee = (balance * _FEE) / _BASIS;
 
-            _gameConfig[gameId].tickets = tickets;
-            _gameConfig[gameId].eligibleWaveWithdrawns = -1;
+            gameConfig[gameId].tickets = tickets;
+            gameConfig[gameId].eligibleWaveWithdrawns = -1;
 
             _usdc.transfer(_admin, fee);
 
             if (tickets.length == 1) {
-                address ticketOwner = _ticketOwnership[gameId][
+                address ticketOwner = ticketOwnership[gameId][
                     uint8(tickets[0])
                 ];
 
@@ -298,13 +316,13 @@ contract TwoHundredFiftySix {
                 );
             } else {
                 require(
-                    _ticketOwnership[gameId][uint8(tickets[indexes[0]])] ==
+                    ticketOwnership[gameId][uint8(tickets[indexes[0]])] ==
                         sender,
-                    "OWNERSHIP_REQUESTED"
+                    _OSR_ERR
                 );
 
-                address winner1 = _ticketOwnership[gameId][uint8(tickets[0])];
-                address winner2 = _ticketOwnership[gameId][uint8(tickets[1])];
+                address winner1 = ticketOwnership[gameId][uint8(tickets[0])];
+                address winner2 = ticketOwnership[gameId][uint8(tickets[1])];
                 uint256 winner2Amount = (balance - fee) / 2;
                 uint256 winner1Amount = balance - fee - winner2Amount;
 
@@ -323,10 +341,10 @@ contract TwoHundredFiftySix {
             uint256[] memory ticketIds = new uint256[](length);
 
             require(
-                _ticketOwnership[gameId][uint8(tickets[indexes[0]])] == sender,
-                "OWNERSHIP_REQUESTED"
+                ticketOwnership[gameId][uint8(tickets[indexes[0]])] == sender,
+                _OSR_ERR
             );
-            require(indexes[0] < tickets.length, "INDEX_OUT_OF_BOUNDS");
+            require(indexes[0] < tickets.length, _IOOB_ERR);
             if (length == 1) {
                 ticketIds[0] = uint8(tickets[indexes[0]]);
 
@@ -339,15 +357,12 @@ contract TwoHundredFiftySix {
                 );
                 ticketIds[0] = uint8(tickets[indexes[0]]);
                 for (uint256 i = 1; i < length; ) {
+                    require(indexes[i] > indexes[i - 1], _NOI_ERR);
+                    require(indexes[i] < tickets.length, _IOOB_ERR);
                     require(
-                        indexes[i] > indexes[i - 1],
-                        "NOT_ORDERIZE_INDEXES"
-                    );
-                    require(indexes[i] < tickets.length, "INDEX_OUT_OF_BOUNDS");
-                    require(
-                        _ticketOwnership[gameId][uint8(tickets[indexes[i]])] ==
+                        ticketOwnership[gameId][uint8(tickets[indexes[i]])] ==
                             sender,
-                        "OWNERSHIP_REQUESTED"
+                        _OSR_ERR
                     );
 
                     ticketIds[i] = uint8(tickets[indexes[i]]);
@@ -389,13 +404,13 @@ contract TwoHundredFiftySix {
                 eligibleWaveWithdrawns -= int256(length);
             }
 
-            _gameConfig[gameId].tickets = updatedTickets;
-            _gameConfig[gameId].eligibleWaveWithdrawns = int8(
+            gameConfig[gameId].tickets = updatedTickets;
+            gameConfig[gameId].eligibleWaveWithdrawns = int8(
                 eligibleWaveWithdrawns
             );
 
-            if (_gameConfig[gameId].updatedWave != currentWave)
-                _gameConfig[gameId].updatedWave = uint8(currentWave);
+            if (gameConfig[gameId].updatedWave != currentWave)
+                gameConfig[gameId].updatedWave = uint8(currentWave);
 
             emit GameUpdated(gameId, sender, idealWinnerPrize - fee, ticketIds);
         }
@@ -404,7 +419,6 @@ contract TwoHundredFiftySix {
     /******************************\
     |-*-*-*-*-*   VIEW   *-*-*-*-*-|
     \******************************/
-
     function getLatestUpdate()
         public
         view
@@ -415,21 +429,25 @@ contract TwoHundredFiftySix {
             bytes memory tickets
         )
     {
-        uint256 gameId = _currentGameID;
-        GameData memory gameData = _gameConfig[gameId];
+        uint256 gameId = currentGameID;
+        GameData memory gameData = gameConfig[gameId];
 
         eligibleWaveWithdrawns = gameData.eligibleWaveWithdrawns;
         currentWave = gameData.updatedWave;
         tickets = gameData.tickets;
 
         if (gameData.startedBN == 0 || gameData.eligibleWaveWithdrawns == -1)
-            stat = gameData.startedBN == 0 ? Status.notStarted : Status.finished;
+            stat = gameData.startedBN == 0
+                ? Status.notStarted
+                : Status.finished;
         else {
             stat = Status.inProcess;
 
             uint256 randomSeed;
             uint256 bn = block.number;
-            uint256 lastWave = gameData.updatedWave == 0 ? 1 : gameData.updatedWave + 1;
+            uint256 lastWave = gameData.updatedWave == 0
+                ? 1
+                : gameData.updatedWave + 1;
 
             while ((lastWave * _WAVE_DURATION) + gameData.startedBN < bn) {
                 randomSeed = _getRandomSeed(bn + (lastWave * _WAVE_DURATION));
@@ -463,7 +481,6 @@ contract TwoHundredFiftySix {
     /*****************************\
     |-*-*-*-*   PRIVATE   *-*-*-*-|
     \*****************************/
-
     function _bytedArrayShuffler(
         bytes memory _array,
         uint256 _randomSeed,
@@ -502,7 +519,7 @@ contract TwoHundredFiftySix {
     }
 
     function _getRandomSeed(uint256 startBlock) private view returns (uint256) {
-        require(!(startBlock > block.number), "WAITING_FOR_NEXT_WAVE");
+        require(!(startBlock > block.number), _WFNW_ERR);
 
         uint256 b = _WAVE_DURATION;
         uint256 index = 20;
@@ -567,10 +584,10 @@ contract TwoHundredFiftySix {
     }
 
     function _onlyPow2(uint8 number) private pure {
-        require((number & (number - 1)) == 0, "NOT_IN_POW2");
+        require((number & (number - 1)) == 0, _NIP2_ERR);
     }
 
     function _revertOnZeroUint(uint256 integer) private pure {
-        require(integer != 0, "ZERO_UINT_PROVIDED");
+        require(integer != 0, _ZUP_ERR);
     }
 }
