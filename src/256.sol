@@ -215,7 +215,6 @@ contract $256$ {
             uint256 blockNo = block.number;
             GD.startedBN = uint216(blockNo);
             GD.BYTES256 = BYTES256;
-            GD.eligibleWaveWithdrawns = 64;
             emit GameStarted(gameId, blockNo, MAX_PARTIES * neededUSDC);
         }
     }
@@ -396,16 +395,27 @@ contract $256$ {
         else {
             stat = Status.inProcess;
 
+            uint256 randomSeed;
             uint256 bn = block.number;
-            uint256 lastWave = GD.updatedWave == 0 ? 1 : GD.updatedWave;
+            uint256 lastWave = GD.updatedWave == 0 ? 1 : GD.updatedWave + 1;
 
-            if ((lastWave * WAVE_DURATION) + GD.startedBN < bn) {
-                // uint256 i;
-                // while (true) {
-                //     unchecked {}
-                // }
+            while ((lastWave * WAVE_DURATION) + GD.startedBN < bn) {
+                randomSeed = _getRandomSeed(bn + (lastWave * WAVE_DURATION));
+                tickets = _bytedArrayShuffler(
+                    tickets,
+                    randomSeed,
+                    tickets.length / 2
+                );
 
-                eligibleWaveWithdrawns = int256(tickets.length / 2);
+                unchecked {
+                    lastWave++;
+                    eligibleWaveWithdrawns = int256(tickets.length / 2);
+                }
+
+                if (eligibleWaveWithdrawns < 2) {
+                    eligibleWaveWithdrawns = 1;
+                    break;
+                }
             }
         }
     }
