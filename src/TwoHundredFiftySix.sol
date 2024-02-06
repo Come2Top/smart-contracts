@@ -306,6 +306,8 @@ contract TwoHundredFiftySix {
                     uint8(tickets[0])
                 ];
 
+                delete ticketOwnership[gameId][uint8(tickets[0])];
+
                 _sendUSDC(ticketOwner, balance - fee);
 
                 emit GameFinished(
@@ -326,6 +328,9 @@ contract TwoHundredFiftySix {
                 uint256 winner2Amount = (balance - fee) / 2;
                 uint256 winner1Amount = balance - fee - winner2Amount;
 
+                delete ticketOwnership[gameId][uint8(tickets[0])];
+                delete ticketOwnership[gameId][uint8(tickets[1])];
+
                 _sendUSDC(winner1, winner1Amount);
                 _sendUSDC(winner2, winner2Amount);
 
@@ -345,6 +350,9 @@ contract TwoHundredFiftySix {
                 _OSR_ERR
             );
             require(indexes[0] < tickets.length, _IOOB_ERR);
+
+            delete ticketOwnership[gameId][uint8(tickets[indexes[0]])];
+
             if (length == 1) {
                 ticketIds[0] = uint8(tickets[indexes[0]]);
 
@@ -364,6 +372,8 @@ contract TwoHundredFiftySix {
                             sender,
                         _OSR_ERR
                     );
+
+                    delete ticketOwnership[gameId][uint8(tickets[indexes[i]])];
 
                     ticketIds[i] = uint8(tickets[indexes[i]]);
 
