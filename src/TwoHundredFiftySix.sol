@@ -1,80 +1,72 @@
-/************************************************************************\
+/**********************************************************************\
                          █▀▀ █   ▄▀█ █▀ █▀ █ █▀▀
                          █▄▄ █▄▄ █▀█ ▄█ ▄█ █ █▄▄
-                                                          + ꓕ$ՈꓭOꓤ
-                      █▀█  ▄▀█  █▄ █  █▀▄  █▀█  █▀▄▀█     + 🆂🅴🅲🆄🆁🅴
-                      █▀▄  █▀█  █ ▀█  █▄▀  █▄█  █ ▀ █     + 🇦​​​​​🇺​​​​​🇹​​​​​⌖​​​​​🇲​​​​​🇦​​​​​🇹​​​​​🇪​​​​​🇩​​​​​
+                                                        + ꓕ$ՈꓭOꓤ
+                     █▀█  ▄▀█  █▄ █  █▀▄  █▀█  █▀▄▀█    + 🆂🅴🅲🆄🆁🅴
+                     █▀▄  █▀█  █ ▀█  █▄▀  █▄█  █ ▀ █    + 🇦​​​​​🇺​​​​​🇹​​​​​⌖​​​​​🇲​​​​​🇦​​​​​🇹​​​​​🇪​​​​​🇩​​​​​
 
-                █   █▀▀ ▄▀█ █▀▄ █▀▀ █▀█ █▄▄ █▀█ ▄▀█ █▀█ █▀▄
-                █▄▄ ██▄ █▀█ █▄▀ ██▄ █▀▄ █▄█ █▄█ █▀█ █▀▄ █▄▀
+               █   █▀▀ ▄▀█ █▀▄ █▀▀ █▀█ █▄▄ █▀█ ▄▀█ █▀█ █▀▄
+               █▄▄ ██▄ █▀█ █▄▀ ██▄ █▀▄ █▄█ █▄█ █▀█ █▀▄ █▄▀
 
- ░░░░░░░░░░░░████████████████████████████████████████████████░░░░░░░░░░░░
- ░░░░░░░░░░░██████████████░ Waiting For You <3 ░██████████████░░░░░░░░░░░
- ░░░░░░░░░░████████████████████████████████████████████████████░░░░░░░░░░
- ░░░░░░░░░█████████​█​█​█​█​█​█​█​█​█​█████████.------.​█​█​█​█​█​█​█​█​█​█​█​█​█​█​█​█​█​█​█░░░░░░░░░
- ░░░░░░░░███████████████████████████.'   .' |████████████████████░░░░░░░░
- ░░░░░░░███████████████,----,█████.'   .'   |█████████████████████░░░░░░░
- ░░░░░░██████████████.'   .' \██.----.'    .'█████,---.,███████████░░░░░░
- ░░░░░█████████████.----.'    |█|    |   .'██████/    / \███████████░░░░░
- ░░░░██████████████|    |  .  |█|    |  |--.████/    /  /████████████░░░░
- ░░░███████████████|    |.'  /██|    |  |.' \██/    /  /██████████████░░░
- ░░████████████████'----'/  /███|    |      |█|    /  |████████████████░░
- ░░░█████████████████/  /  /████'----'.'\   |█|   |   \███████████████░░░
- ░░░░███████████████/  /  /-.█████████\  \  |█|   |    ``\███████████░░░░
- ░░░░░█████████████/  /  /.'|███/   /\/  /  |█|   |  /'\  \█████████░░░░░
- ░░░░░░███████████/__/      |██/   /  \_/   |█|   |  |█|  |████████░░░░░░
- ░░░░░░░█████████|   |    .'███\   \       /██|   |  \./  |███████░░░░░░░
- ░░░░░░░░████████|   | .'███████\   \     /███\   \      /███████░░░░░░░░
- ░░░░░░░░░███████'---'███████████`--`----'█████`---`--`-'███████░░░░░░░░░
- ░░░░░░░░░░████████████████████████████████████████████████████░░░░░░░░░░
- ░░░░░░░░░░░█████████████░ https://www.256.cash ░█████████████░░░░░░░░░░░
- ░░░░░░░░░░░░████████████████████████████████████████████████░░░░░░░░░░░░
-\************************************************************************/
+░░░░░░░░░░░░████████████████████████████████████████████████░░░░░░░░░░░░
+░░░░░░░░░░░██████████████░ Waiting For You <3 ░██████████████░░░░░░░░░░░
+░░░░░░░░░░████████████████████████████████████████████████████░░░░░░░░░░
+░░░░░░░░░█████████​█​█​█​█​█​█​█​█​█​█████████.------.​█​█​█​█​█​█​█​█​█​█​█​█​█​█​█​█​█​█​█░░░░░░░░░
+░░░░░░░░███████████████████████████.'   .' |████████████████████░░░░░░░░
+░░░░░░░███████████████,----,█████.'   .'   |█████████████████████░░░░░░░
+░░░░░░██████████████.'   .' \██.----.'    .'█████,---.,███████████░░░░░░
+░░░░░█████████████.----.'    |█|    |   .'██████/    / \███████████░░░░░
+░░░░██████████████|    |:'.  |█|    |  |--.████/    /  /████████████░░░░
+░░░███████████████|    |:/  /██|    |  |.' \██/    /  /██████████████░░░
+░░████████████████'----'/  /███|    |      |█|    /  |████████████████░░
+░░░█████████████████/  /  /████'----'.'\   |█|   |   \███████████████░░░
+░░░░███████████████/  /  /-.█████████\  \  |█|   |    ``\███████████░░░░
+░░░░░█████████████/  /  /.'|███/   /\/  /  |█|   |  /'\  \█████████░░░░░
+░░░░░░███████████/__/      |██/   /  \_/   |█|   |  |█|  |████████░░░░░░
+░░░░░░░█████████|   |    .'███\   \       /██|   |  \./  |███████░░░░░░░
+░░░░░░░░████████|   | .'███████\   \     /███\   \      /███████░░░░░░░░
+░░░░░░░░░███████'---'███████████`--`----'█████`---`--`-'███████░░░░░░░░░
+░░░░░░░░░░████████████████████████████████████████████████████░░░░░░░░░░
+░░░░░░░░░░░█████████████░ https://www.256.cash ░█████████████░░░░░░░░░░░
+░░░░░░░░░░░░████████████████████████████████████████████████░░░░░░░░░░░░
+\**********************************************************************/
 
-// SPDX-License-Identifier: AGPL-v3
+// SPDX-License-Identifier: --256--
 pragma solidity 0.8.18;
 
+import {I256} from "./interfaces/I256.sol";
 import {IUSDC} from "./interfaces/IUSDC.sol";
+import {IERC20} from "./interfaces/IERC20.sol";
 
-contract TwoHundredFiftySix {
-    /*******************************\
-    |-*-*-*-*-*   TYPES   *-*-*-*-*-|
-    \*******************************/
-    enum Status {
-        notStarted,
-        inProcess,
-        finished
-    }
+import {OfferorsTreasury} from "./OfferorsTreasury.sol";
 
-    struct GameData {
-        int8 eligibleWaveWithdrawns;
-        uint8 soldTickets;
-        uint8 updatedWave;
-        uint216 startedBN;
-        bytes tickets;
-    }
-
+contract TwoHundredFiftySix is I256 {
     /********************************\
     |-*-*-*-*-*   STATES   *-*-*-*-*-|
     \********************************/
-    bool public pausy;
+    bool public pause;
     uint8 public maxTicketsPerGame;
-    uint80 public neededUSDC;
+    uint80 public ticketPrice;
     uint160 public currentGameID;
 
-    mapping(uint256 => GameData) public gameConfig;
-    mapping(uint256 => mapping(uint256 => address)) public ticketOwnership;
-    mapping(uint256 => mapping(address => uint256)) public totalPlayerTickets;
+    mapping(uint256 => GameData) public gameData;
+    mapping(uint256 => mapping(uint8 => address)) public ticketOwnership;
+    mapping(uint256 => mapping(address => uint8)) public totalPlayerTickets;
 
-    /************************************\
-    |-*-*-*-*   ERROR Messages   *-*-*-*-|
-    \************************************/
+    /********************************\
+    |-*-*-*-*-*   ERRORS   *-*-*-*-*-|
+    \********************************/
+    string private constant _OTF_ERR = "ONLY_TREASURY_FUNCTION";
     string private constant _OAF_ERR = "ONLY_ADMIN_FUNCTION";
-    string private constant _OP_ERR = "ONLY_PAUSED";
-    string private constant _OU_ERR = "ONLY_UNPAUSED";
+    string private constant _OEOAF_ERR = "ONLY_EOA_FUNCTION";
+    string private constant _OPAFG_ERR = "ONLY_PAUSED_AND_FINISHED_GAME";
+    string private constant _OUOIPG_ERR = "ONLY_UNPAUSED_OR_IN_PROCESS_GAME";
 
+    string private constant _ITAP_ERR = "INVALID_TOKEN_ADDRESS_PROVIDED";
     string private constant _OSR_ERR = "OWNERSHIP_REQUESTED";
+    string private constant _IB_ERR = "INSUFFICIENT_BALANCE";
     string private constant _AN_ERR = "APPROVE_NEEDED";
+    string private constant _NR_ERR = "NON_REFUNDABLE";
 
     string private constant _PB_ERR = "PARTICIPATED_BEFORE";
     string private constant _TR_ERR = "TICKET_RESERVED";
@@ -101,11 +93,12 @@ contract TwoHundredFiftySix {
     /*******************************\
     |-*-*-*-*   CONSTANTS   *-*-*-*-|
     \*******************************/
-    IUSDC private immutable _usdc;
-    address private immutable _admin;
+    IUSDC public immutable USDC;
+    address public immutable ADMIN;
+    address public immutable TREASURY;
     uint256 private constant _FEE = 23438;
     uint256 private constant _BASIS = 1000000;
-    uint256 private constant _WAVE_DURATION = 80;
+    uint256 private constant _WAVE_DURATION = 93;
     uint256 private constant _MAX_PARTIES = 256;
     bytes private constant _TICKET256 =
         hex"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
@@ -113,46 +106,47 @@ contract TwoHundredFiftySix {
     /********************************\
     |-*-*-*-*-*   EVENTS   *-*-*-*-*-|
     \********************************/
+    event TicketsSold(address indexed buyer, bytes ticketIDs);
+
     event GameStarted(
-        uint256 indexed gameId,
+        uint256 indexed gameID,
         uint256 indexed startedBlockNo,
         uint256 indexed prizeAmount
     );
 
     event GameUpdated(
-        uint256 indexed gameId,
+        uint256 indexed gameID,
         address indexed winner,
         uint256 indexed amount,
-        uint256[] ticketIds
+        uint256[] ticketIDs
     );
 
     event GameFinished(
-        uint256 indexed gameId,
+        uint256 indexed gameID,
         address indexed winner,
         uint256 indexed amount,
-        uint256 ticketId
+        uint256 ticketID
     );
 
     event GameFinished(
-        uint256 indexed gameId,
+        uint256 indexed gameID,
         address[2] winners,
         uint256[2] amounts,
-        uint256[2] ticketIds
+        uint256[2] ticketIDs
     );
 
     /*******************************\
     |-*-*-*-*   MODIFIERS   *-*-*-*-|
     \*******************************/
-    modifier onlyAdmin() {
-        require(msg.sender == _admin, _OAF_ERR);
+    modifier only(address account, string memory error) {
+        require(msg.sender == account, error);
         _;
     }
 
-    modifier onlyPaused() {
+    modifier onlyPausedAndFinishedGame() {
         require(
-            gameConfig[currentGameID].eligibleWaveWithdrawns == -1 &&
-                pausy == true,
-            _OP_ERR
+            gameData[currentGameID].eligibleWithdrawals == -1 && pause == true,
+            _OPAFG_ERR
         );
 
         _;
@@ -162,34 +156,60 @@ contract TwoHundredFiftySix {
     |-*-*-*-*   BUILT-IN   *-*-*-*-|
     \******************************/
     constructor(
-        address usdc_,
-        address admin_,
-        uint8 mtpg_,
-        uint80 neededUSDC_
+        address admin,
+        address usdc,
+        uint8 mtpg,
+        uint80 tp
     ) {
-        require(usdc_ != address(0) && admin_ != address(0), _ZAP_ERR);
-        require(mtpg_ != 0 && neededUSDC_ != 0, _ZUP_ERR);
-        _onlyPow2(mtpg_);
+        require(admin != address(0) && usdc != address(0), _ZAP_ERR);
+        require(mtpg != 0 && tp != 0, _ZUP_ERR);
+        _onlyPow2(mtpg);
 
-        _usdc = IUSDC(usdc_);
-        _admin = admin_;
-        maxTicketsPerGame = mtpg_;
-        neededUSDC = neededUSDC_;
+        ADMIN = admin;
+        USDC = IUSDC(usdc);
+        maxTicketsPerGame = mtpg;
+        ticketPrice = tp;
 
-        gameConfig[0].tickets = _TICKET256;
+        gameData[0].tickets = _TICKET256;
+
+        TREASURY = address(new OfferorsTreasury(usdc));
     }
 
     /*******************************\
     |-*-*-*   ADMINSTRATION   *-*-*-|
     \*******************************/
-    function togglePausy() external onlyAdmin {
-        pausy = !pausy;
+    function rescueERC20(address token, address to)
+        external
+        only(ADMIN, _OAF_ERR)
+    {
+        uint256 balance;
+
+        try IERC20(token).balanceOf(address(this)) returns (uint256 b) {
+            balance = b;
+        } catch {
+            revert(_ITAP_ERR);
+        }
+        require(token != address(USDC), _NR_ERR);
+        require(balance != 0, _IB_ERR);
+
+        IERC20(token).transfer(to, balance);
+    }
+
+    function rescueMatic(address payable to) external only(ADMIN, _OAF_ERR) {
+        uint256 balance = address(this).balance;
+        require(balance != 0, _IB_ERR);
+
+        to.transfer(balance);
+    }
+
+    function togglePause() external only(ADMIN, _OAF_ERR) {
+        pause = !pause;
     }
 
     function changeMTPG(uint8 maxTicketsPerGame_)
         external
-        onlyAdmin
-        onlyPaused
+        only(ADMIN, _OAF_ERR)
+        onlyPausedAndFinishedGame
     {
         _revertOnZeroUint(maxTicketsPerGame_);
         _onlyPow2(maxTicketsPerGame_);
@@ -197,91 +217,109 @@ contract TwoHundredFiftySix {
         maxTicketsPerGame = maxTicketsPerGame_;
     }
 
-    function changeNeededUSDC(uint80 neededUSDC_)
+    function changeTP(uint80 ticketPrice_)
         external
-        onlyAdmin
-        onlyPaused
+        only(ADMIN, _OAF_ERR)
+        onlyPausedAndFinishedGame
     {
-        _revertOnZeroUint(neededUSDC_);
+        _revertOnZeroUint(ticketPrice_);
 
-        neededUSDC = neededUSDC_;
+        ticketPrice = ticketPrice_;
     }
 
     /******************************\
     |-*-*-*-*-*   GAME   *-*-*-*-*-|
     \******************************/
-    function joinGame(uint8[] calldata ticketIDs) external {
-        GameData storage gameData;
+    function joinGame(uint8[] calldata ticketIDs)
+        external
+        only(tx.origin, _OEOAF_ERR)
+    {
+        GameData storage GD;
         address sender = msg.sender;
-        uint256 gameId = currentGameID;
-        uint256 ticketLimit = maxTicketsPerGame + 1;
-        uint256 _neededUSDC = neededUSDC;
+        uint256 gameID = currentGameID;
+        uint256 neededUSDC = ticketPrice;
         uint256 totalTickets = ticketIDs.length;
+        uint256 ticketLimit = maxTicketsPerGame + 1;
 
-        if (gameConfig[gameId].eligibleWaveWithdrawns == -1) {
+        if (gameData[gameID].eligibleWithdrawals == -1) {
             unchecked {
-                gameId++;
+                gameID++;
                 currentGameID++;
             }
-            gameData = gameConfig[gameId];
-            gameData.tickets = _TICKET256;
-        } else gameData = gameConfig[gameId];
+            GD = gameData[gameID];
+            GD.tickets = _TICKET256;
+        } else GD = gameData[gameID];
 
-        uint256 remainingTickets = _MAX_PARTIES - gameData.soldTickets;
-        bytes memory tickets = gameData.tickets;
+        uint256 remainingTickets = _MAX_PARTIES - GD.soldTickets;
+        bytes memory tickets = GD.tickets;
 
-        require(pausy == false || gameData.soldTickets != 0, _OU_ERR);
+        require(pause == false || GD.soldTickets != 0, _OUOIPG_ERR);
         require(totalTickets != 0 && totalTickets < ticketLimit, _CHA_ERR);
-        require(gameData.startedBN == 0, _WFNM_ERR);
+        require(GD.startedBlock == 0, _WFNM_ERR);
         require(
-            totalTickets + totalPlayerTickets[gameId][sender] < ticketLimit,
+            totalTickets + totalPlayerTickets[gameID][sender] < ticketLimit,
             _PB_ERR
         );
         require(totalTickets < remainingTickets, _OOT_ERR);
         require(
-            !(_usdc.allowance(sender, address(this)) <
-                (totalTickets * _neededUSDC)),
+            !(USDC.allowance(sender, address(this)) <
+                (totalTickets * neededUSDC)),
             _AN_ERR
         );
 
+        bytes memory realTickets;
+
         for (uint256 i; i < totalTickets; ) {
             if (ticketIDs[i] == 0) {
-                require(tickets[0] != 0xff, _TR_ERR);
-                tickets[0] = 0xff;
+                if (tickets[0] != 0xff) {
+                    tickets[0] = 0xff;
+                    realTickets = abi.encodePacked(bytes1(0x00));
+                }
             } else {
-                require(tickets[ticketIDs[i]] != 0x00, _TR_ERR);
-                tickets[ticketIDs[i]] = 0x00;
+                if (tickets[ticketIDs[i]] != 0x00) {
+                    tickets[ticketIDs[i]] = 0x00;
+                    realTickets = abi.encodePacked(
+                        realTickets,
+                        bytes1(ticketIDs[i])
+                    );
+                }
             }
 
             unchecked {
-                ticketOwnership[gameId][ticketIDs[i]] = sender;
+                ticketOwnership[gameID][ticketIDs[i]] = sender;
                 i++;
             }
         }
-        totalPlayerTickets[gameId][sender] += totalTickets;
+        totalTickets = realTickets.length;
 
-        _usdc.transferFrom(sender, address(this), (totalTickets * _neededUSDC));
+        _revertOnZeroUint(totalTickets);
 
-        gameData.tickets = tickets;
+        totalPlayerTickets[gameID][sender] += uint8(totalTickets);
+
+        USDC.transferFrom(sender, address(this), (totalTickets * neededUSDC));
+
+        GD.tickets = tickets;
+
+        emit TicketsSold(sender, realTickets);
 
         if (totalTickets == remainingTickets) {
-            uint256 blockNo = block.number;
-            gameData.startedBN = uint216(blockNo);
-            gameData.tickets = _TICKET256;
-            emit GameStarted(gameId, blockNo, _MAX_PARTIES * _neededUSDC);
+            uint256 currentBlock = block.number;
+            GD.startedBlock = uint216(currentBlock);
+            GD.tickets = _TICKET256;
+            emit GameStarted(gameID, currentBlock, _MAX_PARTIES * neededUSDC);
         }
     }
 
-    function receiveLotteryWagedPrize(uint8[] memory indexes) external {
+    function receiveLotteryWagedPrize(uint8[] calldata indexes) external {
         uint256 fee;
         address sender = msg.sender;
-        uint256 gameId = currentGameID;
-        uint256 balance = _usdc.balanceOf(address(this));
+        uint256 gameID = currentGameID;
+        uint256 balance = USDC.balanceOf(address(this));
         uint256 length = indexes.length;
 
         (
             Status stat,
-            int256 eligibleWaveWithdrawns,
+            int256 eligibleWithdrawals,
             uint256 currentWave,
             bytes memory tickets
         ) = getLatestUpdate();
@@ -289,53 +327,53 @@ contract TwoHundredFiftySix {
         require(length != 0, _PI_ERR);
         require(stat != Status.notStarted, _NS_ERR);
         require(currentWave != 0, _WFW1_ERR);
-        require(eligibleWaveWithdrawns != 0, _NE_ERR);
+        require(eligibleWithdrawals != 0, _NE_ERR);
         require(stat != Status.finished, _GF_ERR);
-        require(length <= uint256(eligibleWaveWithdrawns), _OOEW_ERR);
+        require(length <= uint256(eligibleWithdrawals), _OOEW_ERR);
 
         if (tickets.length < 3) {
             fee = (balance * _FEE) / _BASIS;
 
-            gameConfig[gameId].tickets = tickets;
-            gameConfig[gameId].eligibleWaveWithdrawns = -1;
+            gameData[gameID].tickets = tickets;
+            gameData[gameID].eligibleWithdrawals = -1;
 
-            _usdc.transfer(_admin, fee);
+            USDC.transfer(ADMIN, fee);
 
             if (tickets.length == 1) {
-                address ticketOwner = ticketOwnership[gameId][
+                address ticketOwner = ticketOwnership[gameID][
                     uint8(tickets[0])
                 ];
 
-                delete ticketOwnership[gameId][uint8(tickets[0])];
+                delete ticketOwnership[gameID][uint8(tickets[0])];
 
                 _sendUSDC(ticketOwner, balance - fee);
 
                 emit GameFinished(
-                    gameId,
+                    gameID,
                     ticketOwner,
                     balance - fee,
                     uint8(tickets[0])
                 );
             } else {
                 require(
-                    ticketOwnership[gameId][uint8(tickets[indexes[0]])] ==
+                    ticketOwnership[gameID][uint8(tickets[indexes[0]])] ==
                         sender,
                     _OSR_ERR
                 );
 
-                address winner1 = ticketOwnership[gameId][uint8(tickets[0])];
-                address winner2 = ticketOwnership[gameId][uint8(tickets[1])];
+                address winner1 = ticketOwnership[gameID][uint8(tickets[0])];
+                address winner2 = ticketOwnership[gameID][uint8(tickets[1])];
                 uint256 winner2Amount = (balance - fee) / 2;
                 uint256 winner1Amount = balance - fee - winner2Amount;
 
-                delete ticketOwnership[gameId][uint8(tickets[0])];
-                delete ticketOwnership[gameId][uint8(tickets[1])];
+                delete ticketOwnership[gameID][uint8(tickets[0])];
+                delete ticketOwnership[gameID][uint8(tickets[1])];
 
                 _sendUSDC(winner1, winner1Amount);
                 _sendUSDC(winner2, winner2Amount);
 
                 emit GameFinished(
-                    gameId,
+                    gameID,
                     [winner1, winner2],
                     [winner1Amount, winner2Amount],
                     [uint256(uint8(tickets[0])), uint256(uint8(tickets[1]))]
@@ -343,18 +381,18 @@ contract TwoHundredFiftySix {
             }
         } else {
             bytes memory updatedTickets;
-            uint256[] memory ticketIds = new uint256[](length);
+            uint256[] memory ticketIDs = new uint256[](length);
 
             require(
-                ticketOwnership[gameId][uint8(tickets[indexes[0]])] == sender,
+                ticketOwnership[gameID][uint8(tickets[indexes[0]])] == sender,
                 _OSR_ERR
             );
             require(indexes[0] < tickets.length, _IOOB_ERR);
 
-            delete ticketOwnership[gameId][uint8(tickets[indexes[0]])];
+            delete ticketOwnership[gameID][uint8(tickets[indexes[0]])];
 
             if (length == 1) {
-                ticketIds[0] = uint8(tickets[indexes[0]]);
+                ticketIDs[0] = uint8(tickets[indexes[0]]);
 
                 updatedTickets = _deleteOneIndex(indexes[0], tickets);
             } else {
@@ -363,19 +401,19 @@ contract TwoHundredFiftySix {
                     0,
                     indexes[0]
                 );
-                ticketIds[0] = uint8(tickets[indexes[0]]);
+                ticketIDs[0] = uint8(tickets[indexes[0]]);
                 for (uint256 i = 1; i < length; ) {
                     require(indexes[i] > indexes[i - 1], _NOI_ERR);
                     require(indexes[i] < tickets.length, _IOOB_ERR);
                     require(
-                        ticketOwnership[gameId][uint8(tickets[indexes[i]])] ==
+                        ticketOwnership[gameID][uint8(tickets[indexes[i]])] ==
                             sender,
                         _OSR_ERR
                     );
 
-                    delete ticketOwnership[gameId][uint8(tickets[indexes[i]])];
+                    delete ticketOwnership[gameID][uint8(tickets[indexes[i]])];
 
-                    ticketIds[i] = uint8(tickets[indexes[i]]);
+                    ticketIDs[i] = uint8(tickets[indexes[i]]);
 
                     updatedTickets = abi.encodePacked(
                         updatedTickets,
@@ -408,22 +446,27 @@ contract TwoHundredFiftySix {
             fee = (idealWinnerPrize * _FEE) / _BASIS;
 
             _sendUSDC(sender, idealWinnerPrize - fee);
-            _usdc.transfer(_admin, fee);
+            USDC.transfer(ADMIN, fee);
 
             unchecked {
-                eligibleWaveWithdrawns -= int256(length);
+                eligibleWithdrawals -= int256(length);
             }
 
-            gameConfig[gameId].tickets = updatedTickets;
-            gameConfig[gameId].eligibleWaveWithdrawns = int8(
-                eligibleWaveWithdrawns
-            );
+            gameData[gameID].tickets = updatedTickets;
+            gameData[gameID].eligibleWithdrawals = int8(eligibleWithdrawals);
 
-            if (gameConfig[gameId].updatedWave != currentWave)
-                gameConfig[gameId].updatedWave = uint8(currentWave);
+            if (gameData[gameID].updatedWave != currentWave)
+                gameData[gameID].updatedWave = uint8(currentWave);
 
-            emit GameUpdated(gameId, sender, idealWinnerPrize - fee, ticketIds);
+            emit GameUpdated(gameID, sender, idealWinnerPrize - fee, ticketIDs);
         }
+    }
+
+    function transferTicketOwnership(uint8 ticketID, address newOwner)
+        external
+        only(TREASURY, _OTF_ERR)
+    {
+        ticketOwnership[currentGameID][ticketID] = newOwner;
     }
 
     /******************************\
@@ -434,33 +477,36 @@ contract TwoHundredFiftySix {
         view
         returns (
             Status stat,
-            int256 eligibleWaveWithdrawns,
+            int256 eligibleWithdrawals,
             uint256 currentWave,
             bytes memory tickets
         )
     {
-        uint256 gameId = currentGameID;
-        GameData memory gameData = gameConfig[gameId];
+        uint256 gameID = currentGameID;
+        GameData memory GD = gameData[gameID];
 
-        eligibleWaveWithdrawns = gameData.eligibleWaveWithdrawns;
-        currentWave = gameData.updatedWave;
-        tickets = gameData.tickets;
+        eligibleWithdrawals = GD.eligibleWithdrawals;
+        currentWave = GD.updatedWave;
+        tickets = GD.tickets;
 
-        if (gameData.startedBN == 0 || gameData.eligibleWaveWithdrawns == -1)
-            stat = gameData.startedBN == 0
-                ? Status.notStarted
-                : Status.finished;
+        if (GD.startedBlock == 0 || GD.eligibleWithdrawals == -1)
+            stat = GD.startedBlock == 0 ? Status.notStarted : Status.finished;
         else {
             stat = Status.inProcess;
 
             uint256 randomSeed;
-            uint256 bn = block.number;
-            uint256 lastWave = gameData.updatedWave == 0
+            uint256 currentBlock = block.number;
+            uint256 lastUpdatedWave = GD.updatedWave == 0
                 ? 1
-                : gameData.updatedWave + 1;
+                : GD.updatedWave + 1;
 
-            while ((lastWave * _WAVE_DURATION) + gameData.startedBN < bn) {
-                randomSeed = _getRandomSeed(bn + (lastWave * _WAVE_DURATION));
+            while (
+                (lastUpdatedWave * _WAVE_DURATION) + GD.startedBlock <
+                currentBlock
+            ) {
+                randomSeed = _getRandomSeed(
+                    currentBlock + (lastUpdatedWave * _WAVE_DURATION)
+                );
                 tickets = _bytedArrayShuffler(
                     tickets,
                     randomSeed,
@@ -468,12 +514,12 @@ contract TwoHundredFiftySix {
                 );
 
                 unchecked {
-                    lastWave++;
-                    eligibleWaveWithdrawns = int256(tickets.length / 2);
+                    lastUpdatedWave++;
+                    eligibleWithdrawals = int256(tickets.length / 2);
                 }
 
-                if (eligibleWaveWithdrawns < 2) {
-                    eligibleWaveWithdrawns = 1;
+                if (eligibleWithdrawals < 2) {
+                    eligibleWithdrawals = 1;
                     break;
                 }
             }
@@ -492,8 +538,8 @@ contract TwoHundredFiftySix {
     |-*-*-*-*   PRIVATE   *-*-*-*-|
     \*****************************/
     function _sendUSDC(address _to, uint256 _amount) private {
-        if (!_usdc.isBlacklisted(_to)) _usdc.transfer(_to, _amount);
-        else _usdc.transfer(_admin, _amount);
+        if (!USDC.isBlacklisted(_to)) USDC.transfer(_to, _amount);
+        else USDC.transfer(ADMIN, _amount);
     }
 
     function _bytedArrayShuffler(
