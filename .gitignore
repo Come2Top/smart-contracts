@@ -1,6 +1,8 @@
 # Compiler files
 cache/
 out/
+
+# libs
 lib/
 
 # Ignores development broadcast logs
