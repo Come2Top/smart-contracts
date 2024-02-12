@@ -34,13 +34,40 @@
 // SPDX-License-Identifier: --256--
 pragma solidity 0.8.18;
 
-import {I256} from "./interfaces/I256.sol";
 import {IUSDC} from "./interfaces/IUSDC.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
 
 import {OfferorsTreasury} from "./OfferorsTreasury.sol";
 
-contract TwoHundredFiftySix is I256 {
+contract TwoHundredFiftySix {
+    /*******************************\
+    |-*-*-*-*-*   TYPES   *-*-*-*-*-|
+    \*******************************/
+    enum Status {
+        notStarted,
+        inProcess,
+        finished
+    }
+
+    struct GameData {
+        int8 eligibleWithdrawals;
+        uint8 soldTickets;
+        uint8 updatedWave;
+        uint216 startedBlock;
+        bytes tickets;
+    }
+
+    struct Offer {
+        uint96 amount;
+        address maker;
+    }
+
+    struct OfferorData {
+        uint96 latestGameIDoffersValue;
+        uint160 latestGameID;
+        uint256 totalOffersValue;
+    }
+
     /********************************\
     |-*-*-*-*-*   STATES   *-*-*-*-*-|
     \********************************/
@@ -50,8 +77,10 @@ contract TwoHundredFiftySix is I256 {
     uint160 public currentGameID;
 
     mapping(uint256 => GameData) public gameData;
+    mapping(address => OfferorData) public offerorData;
     mapping(uint256 => mapping(uint8 => address)) public ticketOwnership;
     mapping(uint256 => mapping(address => uint8)) public totalPlayerTickets;
+    mapping(uint256 => mapping(uint8 => Offer)) public offer;
 
     /********************************\
     |-*-*-*-*-*   ERRORS   *-*-*-*-*-|
@@ -59,8 +88,12 @@ contract TwoHundredFiftySix is I256 {
     string private constant _OTF_ERR = "ONLY_TREASURY_FUNCTION";
     string private constant _OAF_ERR = "ONLY_ADMIN_FUNCTION";
     string private constant _OEOAF_ERR = "ONLY_EOA_FUNCTION";
+    string private constant _OIPG_ERR = "ONLY_IN_PROGRESS_GAME";
     string private constant _OPAFG_ERR = "ONLY_PAUSED_AND_FINISHED_GAME";
     string private constant _OUOIPG_ERR = "ONLY_UNPAUSED_OR_IN_PROCESS_GAME";
+    string private constant _OWT_ERR = "ONLY_WINNER_TICKETS";
+    string private constant _OHTCOATV_ERR =
+        "ONLY_HIGHER_THAN_CURRENT_OFFER_AND_TICKET_VALUE";
 
     string private constant _ITAP_ERR = "INVALID_TOKEN_ADDRESS_PROVIDED";
     string private constant _OSR_ERR = "OWNERSHIP_REQUESTED";
@@ -70,6 +103,7 @@ contract TwoHundredFiftySix is I256 {
 
     string private constant _PB_ERR = "PARTICIPATED_BEFORE";
     string private constant _TR_ERR = "TICKET_RESERVED";
+    string private constant _LT_ERR = "LOSER_TICKET";
     string private constant _NE_ERR = "NOT_ELIGIBLE";
     string private constant _NS_ERR = "NOT_STARTED";
     string private constant _GF_ERR = "GAME_FINISHED";
@@ -96,7 +130,8 @@ contract TwoHundredFiftySix is I256 {
     IUSDC public immutable USDC;
     address public immutable ADMIN;
     address public immutable TREASURY;
-    uint256 private constant _FEE = 23438;
+    address private immutable $THIS = address(this);
+    uint256 private constant _FEE = 10000;
     uint256 private constant _BASIS = 1000000;
     uint256 private constant _WAVE_DURATION = 93;
     uint256 private constant _MAX_PARTIES = 256;
@@ -133,6 +168,26 @@ contract TwoHundredFiftySix is I256 {
         address[2] winners,
         uint256[2] amounts,
         uint256[2] ticketIDs
+    );
+
+    event OfferMade(
+        address indexed maker,
+        uint256 indexed ticketId,
+        uint256 indexed amount,
+        address lastOfferor
+    );
+
+    event OfferAccepted(
+        address indexed newOwner,
+        address indexed lastOwner,
+        uint256 indexed amount,
+        uint256[] ticketIDs
+    );
+
+    event StaleOffersTookBack(
+        address indexed maker,
+        address indexed to,
+        uint256 indexed amount
     );
 
     /*******************************\
@@ -172,7 +227,7 @@ contract TwoHundredFiftySix is I256 {
 
         gameData[0].tickets = _TICKET256;
 
-        TREASURY = address(new OfferorsTreasury(usdc));
+        TREASURY = address(new OfferorsTreasury(USDC));
     }
 
     /*******************************\
@@ -184,19 +239,19 @@ contract TwoHundredFiftySix is I256 {
     {
         uint256 balance;
 
-        try IERC20(token).balanceOf(address(this)) returns (uint256 b) {
+        require(token != address(USDC), _NR_ERR);
+        try IERC20(token).balanceOf($THIS) returns (uint256 b) {
             balance = b;
         } catch {
             revert(_ITAP_ERR);
         }
-        require(token != address(USDC), _NR_ERR);
         require(balance != 0, _IB_ERR);
 
         IERC20(token).transfer(to, balance);
     }
 
     function rescueMatic(address payable to) external only(ADMIN, _OAF_ERR) {
-        uint256 balance = address(this).balance;
+        uint256 balance = $THIS.balance;
         require(balance != 0, _IB_ERR);
 
         to.transfer(balance);
@@ -262,8 +317,7 @@ contract TwoHundredFiftySix is I256 {
         );
         require(totalTickets < remainingTickets, _OOT_ERR);
         require(
-            !(USDC.allowance(sender, address(this)) <
-                (totalTickets * neededUSDC)),
+            !(USDC.allowance(sender, $THIS) < (totalTickets * neededUSDC)),
             _AN_ERR
         );
 
@@ -296,7 +350,7 @@ contract TwoHundredFiftySix is I256 {
 
         totalPlayerTickets[gameID][sender] += uint8(totalTickets);
 
-        USDC.transferFrom(sender, address(this), (totalTickets * neededUSDC));
+        USDC.transferFrom(sender, $THIS, (totalTickets * neededUSDC));
 
         GD.tickets = tickets;
 
@@ -314,7 +368,7 @@ contract TwoHundredFiftySix is I256 {
         uint256 fee;
         address sender = msg.sender;
         uint256 gameID = currentGameID;
-        uint256 balance = USDC.balanceOf(address(this));
+        uint256 balance = USDC.balanceOf($THIS);
         uint256 length = indexes.length;
 
         (
@@ -462,11 +516,63 @@ contract TwoHundredFiftySix is I256 {
         }
     }
 
-    function transferTicketOwnership(uint8 ticketID, address newOwner)
+    function makeOffer(uint8 ticketId, uint96 amount)
         external
-        only(TREASURY, _OTF_ERR)
+        only(tx.origin, _OEOAF_ERR)
     {
-        ticketOwnership[currentGameID][ticketID] = newOwner;
+        (Status stat, , , bytes memory tickets) = getLatestUpdate();
+        address sender = msg.sender;
+        uint256 gameID = currentGameID;
+        uint256 ticketValue = _currentTicketValue(tickets.length);
+        Offer memory O = offer[gameID][ticketId];
+
+        require(stat == Status.inProcess, _OIPG_ERR);
+        require(amount > O.amount && amount > ticketValue, _OHTCOATV_ERR);
+
+        require(_linearSearch(tickets, ticketId), _OWT_ERR);
+        require(!(USDC.allowance(sender, $THIS) < ticketValue), _AN_ERR);
+
+        if (O.amount != 0) {
+            OfferorsTreasury(TREASURY).transferUSDC(O.maker, O.amount);
+
+            unchecked {
+                offerorData[O.maker].latestGameIDoffersValue -= O.amount;
+                offerorData[O.maker].totalOffersValue -= O.amount;
+            }
+        }
+
+        USDC.transferFrom($THIS, TREASURY, ticketValue);
+
+        offer[gameID][ticketId] = Offer(amount, sender);
+
+        unchecked {
+            offerorData[sender].totalOffersValue += ticketValue;
+        }
+
+        if (offerorData[sender].latestGameID != gameID) {
+            offerorData[sender].latestGameID = uint160(gameID);
+            offerorData[sender].latestGameIDoffersValue = uint96(ticketValue);
+        } else
+            offerorData[sender].latestGameIDoffersValue += uint96(ticketValue);
+
+        emit OfferMade(sender, ticketId, amount, O.maker);
+    }
+
+    function acceptOffers(uint8[] calldata ticketIds) external {}
+
+    function takeBackStaleOffers(address to) external {
+        address sender = msg.sender;
+        if (to == address(0)) to = sender;
+
+        uint256 refundableAmount = _getStaleOfferorAmount(sender);
+
+        require(refundableAmount != 0, _NR_ERR);
+
+        offerorData[sender].totalOffersValue -= refundableAmount;
+
+        OfferorsTreasury(TREASURY).transferUSDC(to, refundableAmount);
+
+        emit StaleOffersTookBack(sender, to, refundableAmount);
     }
 
     /******************************\
@@ -526,6 +632,19 @@ contract TwoHundredFiftySix is I256 {
         }
     }
 
+    function currentTicketValue() external view returns (uint256) {
+        (, , , bytes memory tickets) = getLatestUpdate();
+        return _currentTicketValue(tickets.length);
+    }
+
+    function getStaleOfferorAmount(address account)
+        external
+        view
+        returns (uint256)
+    {
+        return _getStaleOfferorAmount(account);
+    }
+
     function returnBytedCalldataArray(
         bytes calldata array,
         uint256 from,
@@ -540,6 +659,17 @@ contract TwoHundredFiftySix is I256 {
     function _sendUSDC(address _to, uint256 _amount) private {
         if (!USDC.isBlacklisted(_to)) USDC.transfer(_to, _amount);
         else USDC.transfer(ADMIN, _amount);
+    }
+
+    function _getStaleOfferorAmount(address _account)
+        private
+        view
+        returns (uint256)
+    {
+        if (offerorData[_account].latestGameID == currentGameID)
+            return (offerorData[_account].totalOffersValue -
+                offerorData[_account].latestGameIDoffersValue);
+        return (offerorData[_account].totalOffersValue);
     }
 
     function _bytedArrayShuffler(
@@ -577,6 +707,14 @@ contract TwoHundredFiftySix is I256 {
                     )
                 )
                 : this.returnBytedCalldataArray(_bytesArray, 0, _index);
+    }
+
+    function _currentTicketValue(uint256 _totalTickets)
+        private
+        view
+        returns (uint256)
+    {
+        return USDC.balanceOf($THIS) / _totalTickets;
     }
 
     function _getRandomSeed(uint256 startBlock) private view returns (uint256) {
@@ -644,11 +782,37 @@ contract TwoHundredFiftySix is I256 {
         }
     }
 
+    function _linearSearch(bytes memory tickets, uint8 ticketId)
+        private
+        pure
+        returns (bool)
+    {
+        for (uint256 i = tickets.length - 1; i >= 0; ) {
+            if (uint8(tickets[i]) == ticketId) {
+                return true;
+            }
+
+            unchecked {
+                i--;
+            }
+        }
+        return false;
+    }
+
     function _onlyPow2(uint8 number) private pure {
         require((number & (number - 1)) == 0, _NIP2_ERR);
     }
 
     function _revertOnZeroUint(uint256 integer) private pure {
         require(integer != 0, _ZUP_ERR);
+    }
+
+    // only dev use
+    function getSize() external view returns (uint256 size) {
+        address sc = $THIS;
+        assembly {
+            size := extcodesize(sc)
+        }
+        return size;
     }
 }
