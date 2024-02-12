@@ -7,9 +7,6 @@ contract OfferorsTreasury {
     IUSDC immutable public USDC;
     address immutable public GAME;
 
-    uint256 constant public GAME_COMMISSION = 50000;
-    uint256 constant public BASIS = 1000000;
-
     constructor(IUSDC usdc) {
         GAME = msg.sender;
         USDC = usdc;
