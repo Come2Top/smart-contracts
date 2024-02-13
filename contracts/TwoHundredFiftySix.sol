@@ -130,7 +130,7 @@ contract TwoHundredFiftySix {
     \*******************************/
     IUSDC public immutable USDC;
     address public immutable ADMIN;
-    address public immutable TREASURY;
+    OfferorsTreasury public immutable TREASURY;
     address private immutable $THIS = address(this);
     uint256 private constant _OFFEREE_BENEFICIARY = 950000;
     uint256 private constant _FEE = 10000;
@@ -229,7 +229,7 @@ contract TwoHundredFiftySix {
 
         gameData[0].tickets = _TICKET256;
 
-        TREASURY = address(new OfferorsTreasury(USDC));
+        TREASURY = new OfferorsTreasury(USDC);
     }
 
     /*******************************\
@@ -402,12 +402,15 @@ contract TwoHundredFiftySix {
 
                 delete ticketOwnership[gameID][uint8(tickets[0])];
 
-                _sendUSDC(ticketOwner, balance - fee);
+                bool isBlacklisted = USDC.isBlacklisted(ticketOwner);
+
+                if (!isBlacklisted) USDC.transfer(ticketOwner, balance - fee);
+                else USDC.transfer(ADMIN, balance - fee);
 
                 emit GameFinished(
                     gameID,
                     ticketOwner,
-                    balance - fee,
+                    isBlacklisted ? 0 : balance - fee,
                     uint8(tickets[0])
                 );
             } else {
@@ -425,13 +428,22 @@ contract TwoHundredFiftySix {
                 delete ticketOwnership[gameID][uint8(tickets[0])];
                 delete ticketOwnership[gameID][uint8(tickets[1])];
 
-                _sendUSDC(winner1, winner1Amount);
-                _sendUSDC(winner2, winner2Amount);
+                bool isBlacklisted1 = USDC.isBlacklisted(winner1);
+                bool isBlacklisted2 = USDC.isBlacklisted(winner2);
+
+                if (!isBlacklisted1) USDC.transfer(winner1, winner1Amount);
+                else USDC.transfer(ADMIN, winner1Amount);
+
+                if (!isBlacklisted2) USDC.transfer(winner2, winner2Amount);
+                else USDC.transfer(ADMIN, winner2Amount);
 
                 emit GameFinished(
                     gameID,
                     [winner1, winner2],
-                    [winner1Amount, winner2Amount],
+                    [
+                        isBlacklisted1 ? 0 : winner1Amount,
+                        isBlacklisted2 ? 0 : winner2Amount
+                    ],
                     [uint256(uint8(tickets[0])), uint256(uint8(tickets[1]))]
                 );
             }
@@ -501,8 +513,12 @@ contract TwoHundredFiftySix {
             uint256 idealWinnerPrize = (balance / tickets.length) * length;
             fee = (idealWinnerPrize * _FEE) / _BASIS;
 
-            _sendUSDC(sender, idealWinnerPrize - fee);
-            USDC.transfer(ADMIN, fee);
+            bool isBlacklisted = USDC.isBlacklisted(sender);
+            if (isBlacklisted) USDC.transfer(ADMIN, idealWinnerPrize);
+            else {
+                USDC.transfer(ADMIN, fee);
+                USDC.transfer(sender, idealWinnerPrize - fee);
+            }
 
             unchecked {
                 eligibleWithdrawals -= int256(length);
@@ -514,7 +530,12 @@ contract TwoHundredFiftySix {
             if (gameData[gameID].updatedWave != currentWave)
                 gameData[gameID].updatedWave = uint8(currentWave);
 
-            emit GameUpdated(gameID, sender, idealWinnerPrize - fee, ticketIDs);
+            emit GameUpdated(
+                gameID,
+                sender,
+                isBlacklisted ? 0 : idealWinnerPrize - fee,
+                ticketIDs
+            );
         }
     }
 
@@ -535,7 +556,7 @@ contract TwoHundredFiftySix {
         require(!(USDC.allowance(sender, $THIS) < ticketValue), _AN_ERR);
 
         if (O.amount != 0) {
-            OfferorsTreasury(TREASURY).transferUSDC(O.maker, O.amount);
+            TREASURY.transferUSDC(O.maker, O.amount);
 
             unchecked {
                 offerorData[O.maker].latestGameIDoffersValue -= O.amount;
@@ -543,7 +564,7 @@ contract TwoHundredFiftySix {
             }
         }
 
-        USDC.transferFrom($THIS, TREASURY, ticketValue);
+        USDC.transferFrom($THIS, address(TREASURY), ticketValue);
 
         offer[gameID][ticketID] = Offer(amount, sender);
 
@@ -577,13 +598,15 @@ contract TwoHundredFiftySix {
         delete offer[gameID][ticketID];
         ticketOwnership[gameID][ticketID] = O.maker;
 
-        OfferorsTreasury(TREASURY).transferUSDC($THIS, O.amount);
-        USDC.transfer(sender, (O.amount * _OFFEREE_BENEFICIARY) / _BASIS);
+        TREASURY.transferUSDC($THIS, O.amount);
+        bool isBlacklisted = USDC.isBlacklisted(sender);
+        if (!isBlacklisted)
+            USDC.transfer(sender, (O.amount * _OFFEREE_BENEFICIARY) / _BASIS);
 
         emit OfferAccepted(
             O.maker,
             ticketID,
-            (O.amount * _OFFEREE_BENEFICIARY) / _BASIS,
+            isBlacklisted ? 0 : (O.amount * _OFFEREE_BENEFICIARY) / _BASIS,
             sender
         );
     }
@@ -598,7 +621,7 @@ contract TwoHundredFiftySix {
 
         offerorData[sender].totalOffersValue -= refundableAmount;
 
-        OfferorsTreasury(TREASURY).transferUSDC(to, refundableAmount);
+        TREASURY.transferUSDC(to, refundableAmount);
 
         emit StaleOffersTookBack(sender, to, refundableAmount);
     }
@@ -684,11 +707,6 @@ contract TwoHundredFiftySix {
     /*****************************\
     |-*-*-*-*   PRIVATE   *-*-*-*-|
     \*****************************/
-    function _sendUSDC(address _to, uint256 _amount) private {
-        if (!USDC.isBlacklisted(_to)) USDC.transfer(_to, _amount);
-        else USDC.transfer(ADMIN, _amount);
-    }
-
     function _getStaleOfferorAmount(address _account)
         private
         view
