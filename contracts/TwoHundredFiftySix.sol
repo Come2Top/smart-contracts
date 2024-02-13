@@ -101,6 +101,7 @@ contract TwoHundredFiftySix {
     string private constant _AN_ERR = "APPROVE_NEEDED";
     string private constant _NR_ERR = "NON_REFUNDABLE";
 
+    string private constant _NOOTT_ERR = "NO_OFFER_ON_THIS_TICKET";
     string private constant _PB_ERR = "PARTICIPATED_BEFORE";
     string private constant _TR_ERR = "TICKET_RESERVED";
     string private constant _LT_ERR = "LOSER_TICKET";
@@ -131,6 +132,7 @@ contract TwoHundredFiftySix {
     address public immutable ADMIN;
     address public immutable TREASURY;
     address private immutable $THIS = address(this);
+    uint256 private constant _OFFEREE_BENEFICIARY = 950000;
     uint256 private constant _FEE = 10000;
     uint256 private constant _BASIS = 1000000;
     uint256 private constant _WAVE_DURATION = 93;
@@ -172,16 +174,16 @@ contract TwoHundredFiftySix {
 
     event OfferMade(
         address indexed maker,
-        uint256 indexed ticketId,
+        uint256 indexed ticketID,
         uint256 indexed amount,
         address lastOfferor
     );
 
     event OfferAccepted(
         address indexed newOwner,
-        address indexed lastOwner,
+        uint256 indexed ticketID,
         uint256 indexed amount,
-        uint256[] ticketIDs
+        address lastOwner
     );
 
     event StaleOffersTookBack(
@@ -516,7 +518,7 @@ contract TwoHundredFiftySix {
         }
     }
 
-    function makeOffer(uint8 ticketId, uint96 amount)
+    function makeOffer(uint8 ticketID, uint96 amount)
         external
         only(tx.origin, _OEOAF_ERR)
     {
@@ -524,12 +526,12 @@ contract TwoHundredFiftySix {
         address sender = msg.sender;
         uint256 gameID = currentGameID;
         uint256 ticketValue = _currentTicketValue(tickets.length);
-        Offer memory O = offer[gameID][ticketId];
+        Offer memory O = offer[gameID][ticketID];
 
         require(stat == Status.inProcess, _OIPG_ERR);
         require(amount > O.amount && amount > ticketValue, _OHTCOATV_ERR);
 
-        require(_linearSearch(tickets, ticketId), _OWT_ERR);
+        require(_linearSearch(tickets, ticketID), _OWT_ERR);
         require(!(USDC.allowance(sender, $THIS) < ticketValue), _AN_ERR);
 
         if (O.amount != 0) {
@@ -543,7 +545,7 @@ contract TwoHundredFiftySix {
 
         USDC.transferFrom($THIS, TREASURY, ticketValue);
 
-        offer[gameID][ticketId] = Offer(amount, sender);
+        offer[gameID][ticketID] = Offer(amount, sender);
 
         unchecked {
             offerorData[sender].totalOffersValue += ticketValue;
@@ -555,10 +557,36 @@ contract TwoHundredFiftySix {
         } else
             offerorData[sender].latestGameIDoffersValue += uint96(ticketValue);
 
-        emit OfferMade(sender, ticketId, amount, O.maker);
+        emit OfferMade(sender, ticketID, amount, O.maker);
     }
 
-    function acceptOffers(uint8[] calldata ticketIds) external {}
+    function acceptOffers(uint8 ticketID) external {
+        address sender = msg.sender;
+        uint256 gameID = currentGameID;
+        address ticketOwner = ticketOwnership[gameID][ticketID];
+        Offer memory O = offer[gameID][ticketID];
+        (Status stat, , , bytes memory tickets) = getLatestUpdate();
+
+        require(stat == Status.inProcess, _OIPG_ERR);
+        require(_linearSearch(tickets, ticketID), _OWT_ERR);
+        require(O.amount != 0, _NOOTT_ERR);
+        require(sender == ticketOwner, _OSR_ERR);
+
+        offerorData[O.maker].latestGameIDoffersValue -= O.amount;
+        offerorData[O.maker].totalOffersValue -= O.amount;
+        delete offer[gameID][ticketID];
+        ticketOwnership[gameID][ticketID] = O.maker;
+
+        OfferorsTreasury(TREASURY).transferUSDC($THIS, O.amount);
+        USDC.transfer(sender, (O.amount * _OFFEREE_BENEFICIARY) / _BASIS);
+
+        emit OfferAccepted(
+            O.maker,
+            ticketID,
+            (O.amount * _OFFEREE_BENEFICIARY) / _BASIS,
+            sender
+        );
+    }
 
     function takeBackStaleOffers(address to) external {
         address sender = msg.sender;
@@ -782,13 +810,13 @@ contract TwoHundredFiftySix {
         }
     }
 
-    function _linearSearch(bytes memory tickets, uint8 ticketId)
+    function _linearSearch(bytes memory tickets, uint8 ticketID)
         private
         pure
         returns (bool)
     {
         for (uint256 i = tickets.length - 1; i >= 0; ) {
-            if (uint8(tickets[i]) == ticketId) {
+            if (uint8(tickets[i]) == ticketID) {
                 return true;
             }
 
@@ -805,14 +833,5 @@ contract TwoHundredFiftySix {
 
     function _revertOnZeroUint(uint256 integer) private pure {
         require(integer != 0, _ZUP_ERR);
-    }
-
-    // only dev use
-    function getSize() external view returns (uint256 size) {
-        address sc = $THIS;
-        assembly {
-            size := extcodesize(sc)
-        }
-        return size;
     }
 }
