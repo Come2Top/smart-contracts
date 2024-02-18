@@ -81,29 +81,45 @@ contract GameLogicTest is Test {
         (, int256 eligibleWithdrawalsA, , bytes memory ticketsA) = GAME
             .getLatestUpdate();
 
-        console2.log("Status: ", uint8(stat));
+        "____________________________________".log();
+        console2.log("Status:       ", uint8(stat));
         console2.log("Current wave: ", currentWave);
 
-        console2.log("Ticket value before withdraw: ", ticketValueBefore);
+        "".log();
         console2.log(
-            "Ticket value after withdraw: ",
+            "Ticket value before withdraw:         ",
+            ticketValueBefore
+        );
+        console2.log(
+            "Ticket value after withdraw:          ",
             GAME.currentTicketValue()
         );
 
-        console2.log("Withdrawer balance before withdraw: ", balanceOfTKO218);
+        "".log();
+        console2.log("Withdrawer balance before withdraw:   ", balanceOfTKO218);
         console2.log(
-            "Withdrawer balance after withdraw: ",
+            "Withdrawer balance after withdraw:    ",
             IUSDC(USDC).balanceOf(ticketOwnerOf218)
         );
 
-        console2.log("Eligible withdrawals before withdraw: ");
-        eligibleWithdrawalsB.logInt();
-        console2.log("Eligible withdrawals after withdraw: ");
-        eligibleWithdrawalsA.logInt();
+        "".log();
+        console2.log(
+            "Eligible withdrawals before withdraw: ",
+            uint256(eligibleWithdrawalsB)
+        );
+        // eligibleWithdrawalsB.logInt();
+        console2.log(
+            "Eligible withdrawals after withdraw:  ",
+            uint256(eligibleWithdrawalsA)
+        );
+        // eligibleWithdrawalsA.logInt();
 
+        "".log();
         console2.log("Tickets before withdraw: ");
         ticketsB.logBytes();
         console2.log("Tickets after withdraw: ");
         ticketsA.logBytes();
+
+        "____________________________________".log();
     }
 }
