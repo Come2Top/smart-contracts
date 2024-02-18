@@ -110,7 +110,6 @@ contract TwoHundredFiftySix {
     string private constant _GF_ERR = "GAME_FINISHED";
 
     string private constant _WFW1_ERR = "WAIT_FOR_WAVE_1";
-    string private constant _WFNW_ERR = "WAIT_FOR_NEXT_WAVE";
     string private constant _WFNM_ERR = "WAIT_FOR_NEXT_MATCH";
 
     string private constant _PI_ERR = "PROVIDE_INDEXES";
@@ -212,12 +211,7 @@ contract TwoHundredFiftySix {
     /******************************\
     |-*-*-*-*   BUILT-IN   *-*-*-*-|
     \******************************/
-    constructor(
-        address admin,
-        address usdc,
-        uint8 mtpg,
-        uint80 tp
-    ) {
+    constructor(address admin, address usdc, uint8 mtpg, uint80 tp) {
         require(admin != address(0) && usdc != address(0), _ZAP_ERR);
         require(mtpg != 0 && tp != 0, _ZUP_ERR);
         _onlyPow2(mtpg);
@@ -235,10 +229,10 @@ contract TwoHundredFiftySix {
     /*******************************\
     |-*-*-*   ADMINSTRATION   *-*-*-|
     \*******************************/
-    function rescueERC20(address token, address to)
-        external
-        only(ADMIN, _OAF_ERR)
-    {
+    function rescueERC20(
+        address token,
+        address to
+    ) external only(ADMIN, _OAF_ERR) {
         uint256 balance;
 
         require(token != address(USDC), _NR_ERR);
@@ -263,22 +257,18 @@ contract TwoHundredFiftySix {
         pause = !pause;
     }
 
-    function changeMTPG(uint8 maxTicketsPerGame_)
-        external
-        only(ADMIN, _OAF_ERR)
-        onlyPausedAndFinishedGame
-    {
+    function changeMTPG(
+        uint8 maxTicketsPerGame_
+    ) external only(ADMIN, _OAF_ERR) onlyPausedAndFinishedGame {
         _revertOnZeroUint(maxTicketsPerGame_);
         _onlyPow2(maxTicketsPerGame_);
 
         maxTicketsPerGame = maxTicketsPerGame_;
     }
 
-    function changeTP(uint80 ticketPrice_)
-        external
-        only(ADMIN, _OAF_ERR)
-        onlyPausedAndFinishedGame
-    {
+    function changeTP(
+        uint80 ticketPrice_
+    ) external only(ADMIN, _OAF_ERR) onlyPausedAndFinishedGame {
         _revertOnZeroUint(ticketPrice_);
 
         ticketPrice = ticketPrice_;
@@ -287,10 +277,9 @@ contract TwoHundredFiftySix {
     /******************************\
     |-*-*-*-*-*   GAME   *-*-*-*-*-|
     \******************************/
-    function joinGame(uint8[] calldata ticketIDs)
-        external
-        only(tx.origin, _OEOAF_ERR)
-    {
+    function joinGame(
+        uint8[] calldata ticketIDs
+    ) external only(tx.origin, _OEOAF_ERR) {
         GameData storage GD;
         address sender = msg.sender;
         uint256 gameID = currentGameID;
@@ -317,7 +306,7 @@ contract TwoHundredFiftySix {
             totalTickets + totalPlayerTickets[gameID][sender] < ticketLimit,
             _PB_ERR
         );
-        require(totalTickets < remainingTickets, _OOT_ERR);
+        require(!(totalTickets > remainingTickets), _OOT_ERR);
         require(
             !(USDC.allowance(sender, $THIS) < (totalTickets * neededUSDC)),
             _AN_ERR
@@ -363,7 +352,7 @@ contract TwoHundredFiftySix {
             GD.startedBlock = uint216(currentBlock);
             GD.tickets = _TICKET256;
             emit GameStarted(gameID, currentBlock, _MAX_PARTIES * neededUSDC);
-        }
+        } else GD.soldTickets += uint8(totalTickets);
     }
 
     function receiveLotteryWagedPrize(uint8[] calldata indexes) external {
@@ -539,10 +528,10 @@ contract TwoHundredFiftySix {
         }
     }
 
-    function makeOffer(uint8 ticketID, uint96 amount)
-        external
-        only(tx.origin, _OEOAF_ERR)
-    {
+    function makeOffer(
+        uint8 ticketID,
+        uint96 amount
+    ) external only(tx.origin, _OEOAF_ERR) {
         (Status stat, , , bytes memory tickets) = getLatestUpdate();
         address sender = msg.sender;
         uint256 gameID = currentGameID;
@@ -649,35 +638,36 @@ contract TwoHundredFiftySix {
         if (GD.startedBlock == 0 || GD.eligibleWithdrawals == -1)
             stat = GD.startedBlock == 0 ? Status.notStarted : Status.finished;
         else {
+            bool fugaziBool;
             stat = Status.inProcess;
 
-            uint256 randomSeed;
             uint256 currentBlock = block.number;
             uint256 lastUpdatedWave = GD.updatedWave == 0
                 ? 1
                 : GD.updatedWave + 1;
 
             while (
-                (lastUpdatedWave * _WAVE_DURATION) + GD.startedBlock <
+                GD.startedBlock + (lastUpdatedWave * _WAVE_DURATION) <
                 currentBlock
             ) {
-                randomSeed = _getRandomSeed(
-                    currentBlock + (lastUpdatedWave * _WAVE_DURATION)
-                );
                 tickets = _bytedArrayShuffler(
                     tickets,
-                    randomSeed,
+                    _getRandomSeed(
+                        GD.startedBlock + (lastUpdatedWave * _WAVE_DURATION)
+                    ),
                     tickets.length / 2
                 );
 
                 unchecked {
                     lastUpdatedWave++;
+                    currentWave++;
                     eligibleWithdrawals = int256(tickets.length / 2);
                 }
 
                 if (eligibleWithdrawals < 2) {
+                    if (fugaziBool) break;
                     eligibleWithdrawals = 1;
-                    break;
+                    fugaziBool = true;
                 }
             }
         }
@@ -688,11 +678,9 @@ contract TwoHundredFiftySix {
         return _currentTicketValue(tickets.length);
     }
 
-    function getStaleOfferorAmount(address account)
-        external
-        view
-        returns (uint256)
-    {
+    function getStaleOfferorAmount(
+        address account
+    ) external view returns (uint256) {
         return _getStaleOfferorAmount(account);
     }
 
@@ -707,11 +695,9 @@ contract TwoHundredFiftySix {
     /*****************************\
     |-*-*-*-*   PRIVATE   *-*-*-*-|
     \*****************************/
-    function _getStaleOfferorAmount(address _account)
-        private
-        view
-        returns (uint256)
-    {
+    function _getStaleOfferorAmount(
+        address _account
+    ) private view returns (uint256) {
         if (offerorData[_account].latestGameID == currentGameID)
             return (offerorData[_account].totalOffersValue -
                 offerorData[_account].latestGameIDoffersValue);
@@ -728,7 +714,9 @@ contract TwoHundredFiftySix {
         uint256 n = _array.length;
         while (i != n) {
             unchecked {
-                j = uint256(keccak256(abi.encode(_randomSeed, i))) % (i + 1);
+                j =
+                    uint256(keccak256(abi.encodePacked(_randomSeed, i))) %
+                    (i + 1);
                 (_array[i], _array[j]) = (_array[j], _array[i]);
                 i++;
             }
@@ -737,11 +725,10 @@ contract TwoHundredFiftySix {
         return this.returnBytedCalldataArray(_array, 0, _to);
     }
 
-    function _deleteOneIndex(uint8 _index, bytes memory _bytesArray)
-        private
-        view
-        returns (bytes memory)
-    {
+    function _deleteOneIndex(
+        uint8 _index,
+        bytes memory _bytesArray
+    ) private view returns (bytes memory) {
         return
             _index != (_bytesArray.length - 1)
                 ? abi.encodePacked(
@@ -755,17 +742,14 @@ contract TwoHundredFiftySix {
                 : this.returnBytedCalldataArray(_bytesArray, 0, _index);
     }
 
-    function _currentTicketValue(uint256 _totalTickets)
-        private
-        view
-        returns (uint256)
-    {
+    function _currentTicketValue(
+        uint256 _totalTickets
+    ) private view returns (uint256) {
+        if(_totalTickets == 0) return 0;
         return USDC.balanceOf($THIS) / _totalTickets;
     }
 
     function _getRandomSeed(uint256 startBlock) private view returns (uint256) {
-        require(!(startBlock > block.number), _WFNW_ERR);
-
         uint256 b = _WAVE_DURATION;
         uint256 index = 20;
 
@@ -773,10 +757,14 @@ contract TwoHundredFiftySix {
         uint256[] memory blockHashes = new uint256[](21);
 
         while (blockHashes[0] == 0) {
-            unchecked {
-                blockHashes[index] = uint256(blockhash(startBlock - b));
-                b--;
-                index--;
+            blockHashes[index] = uint256(blockhash(startBlock - b));
+
+            if (index == 0) break;
+            else {
+                unchecked {
+                    index--;
+                    b--;
+                }
             }
         }
 
@@ -823,16 +811,17 @@ contract TwoHundredFiftySix {
         unchecked {
             parts[1] = (parts[0] / 2) + (parts[2] / 2);
             parts[3] = (parts[2] / 2) + (parts[4] / 2);
-
-            return uint256(keccak256(abi.encodePacked(parts[1] * parts[3])));
+            parts[0] = uint256(
+                keccak256(abi.encodePacked(parts[1] * parts[3]))
+            );
         }
+        return parts[0];
     }
 
-    function _linearSearch(bytes memory tickets, uint8 ticketID)
-        private
-        pure
-        returns (bool)
-    {
+    function _linearSearch(
+        bytes memory tickets,
+        uint8 ticketID
+    ) private pure returns (bool) {
         for (uint256 i = tickets.length - 1; i >= 0; ) {
             if (uint8(tickets[i]) == ticketID) {
                 return true;
