@@ -68,6 +68,11 @@ contract TwoHundredFiftySix {
         uint256 totalOffersValue;
     }
 
+    struct TicketsAndIndexes {
+        uint256 ticketID;
+        uint256 index;
+    }
+
     /********************************\
     |-*-*-*-*-*   STATES   *-*-*-*-*-|
     \********************************/
@@ -390,6 +395,7 @@ contract TwoHundredFiftySix {
                 ];
 
                 delete ticketOwnership[gameID][uint8(tickets[0])];
+                delete totalPlayerTickets[gameID][ticketOwner];
 
                 bool isBlacklisted = USDC.isBlacklisted(ticketOwner);
 
@@ -416,6 +422,9 @@ contract TwoHundredFiftySix {
 
                 delete ticketOwnership[gameID][uint8(tickets[0])];
                 delete ticketOwnership[gameID][uint8(tickets[1])];
+
+                delete totalPlayerTickets[gameID][winner1];
+                delete totalPlayerTickets[gameID][winner2];
 
                 bool isBlacklisted1 = USDC.isBlacklisted(winner1);
                 bool isBlacklisted2 = USDC.isBlacklisted(winner2);
@@ -447,6 +456,7 @@ contract TwoHundredFiftySix {
             require(indexes[0] < tickets.length, _IOOB_ERR);
 
             delete ticketOwnership[gameID][uint8(tickets[indexes[0]])];
+            totalPlayerTickets[gameID][sender] -= uint8(length);
 
             if (length == 1) {
                 ticketIDs[0] = uint8(tickets[indexes[0]]);
@@ -587,6 +597,9 @@ contract TwoHundredFiftySix {
         delete offer[gameID][ticketID];
         ticketOwnership[gameID][ticketID] = O.maker;
 
+        totalPlayerTickets[gameID][sender] -= 1;
+        totalPlayerTickets[gameID][O.maker] += 1;
+
         TREASURY.transferUSDC($THIS, O.amount);
         bool isBlacklisted = USDC.isBlacklisted(sender);
         if (!isBlacklisted)
@@ -673,6 +686,57 @@ contract TwoHundredFiftySix {
         }
     }
 
+    function getPlayerTicketsWithIndexes(
+        address player
+    )
+        external
+        view
+        returns (
+            bytes memory playerTickets,
+            bytes memory ticketsIndexes,
+            uint256 totalTicketsValue
+        )
+    {
+        if (player == address(0)) player = msg.sender;
+
+        uint256 gameID = currentGameID;
+        uint256 totalTickets = totalPlayerTickets[gameID][player];
+
+        _revertOnZeroUint(totalTickets);
+
+        (Status stat, , , bytes memory tickets) = getLatestUpdate();
+        uint8 latestIndex = uint8(tickets.length - 1);
+
+        require(stat == Status.inProcess, _OIPG_ERR);
+
+        while (totalTickets != 0) {
+            if (
+                ticketOwnership[gameID][uint8(tickets[latestIndex])] == player
+            ) {
+                //TODO: abi.decode full returned values into a structure for better readability
+                playerTickets = abi.encodePacked(
+                    playerTickets,
+                    tickets[latestIndex]
+                );
+
+                ticketsIndexes = abi.encodePacked(latestIndex, ticketsIndexes);
+
+                unchecked {
+                    totalTicketsValue++;
+                    totalTickets--;
+                }
+            }
+
+            if (latestIndex == 0) break;
+
+            unchecked {
+                latestIndex--;
+            }
+        }
+
+        totalTicketsValue *= _currentTicketValue(tickets.length);
+    }
+
     function currentTicketValue() external view returns (uint256) {
         (, , , bytes memory tickets) = getLatestUpdate();
         return _currentTicketValue(tickets.length);
@@ -745,7 +809,7 @@ contract TwoHundredFiftySix {
     function _currentTicketValue(
         uint256 _totalTickets
     ) private view returns (uint256) {
-        if(_totalTickets == 0) return 0;
+        if (_totalTickets == 0) return 0;
         return USDC.balanceOf($THIS) / _totalTickets;
     }
 
