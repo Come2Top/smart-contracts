@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: --256--
 pragma solidity 0.8.18;
 
-import {IUSDC} from "./interfaces/IUSDC.sol";
+import {IUSDT} from "./interfaces/IUSDT.sol";
 
 contract OfferorsTreasury {
-    IUSDC immutable public USDC;
+    IUSDT immutable public USDC;
     address immutable public GAME;
 
-    constructor(IUSDC usdc) {
+    constructor(IUSDT usdt) {
         GAME = msg.sender;
-        USDC = usdc;
+        USDC = usdt;
     }
 
-    function transferUSDC(address to, uint256 amount) external {
+    function transferUSDT(address to, uint256 amount) external {
         require(msg.sender == GAME, "ONLY_GAME_FUNCTION");
 
         USDC.transfer(to, amount);

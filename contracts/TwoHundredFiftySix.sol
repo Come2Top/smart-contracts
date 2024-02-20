@@ -34,7 +34,7 @@
 // SPDX-License-Identifier: --256--
 pragma solidity 0.8.18;
 
-import {IUSDC} from "./interfaces/IUSDC.sol";
+import {IUSDT} from "./interfaces/IUSDT.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
 
 import {OfferorsTreasury} from "./OfferorsTreasury.sol";
@@ -68,9 +68,10 @@ contract TwoHundredFiftySix {
         uint256 totalOffersValue;
     }
 
-    struct TicketsAndIndexes {
-        uint256 ticketID;
+    struct TicketInfo {
         uint256 index;
+        uint256 ticketID;
+        address owner;
     }
 
     /********************************\
@@ -132,7 +133,7 @@ contract TwoHundredFiftySix {
     /*******************************\
     |-*-*-*-*   CONSTANTS   *-*-*-*-|
     \*******************************/
-    IUSDC public immutable USDC;
+    IUSDT public immutable USDT;
     address public immutable ADMIN;
     OfferorsTreasury public immutable TREASURY;
     address private immutable $THIS = address(this);
@@ -216,19 +217,19 @@ contract TwoHundredFiftySix {
     /******************************\
     |-*-*-*-*   BUILT-IN   *-*-*-*-|
     \******************************/
-    constructor(address admin, address usdc, uint8 mtpg, uint80 tp) {
-        require(admin != address(0) && usdc != address(0), _ZAP_ERR);
+    constructor(address admin, address usdt, uint8 mtpg, uint80 tp) {
+        require(admin != address(0) && usdt != address(0), _ZAP_ERR);
         require(mtpg != 0 && tp != 0, _ZUP_ERR);
         _onlyPow2(mtpg);
 
         ADMIN = admin;
-        USDC = IUSDC(usdc);
+        USDT = IUSDT(usdt);
         maxTicketsPerGame = mtpg;
         ticketPrice = tp;
 
         gameData[0].tickets = _TICKET256;
 
-        TREASURY = new OfferorsTreasury(USDC);
+        TREASURY = new OfferorsTreasury(USDT);
     }
 
     /*******************************\
@@ -240,7 +241,7 @@ contract TwoHundredFiftySix {
     ) external only(ADMIN, _OAF_ERR) {
         uint256 balance;
 
-        require(token != address(USDC), _NR_ERR);
+        require(token != address(USDT), _NR_ERR);
         try IERC20(token).balanceOf($THIS) returns (uint256 b) {
             balance = b;
         } catch {
@@ -288,7 +289,7 @@ contract TwoHundredFiftySix {
         GameData storage GD;
         address sender = msg.sender;
         uint256 gameID = currentGameID;
-        uint256 neededUSDC = ticketPrice;
+        uint256 neededUSDT = ticketPrice;
         uint256 totalTickets = ticketIDs.length;
         uint256 ticketLimit = maxTicketsPerGame + 1;
 
@@ -313,7 +314,7 @@ contract TwoHundredFiftySix {
         );
         require(!(totalTickets > remainingTickets), _OOT_ERR);
         require(
-            !(USDC.allowance(sender, $THIS) < (totalTickets * neededUSDC)),
+            !(USDT.allowance(sender, $THIS) < (totalTickets * neededUSDT)),
             _AN_ERR
         );
 
@@ -346,7 +347,7 @@ contract TwoHundredFiftySix {
 
         totalPlayerTickets[gameID][sender] += uint8(totalTickets);
 
-        USDC.transferFrom(sender, $THIS, (totalTickets * neededUSDC));
+        USDT.transferFrom(sender, $THIS, (totalTickets * neededUSDT));
 
         GD.tickets = tickets;
 
@@ -356,7 +357,7 @@ contract TwoHundredFiftySix {
             uint256 currentBlock = block.number;
             GD.startedBlock = uint216(currentBlock);
             GD.tickets = _TICKET256;
-            emit GameStarted(gameID, currentBlock, _MAX_PARTIES * neededUSDC);
+            emit GameStarted(gameID, currentBlock, _MAX_PARTIES * neededUSDT);
         } else GD.soldTickets += uint8(totalTickets);
     }
 
@@ -364,7 +365,7 @@ contract TwoHundredFiftySix {
         uint256 fee;
         address sender = msg.sender;
         uint256 gameID = currentGameID;
-        uint256 balance = USDC.balanceOf($THIS);
+        uint256 balance = USDT.balanceOf($THIS);
         uint256 length = indexes.length;
 
         (
@@ -387,7 +388,7 @@ contract TwoHundredFiftySix {
             gameData[gameID].tickets = tickets;
             gameData[gameID].eligibleWithdrawals = -1;
 
-            USDC.transfer(ADMIN, fee);
+            USDT.transfer(ADMIN, fee);
 
             if (tickets.length == 1) {
                 address ticketOwner = ticketOwnership[gameID][
@@ -397,15 +398,12 @@ contract TwoHundredFiftySix {
                 delete ticketOwnership[gameID][uint8(tickets[0])];
                 delete totalPlayerTickets[gameID][ticketOwner];
 
-                bool isBlacklisted = USDC.isBlacklisted(ticketOwner);
-
-                if (!isBlacklisted) USDC.transfer(ticketOwner, balance - fee);
-                else USDC.transfer(ADMIN, balance - fee);
+                USDT.transfer(ticketOwner, balance - fee);
 
                 emit GameFinished(
                     gameID,
                     ticketOwner,
-                    isBlacklisted ? 0 : balance - fee,
+                    balance - fee,
                     uint8(tickets[0])
                 );
             } else {
@@ -426,21 +424,15 @@ contract TwoHundredFiftySix {
                 delete totalPlayerTickets[gameID][winner1];
                 delete totalPlayerTickets[gameID][winner2];
 
-                bool isBlacklisted1 = USDC.isBlacklisted(winner1);
-                bool isBlacklisted2 = USDC.isBlacklisted(winner2);
-
-                if (!isBlacklisted1) USDC.transfer(winner1, winner1Amount);
-                else USDC.transfer(ADMIN, winner1Amount);
-
-                if (!isBlacklisted2) USDC.transfer(winner2, winner2Amount);
-                else USDC.transfer(ADMIN, winner2Amount);
+                USDT.transfer(winner1, winner1Amount);
+                USDT.transfer(winner2, winner2Amount);
 
                 emit GameFinished(
                     gameID,
                     [winner1, winner2],
                     [
-                        isBlacklisted1 ? 0 : winner1Amount,
-                        isBlacklisted2 ? 0 : winner2Amount
+                        winner1Amount,
+                        winner2Amount
                     ],
                     [uint256(uint8(tickets[0])), uint256(uint8(tickets[1]))]
                 );
@@ -512,12 +504,8 @@ contract TwoHundredFiftySix {
             uint256 idealWinnerPrize = (balance / tickets.length) * length;
             fee = (idealWinnerPrize * _FEE) / _BASIS;
 
-            bool isBlacklisted = USDC.isBlacklisted(sender);
-            if (isBlacklisted) USDC.transfer(ADMIN, idealWinnerPrize);
-            else {
-                USDC.transfer(ADMIN, fee);
-                USDC.transfer(sender, idealWinnerPrize - fee);
-            }
+            USDT.transfer(ADMIN, fee);
+            USDT.transfer(sender, idealWinnerPrize - fee);
 
             unchecked {
                 eligibleWithdrawals -= int256(length);
@@ -532,7 +520,7 @@ contract TwoHundredFiftySix {
             emit GameUpdated(
                 gameID,
                 sender,
-                isBlacklisted ? 0 : idealWinnerPrize - fee,
+                idealWinnerPrize - fee,
                 ticketIDs
             );
         }
@@ -552,10 +540,10 @@ contract TwoHundredFiftySix {
         require(amount > O.amount && amount > ticketValue, _OHTCOATV_ERR);
 
         require(_linearSearch(tickets, ticketID), _OWT_ERR);
-        require(!(USDC.allowance(sender, $THIS) < ticketValue), _AN_ERR);
+        require(!(USDT.allowance(sender, $THIS) < ticketValue), _AN_ERR);
 
         if (O.amount != 0) {
-            TREASURY.transferUSDC(O.maker, O.amount);
+            TREASURY.transferUSDT(O.maker, O.amount);
 
             unchecked {
                 offerorData[O.maker].latestGameIDoffersValue -= O.amount;
@@ -563,7 +551,7 @@ contract TwoHundredFiftySix {
             }
         }
 
-        USDC.transferFrom($THIS, address(TREASURY), ticketValue);
+        USDT.transferFrom($THIS, address(TREASURY), ticketValue);
 
         offer[gameID][ticketID] = Offer(amount, sender);
 
@@ -600,15 +588,13 @@ contract TwoHundredFiftySix {
         totalPlayerTickets[gameID][sender] -= 1;
         totalPlayerTickets[gameID][O.maker] += 1;
 
-        TREASURY.transferUSDC($THIS, O.amount);
-        bool isBlacklisted = USDC.isBlacklisted(sender);
-        if (!isBlacklisted)
-            USDC.transfer(sender, (O.amount * _OFFEREE_BENEFICIARY) / _BASIS);
+        TREASURY.transferUSDT($THIS, O.amount);
+        USDT.transfer(sender, (O.amount * _OFFEREE_BENEFICIARY) / _BASIS);
 
         emit OfferAccepted(
             O.maker,
             ticketID,
-            isBlacklisted ? 0 : (O.amount * _OFFEREE_BENEFICIARY) / _BASIS,
+            (O.amount * _OFFEREE_BENEFICIARY) / _BASIS,
             sender
         );
     }
@@ -623,7 +609,7 @@ contract TwoHundredFiftySix {
 
         offerorData[sender].totalOffersValue -= refundableAmount;
 
-        TREASURY.transferUSDC(to, refundableAmount);
+        TREASURY.transferUSDT(to, refundableAmount);
 
         emit StaleOffersTookBack(sender, to, refundableAmount);
     }
@@ -686,7 +672,7 @@ contract TwoHundredFiftySix {
         }
     }
 
-    function getPlayerTicketsWithIndexes(
+    function playerWithWinningTickets(
         address player
     )
         external
@@ -735,6 +721,39 @@ contract TwoHundredFiftySix {
         }
 
         totalTicketsValue *= _currentTicketValue(tickets.length);
+    }
+
+    function currentWinnersWithTickets()
+        external
+        view
+        returns (int256 eligibleWithdrawals, TicketInfo[] memory)
+    {
+        uint256 gameID = currentGameID;
+        (
+            Status stat,
+            int256 _eligibleWithdrawals,
+            ,
+            bytes memory tickets
+        ) = getLatestUpdate();
+
+        require(stat == Status.inProcess, _OIPG_ERR);
+
+        TicketInfo[] memory allTicketsData = new TicketInfo[](tickets.length);
+        uint256 index;
+
+        while (index != tickets.length) {
+            allTicketsData[index] = TicketInfo(
+                index,
+                uint8(tickets[index]),
+                ticketOwnership[gameID][uint8(tickets[index])]
+            );
+
+            unchecked {
+                index++;
+            }
+        }
+
+        return (_eligibleWithdrawals ,allTicketsData);
     }
 
     function currentTicketValue() external view returns (uint256) {
@@ -810,7 +829,7 @@ contract TwoHundredFiftySix {
         uint256 _totalTickets
     ) private view returns (uint256) {
         if (_totalTickets == 0) return 0;
-        return USDC.balanceOf($THIS) / _totalTickets;
+        return USDT.balanceOf($THIS) / _totalTickets;
     }
 
     function _getRandomSeed(uint256 startBlock) private view returns (uint256) {
