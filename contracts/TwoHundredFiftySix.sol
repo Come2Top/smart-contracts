@@ -127,7 +127,7 @@ contract TwoHundredFiftySix {
     string private constant _ZAP_ERR = "ZERO_ADDRESS_PROVIDED";
     string private constant _ZUP_ERR = "ZERO_UINT_PROVIDED";
 
-    string private constant _NIP2_ERR = "NOT_IN_POW2";
+    string private constant _MCBG8_ERR = "MTPG_CANT_BE_GT_8";
     string private constant _NOI_ERR = "NOT_ORDERIZE_INDEXES";
 
     /*******************************\
@@ -137,9 +137,8 @@ contract TwoHundredFiftySix {
     address public immutable ADMIN;
     OfferorsTreasury public immutable TREASURY;
     address private immutable $THIS = address(this);
-    uint256 private constant _OFFEREE_BENEFICIARY = 950000;
-    uint256 private constant _FEE = 10000;
-    uint256 private constant _BASIS = 1000000;
+    uint256 private constant _OFFEREE_BENEFICIARY = 95;
+    uint256 private constant _BASIS = 100;
     uint256 private constant _WAVE_DURATION = 93;
     uint256 private constant _MAX_PARTIES = 256;
     bytes private constant _TICKET256 =
@@ -220,7 +219,7 @@ contract TwoHundredFiftySix {
     constructor(address admin, address usdt, uint8 mtpg, uint80 tp) {
         require(admin != address(0) && usdt != address(0), _ZAP_ERR);
         require(mtpg != 0 && tp != 0, _ZUP_ERR);
-        _onlyPow2(mtpg);
+        _checkMTPG(mtpg);
 
         ADMIN = admin;
         USDT = IUSDT(usdt);
@@ -267,7 +266,7 @@ contract TwoHundredFiftySix {
         uint8 maxTicketsPerGame_
     ) external only(ADMIN, _OAF_ERR) onlyPausedAndFinishedGame {
         _revertOnZeroUint(maxTicketsPerGame_);
-        _onlyPow2(maxTicketsPerGame_);
+        _checkMTPG(maxTicketsPerGame_);
 
         maxTicketsPerGame = maxTicketsPerGame_;
     }
@@ -383,7 +382,7 @@ contract TwoHundredFiftySix {
         require(length <= uint256(eligibleWithdrawals), _OOEW_ERR);
 
         if (tickets.length < 3) {
-            fee = (balance * _FEE) / _BASIS;
+            fee = balance / _BASIS;
 
             gameData[gameID].tickets = tickets;
             gameData[gameID].eligibleWithdrawals = -1;
@@ -502,7 +501,7 @@ contract TwoHundredFiftySix {
             }
 
             uint256 idealWinnerPrize = (balance / tickets.length) * length;
-            fee = (idealWinnerPrize * _FEE) / _BASIS;
+            fee = idealWinnerPrize / _BASIS;
 
             USDT.transfer(ADMIN, fee);
             USDT.transfer(sender, idealWinnerPrize - fee);
@@ -537,7 +536,7 @@ contract TwoHundredFiftySix {
         Offer memory O = offer[gameID][ticketID];
 
         require(stat == Status.inProcess, _OIPG_ERR);
-        require(amount > O.amount && amount > ticketValue, _OHTCOATV_ERR);
+        require(amount > O.amount && amount >= ticketValue, _OHTCOATV_ERR);
 
         require(_linearSearch(tickets, ticketID), _OWT_ERR);
         require(!(USDT.allowance(sender, $THIS) < ticketValue), _AN_ERR);
@@ -917,8 +916,8 @@ contract TwoHundredFiftySix {
         return false;
     }
 
-    function _onlyPow2(uint8 number) private pure {
-        require((number & (number - 1)) == 0, _NIP2_ERR);
+    function _checkMTPG(uint8 number) private pure {
+        require(number < 9, _MCBG8_ERR);
     }
 
     function _revertOnZeroUint(uint256 integer) private pure {
