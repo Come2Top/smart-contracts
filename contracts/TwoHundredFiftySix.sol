@@ -45,7 +45,8 @@ contract TwoHundredFiftySix {
     \*******************************/
     enum Status {
         notStarted,
-        inProcess,
+        ticketSale,
+        inProgress,
         finished
     }
 
@@ -91,44 +92,37 @@ contract TwoHundredFiftySix {
     /********************************\
     |-*-*-*-*-*   ERRORS   *-*-*-*-*-|
     \********************************/
-    string private constant _OTF_ERR = "ONLY_TREASURY_FUNCTION";
-    string private constant _OAF_ERR = "ONLY_ADMIN_FUNCTION";
-    string private constant _OEOAF_ERR = "ONLY_EOA_FUNCTION";
-    string private constant _OIPG_ERR = "ONLY_IN_PROGRESS_GAME";
-    string private constant _OPAFG_ERR = "ONLY_PAUSED_AND_FINISHED_GAME";
-    string private constant _OUOIPG_ERR = "ONLY_UNPAUSED_OR_IN_PROCESS_GAME";
-    string private constant _OWT_ERR = "ONLY_WINNER_TICKETS";
-    string private constant _OHTCOATV_ERR =
-        "ONLY_HIGHER_THAN_CURRENT_OFFER_AND_TICKET_VALUE";
+    error OnlyEOA();
+    error OnlyAdmin();
+    error OnlyOwnerOfTicket(uint256 ticketID);
+    error OnlyWinnerTicket(uint256 ticketID);
 
-    string private constant _ITAP_ERR = "INVALID_TOKEN_ADDRESS_PROVIDED";
-    string private constant _OSR_ERR = "OWNERSHIP_REQUESTED";
-    string private constant _IB_ERR = "INSUFFICIENT_BALANCE";
-    string private constant _AN_ERR = "APPROVE_NEEDED";
-    string private constant _NR_ERR = "NON_REFUNDABLE";
+    error OnlyInProgressMode(Status currentStat);
+    error OnlyPaused_AND_FinishedMode(bool isPaused);
+    error OnlyUnpaued_OR_TickectSaleMode(bool isPaused);
 
-    string private constant _NOOTT_ERR = "NO_OFFER_ON_THIS_TICKET";
-    string private constant _PB_ERR = "PARTICIPATED_BEFORE";
-    string private constant _TR_ERR = "TICKET_RESERVED";
-    string private constant _LT_ERR = "LOSER_TICKET";
-    string private constant _NE_ERR = "NOT_ELIGIBLE";
-    string private constant _NS_ERR = "NOT_STARTED";
-    string private constant _GF_ERR = "GAME_FINISHED";
+    error OnlyHigherThanCurrentOffer_AND_TicketValue(
+        uint256 offer,
+        uint256 lastOffer,
+        uint256 ticketValue
+    );
 
-    string private constant _WFW1_ERR = "WAIT_FOR_WAVE_1";
-    string private constant _WFNM_ERR = "WAIT_FOR_NEXT_MATCH";
+    error MTPG_CantBeGreaterThanEight(uint256 givenValue);
 
-    string private constant _PI_ERR = "PROVIDE_INDEXES";
-    string private constant _CHA_ERR = "CHECK_TICKETS_ARRAY";
-    string private constant _OOT_ERR = "OUT_OF_TICKETS";
-    string private constant _IOOB_ERR = "INDEX_OUT_OF_BOUNDS";
-    string private constant _OOEW_ERR = "OUT_OF_ELIGIBLE_WITHDRAWNS";
+    error ZeroEligibleWithdrawals();
+    error ZeroAddressProvided();
+    error ZeroUintProvided();
 
-    string private constant _ZAP_ERR = "ZERO_ADDRESS_PROVIDED";
-    string private constant _ZUP_ERR = "ZERO_UINT_PROVIDED";
+    error CheckTicketsLength(uint256 ticketLength);
+    error FewerTicketsLeft(uint256 remainingTickets);
+    error SelectedTicketsSoldOutBefore();
+    error ParticipatedBefore();
+    error PlayerHasNoTickets();
+    error NoAmountToRefund();
+    error OfferNotFound();
 
-    string private constant _MCBG8_ERR = "MTPG_CANT_BE_GT_8";
-    string private constant _NOI_ERR = "NOT_ORDERIZE_INDEXES";
+    error WaitForNextGameMatch();
+    error WaitForFirstWave();
 
     /*******************************\
     |-*-*-*-*   CONSTANTS   *-*-*-*-|
@@ -136,12 +130,12 @@ contract TwoHundredFiftySix {
     IUSDT public immutable USDT;
     address public immutable ADMIN;
     OfferorsTreasury public immutable TREASURY;
-    address private immutable $THIS = address(this);
-    uint256 private constant _OFFEREE_BENEFICIARY = 95;
-    uint256 private constant _BASIS = 100;
-    uint256 private constant _WAVE_DURATION = 93;
-    uint256 private constant _MAX_PARTIES = 256;
-    bytes private constant _TICKET256 =
+    address public immutable THIS = address(this);
+    uint256 public constant OFFEREE_BENEFICIARY = 95;
+    uint256 public constant BASIS = 100;
+    uint256 public constant WAVE_DURATION = 93;
+    uint256 public constant MAX_PARTIES = 256;
+    bytes public constant TICKET256 =
         hex"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
 
     /********************************\
@@ -159,7 +153,7 @@ contract TwoHundredFiftySix {
         uint256 indexed gameID,
         address indexed winner,
         uint256 indexed amount,
-        uint256[] ticketIDs
+        uint256 ticketID
     );
 
     event GameFinished(
@@ -199,16 +193,19 @@ contract TwoHundredFiftySix {
     /*******************************\
     |-*-*-*-*   MODIFIERS   *-*-*-*-|
     \*******************************/
-    modifier only(address account, string memory error) {
-        require(msg.sender == account, error);
+    modifier onlyEOA() {
+        if (msg.sender != tx.origin) revert OnlyEOA();
+        _;
+    }
+
+    modifier onlyAdmin() {
+        if (msg.sender != ADMIN) revert OnlyAdmin();
         _;
     }
 
     modifier onlyPausedAndFinishedGame() {
-        require(
-            gameData[currentGameID].eligibleWithdrawals == -1 && pause == true,
-            _OPAFG_ERR
-        );
+        if (!pause || gameData[currentGameID].eligibleWithdrawals != -1)
+            revert OnlyPaused_AND_FinishedMode(pause);
 
         _;
     }
@@ -216,64 +213,48 @@ contract TwoHundredFiftySix {
     /******************************\
     |-*-*-*-*   BUILT-IN   *-*-*-*-|
     \******************************/
-    constructor(address admin, address usdt, uint8 mtpg, uint80 tp) {
-        require(admin != address(0) && usdt != address(0), _ZAP_ERR);
-        require(mtpg != 0 && tp != 0, _ZUP_ERR);
+    constructor(
+        uint8 mtpg,
+        uint80 tp,
+        address usdt,
+        address admin
+    ) {
         _checkMTPG(mtpg);
+        if (tp == 0) revert ZeroUintProvided();
+        if (usdt == address(0) || admin == address(0))
+            revert ZeroAddressProvided();
 
-        ADMIN = admin;
-        USDT = IUSDT(usdt);
         maxTicketsPerGame = mtpg;
         ticketPrice = tp;
-
-        gameData[0].tickets = _TICKET256;
-
+        USDT = IUSDT(usdt);
+        ADMIN = admin;
         TREASURY = new OfferorsTreasury(USDT);
+
+        gameData[0].tickets = TICKET256;
     }
 
     /*******************************\
     |-*-*-*   ADMINSTRATION   *-*-*-|
     \*******************************/
-    function rescueERC20(
-        address token,
-        address to
-    ) external only(ADMIN, _OAF_ERR) {
-        uint256 balance;
-
-        require(token != address(USDT), _NR_ERR);
-        try IERC20(token).balanceOf($THIS) returns (uint256 b) {
-            balance = b;
-        } catch {
-            revert(_ITAP_ERR);
-        }
-        require(balance != 0, _IB_ERR);
-
-        IERC20(token).transfer(to, balance);
-    }
-
-    function rescueMatic(address payable to) external only(ADMIN, _OAF_ERR) {
-        uint256 balance = $THIS.balance;
-        require(balance != 0, _IB_ERR);
-
-        to.transfer(balance);
-    }
-
-    function togglePause() external only(ADMIN, _OAF_ERR) {
+    function togglePause() external onlyAdmin {
         pause = !pause;
     }
 
-    function changeMTPG(
-        uint8 maxTicketsPerGame_
-    ) external only(ADMIN, _OAF_ERR) onlyPausedAndFinishedGame {
-        _revertOnZeroUint(maxTicketsPerGame_);
+    function changeMaxTicketsPerGame(uint8 maxTicketsPerGame_)
+        external
+        onlyAdmin
+        onlyPausedAndFinishedGame
+    {
         _checkMTPG(maxTicketsPerGame_);
 
         maxTicketsPerGame = maxTicketsPerGame_;
     }
 
-    function changeTP(
-        uint80 ticketPrice_
-    ) external only(ADMIN, _OAF_ERR) onlyPausedAndFinishedGame {
+    function changeTicketPrice(uint80 ticketPrice_)
+        external
+        onlyAdmin
+        onlyPausedAndFinishedGame
+    {
         _revertOnZeroUint(ticketPrice_);
 
         ticketPrice = ticketPrice_;
@@ -282,15 +263,13 @@ contract TwoHundredFiftySix {
     /******************************\
     |-*-*-*-*-*   GAME   *-*-*-*-*-|
     \******************************/
-    function joinGame(
-        uint8[] calldata ticketIDs
-    ) external only(tx.origin, _OEOAF_ERR) {
-        GameData storage GD;
+    function joinGame(uint8[] calldata ticketIDs) external onlyEOA {
         address sender = msg.sender;
         uint256 gameID = currentGameID;
         uint256 neededUSDT = ticketPrice;
         uint256 totalTickets = ticketIDs.length;
-        uint256 ticketLimit = maxTicketsPerGame + 1;
+        uint256 ticketLimit = maxTicketsPerGame;
+        GameData storage GD;
 
         if (gameData[gameID].eligibleWithdrawals == -1) {
             unchecked {
@@ -298,24 +277,21 @@ contract TwoHundredFiftySix {
                 currentGameID++;
             }
             GD = gameData[gameID];
-            GD.tickets = _TICKET256;
+            GD.tickets = TICKET256;
         } else GD = gameData[gameID];
 
-        uint256 remainingTickets = _MAX_PARTIES - GD.soldTickets;
+        uint256 remainingTickets = MAX_PARTIES - GD.soldTickets;
         bytes memory tickets = GD.tickets;
 
-        require(pause == false || GD.soldTickets != 0, _OUOIPG_ERR);
-        require(totalTickets != 0 && totalTickets < ticketLimit, _CHA_ERR);
-        require(GD.startedBlock == 0, _WFNM_ERR);
-        require(
-            totalTickets + totalPlayerTickets[gameID][sender] < ticketLimit,
-            _PB_ERR
-        );
-        require(!(totalTickets > remainingTickets), _OOT_ERR);
-        require(
-            !(USDT.allowance(sender, $THIS) < (totalTickets * neededUSDT)),
-            _AN_ERR
-        );
+        if (pause && GD.soldTickets == 0)
+            revert OnlyUnpaued_OR_TickectSaleMode(pause);
+        if (totalTickets == 0 || totalTickets > ticketLimit)
+            revert CheckTicketsLength(totalTickets);
+        if (GD.startedBlock != 0) revert WaitForNextGameMatch();
+        if (totalTickets + totalPlayerTickets[gameID][sender] > ticketLimit)
+            revert ParticipatedBefore();
+        if (totalTickets > remainingTickets)
+            revert FewerTicketsLeft(remainingTickets);
 
         bytes memory realTickets;
 
@@ -323,30 +299,36 @@ contract TwoHundredFiftySix {
             if (ticketIDs[i] == 0) {
                 if (tickets[0] != 0xff) {
                     tickets[0] = 0xff;
-                    realTickets = abi.encodePacked(bytes1(0x00));
+
+                    realTickets = abi.encodePacked(realTickets, bytes1(0x00));
+
+                    ticketOwnership[gameID][0] = sender;
                 }
             } else {
                 if (tickets[ticketIDs[i]] != 0x00) {
                     tickets[ticketIDs[i]] = 0x00;
+
                     realTickets = abi.encodePacked(
                         realTickets,
                         bytes1(ticketIDs[i])
                     );
+
+                    ticketOwnership[gameID][ticketIDs[i]] = sender;
                 }
             }
 
             unchecked {
-                ticketOwnership[gameID][ticketIDs[i]] = sender;
                 i++;
             }
         }
+
         totalTickets = realTickets.length;
 
-        _revertOnZeroUint(totalTickets);
+        if (totalTickets == 0) revert SelectedTicketsSoldOutBefore();
 
         totalPlayerTickets[gameID][sender] += uint8(totalTickets);
 
-        USDT.transferFrom(sender, $THIS, (totalTickets * neededUSDT));
+        USDT.transferFrom(sender, THIS, (totalTickets * neededUSDT));
 
         GD.tickets = tickets;
 
@@ -355,17 +337,16 @@ contract TwoHundredFiftySix {
         if (totalTickets == remainingTickets) {
             uint256 currentBlock = block.number;
             GD.startedBlock = uint216(currentBlock);
-            GD.tickets = _TICKET256;
-            emit GameStarted(gameID, currentBlock, _MAX_PARTIES * neededUSDT);
+            GD.tickets = TICKET256;
+            emit GameStarted(gameID, currentBlock, MAX_PARTIES * neededUSDT);
         } else GD.soldTickets += uint8(totalTickets);
     }
 
-    function receiveLotteryWagedPrize(uint8[] calldata indexes) external {
+    function receiveLotteryWagedPrize(uint8 ticketID) external {
         uint256 fee;
         address sender = msg.sender;
         uint256 gameID = currentGameID;
-        uint256 balance = USDT.balanceOf($THIS);
-        uint256 length = indexes.length;
+        uint256 balance = USDT.balanceOf(THIS);
 
         (
             Status stat,
@@ -374,15 +355,13 @@ contract TwoHundredFiftySix {
             bytes memory tickets
         ) = getLatestUpdate();
 
-        require(length != 0, _PI_ERR);
-        require(stat != Status.notStarted, _NS_ERR);
-        require(currentWave != 0, _WFW1_ERR);
-        require(eligibleWithdrawals != 0, _NE_ERR);
-        require(stat != Status.finished, _GF_ERR);
-        require(length <= uint256(eligibleWithdrawals), _OOEW_ERR);
+        _onlyInProgressMode(stat);
+        uint8 index = _onlyWinnerTicket(tickets, ticketID);
+        if (currentWave == 0) revert WaitForFirstWave();
+        if (eligibleWithdrawals == 0) revert ZeroEligibleWithdrawals();
 
         if (tickets.length < 3) {
-            fee = balance / _BASIS;
+            fee = balance / BASIS;
 
             gameData[gameID].tickets = tickets;
             gameData[gameID].eligibleWithdrawals = -1;
@@ -390,27 +369,17 @@ contract TwoHundredFiftySix {
             USDT.transfer(ADMIN, fee);
 
             if (tickets.length == 1) {
-                address ticketOwner = ticketOwnership[gameID][
-                    uint8(tickets[0])
-                ];
+                address ticketOwner = ticketOwnership[gameID][ticketID];
 
-                delete ticketOwnership[gameID][uint8(tickets[0])];
+                delete ticketOwnership[gameID][ticketID];
                 delete totalPlayerTickets[gameID][ticketOwner];
 
                 USDT.transfer(ticketOwner, balance - fee);
 
-                emit GameFinished(
-                    gameID,
-                    ticketOwner,
-                    balance - fee,
-                    uint8(tickets[0])
-                );
+                emit GameFinished(gameID, ticketOwner, balance - fee, ticketID);
             } else {
-                require(
-                    ticketOwnership[gameID][uint8(tickets[indexes[0]])] ==
-                        sender,
-                    _OSR_ERR
-                );
+                if (sender != ticketOwnership[currentGameID][ticketID])
+                    revert OnlyOwnerOfTicket(ticketID);
 
                 address winner1 = ticketOwnership[gameID][uint8(tickets[0])];
                 address winner2 = ticketOwnership[gameID][uint8(tickets[1])];
@@ -429,117 +398,49 @@ contract TwoHundredFiftySix {
                 emit GameFinished(
                     gameID,
                     [winner1, winner2],
-                    [
-                        winner1Amount,
-                        winner2Amount
-                    ],
+                    [winner1Amount, winner2Amount],
                     [uint256(uint8(tickets[0])), uint256(uint8(tickets[1]))]
                 );
             }
         } else {
-            bytes memory updatedTickets;
-            uint256[] memory ticketIDs = new uint256[](length);
+            if (sender != ticketOwnership[currentGameID][ticketID])
+                revert OnlyOwnerOfTicket(ticketID);
 
-            require(
-                ticketOwnership[gameID][uint8(tickets[indexes[0]])] == sender,
-                _OSR_ERR
-            );
-            require(indexes[0] < tickets.length, _IOOB_ERR);
+            delete ticketOwnership[gameID][ticketID];
+            totalPlayerTickets[gameID][sender]--;
 
-            delete ticketOwnership[gameID][uint8(tickets[indexes[0]])];
-            totalPlayerTickets[gameID][sender] -= uint8(length);
-
-            if (length == 1) {
-                ticketIDs[0] = uint8(tickets[indexes[0]]);
-
-                updatedTickets = _deleteOneIndex(indexes[0], tickets);
-            } else {
-                updatedTickets = this.returnBytedCalldataArray(
-                    tickets,
-                    0,
-                    indexes[0]
-                );
-                ticketIDs[0] = uint8(tickets[indexes[0]]);
-                for (uint256 i = 1; i < length; ) {
-                    require(indexes[i] > indexes[i - 1], _NOI_ERR);
-                    require(indexes[i] < tickets.length, _IOOB_ERR);
-                    require(
-                        ticketOwnership[gameID][uint8(tickets[indexes[i]])] ==
-                            sender,
-                        _OSR_ERR
-                    );
-
-                    delete ticketOwnership[gameID][uint8(tickets[indexes[i]])];
-
-                    ticketIDs[i] = uint8(tickets[indexes[i]]);
-
-                    updatedTickets = abi.encodePacked(
-                        updatedTickets,
-                        this.returnBytedCalldataArray(
-                            tickets,
-                            indexes[i - 1] + 1,
-                            indexes[i]
-                        )
-                    );
-
-                    unchecked {
-                        i++;
-                    }
-                }
-
-                // Check if there are elements after the last index
-                if (indexes[indexes.length - 1] < length - 1) {
-                    updatedTickets = abi.encodePacked(
-                        updatedTickets,
-                        this.returnBytedCalldataArray(
-                            tickets,
-                            indexes[length - 1] + 1,
-                            tickets.length
-                        )
-                    );
-                }
-            }
-
-            uint256 idealWinnerPrize = (balance / tickets.length) * length;
-            fee = idealWinnerPrize / _BASIS;
-
-            USDT.transfer(ADMIN, fee);
-            USDT.transfer(sender, idealWinnerPrize - fee);
-
-            unchecked {
-                eligibleWithdrawals -= int256(length);
-            }
-
-            gameData[gameID].tickets = updatedTickets;
-            gameData[gameID].eligibleWithdrawals = int8(eligibleWithdrawals);
+            gameData[gameID].tickets = _deleteOneIndex(index, tickets);
+            gameData[gameID].eligibleWithdrawals = int8(eligibleWithdrawals) - 1;
 
             if (gameData[gameID].updatedWave != currentWave)
                 gameData[gameID].updatedWave = uint8(currentWave);
 
-            emit GameUpdated(
-                gameID,
-                sender,
-                idealWinnerPrize - fee,
-                ticketIDs
-            );
+            uint256 idealWinnerPrize = balance / tickets.length;
+            fee = idealWinnerPrize / BASIS;
+
+            USDT.transfer(ADMIN, fee);
+            USDT.transfer(sender, idealWinnerPrize - fee);
+
+            emit GameUpdated(gameID, sender, idealWinnerPrize - fee, ticketID);
         }
     }
 
-    function makeOffer(
-        uint8 ticketID,
-        uint96 amount
-    ) external only(tx.origin, _OEOAF_ERR) {
-        (Status stat, , , bytes memory tickets) = getLatestUpdate();
+    function makeOffer(uint8 ticketID, uint96 amount) external onlyEOA {
         address sender = msg.sender;
         uint256 gameID = currentGameID;
+        (Status stat, , , bytes memory tickets) = getLatestUpdate();
         uint256 ticketValue = _currentTicketValue(tickets.length);
         Offer memory O = offer[gameID][ticketID];
 
-        require(stat == Status.inProcess, _OIPG_ERR);
-        require(amount > O.amount && amount >= ticketValue, _OHTCOATV_ERR);
+        _onlyInProgressMode(stat);
+        _onlyWinnerTicket(tickets, ticketID);
 
-        require(_linearSearch(tickets, ticketID), _OWT_ERR);
-        require(!(USDT.allowance(sender, $THIS) < ticketValue), _AN_ERR);
+        if (amount <= O.amount || amount < ticketValue)
+            revert OnlyHigherThanCurrentOffer_AND_TicketValue(
+                amount,
+                O.amount,
+                ticketValue
+            );
 
         if (O.amount != 0) {
             TREASURY.transferUSDT(O.maker, O.amount);
@@ -550,7 +451,7 @@ contract TwoHundredFiftySix {
             }
         }
 
-        USDT.transferFrom($THIS, address(TREASURY), ticketValue);
+        USDT.transferFrom(THIS, address(TREASURY), ticketValue);
 
         offer[gameID][ticketID] = Offer(amount, sender);
 
@@ -567,33 +468,41 @@ contract TwoHundredFiftySix {
         emit OfferMade(sender, ticketID, amount, O.maker);
     }
 
-    function acceptOffers(uint8 ticketID) external {
+    modifier onlyTicketOwner(uint8 ticketID) {
+        if (msg.sender != ticketOwnership[currentGameID][ticketID])
+            revert OnlyOwnerOfTicket(ticketID);
+
+        _;
+    }
+
+    function acceptOffers(uint8 ticketID) external onlyTicketOwner(ticketID) {
         address sender = msg.sender;
         uint256 gameID = currentGameID;
-        address ticketOwner = ticketOwnership[gameID][ticketID];
         Offer memory O = offer[gameID][ticketID];
         (Status stat, , , bytes memory tickets) = getLatestUpdate();
 
-        require(stat == Status.inProcess, _OIPG_ERR);
-        require(_linearSearch(tickets, ticketID), _OWT_ERR);
-        require(O.amount != 0, _NOOTT_ERR);
-        require(sender == ticketOwner, _OSR_ERR);
+        _onlyInProgressMode(stat);
+        _onlyWinnerTicket(tickets, ticketID);
+        if (O.amount == 0) revert OfferNotFound();
 
-        offerorData[O.maker].latestGameIDoffersValue -= O.amount;
-        offerorData[O.maker].totalOffersValue -= O.amount;
         delete offer[gameID][ticketID];
+
+        unchecked {
+            offerorData[O.maker].latestGameIDoffersValue -= O.amount;
+            offerorData[O.maker].totalOffersValue -= O.amount;
+            totalPlayerTickets[gameID][sender]--;
+            totalPlayerTickets[gameID][O.maker]++;
+        }
+
         ticketOwnership[gameID][ticketID] = O.maker;
 
-        totalPlayerTickets[gameID][sender] -= 1;
-        totalPlayerTickets[gameID][O.maker] += 1;
-
-        TREASURY.transferUSDT($THIS, O.amount);
-        USDT.transfer(sender, (O.amount * _OFFEREE_BENEFICIARY) / _BASIS);
+        TREASURY.transferUSDT(THIS, O.amount);
+        USDT.transfer(sender, (O.amount * OFFEREE_BENEFICIARY) / BASIS);
 
         emit OfferAccepted(
             O.maker,
             ticketID,
-            (O.amount * _OFFEREE_BENEFICIARY) / _BASIS,
+            (O.amount * OFFEREE_BENEFICIARY) / BASIS,
             sender
         );
     }
@@ -604,7 +513,7 @@ contract TwoHundredFiftySix {
 
         uint256 refundableAmount = _getStaleOfferorAmount(sender);
 
-        require(refundableAmount != 0, _NR_ERR);
+        if (refundableAmount == 0) revert NoAmountToRefund();
 
         offerorData[sender].totalOffersValue -= refundableAmount;
 
@@ -633,11 +542,12 @@ contract TwoHundredFiftySix {
         currentWave = GD.updatedWave;
         tickets = GD.tickets;
 
-        if (GD.startedBlock == 0 || GD.eligibleWithdrawals == -1)
-            stat = GD.startedBlock == 0 ? Status.notStarted : Status.finished;
+        if (GD.startedBlock == 0)
+            stat = GD.soldTickets != 0 ? Status.ticketSale : Status.notStarted;
+        else if (GD.eligibleWithdrawals == -1) stat = Status.finished;
         else {
             bool fugaziBool;
-            stat = Status.inProcess;
+            stat = Status.inProgress;
 
             uint256 currentBlock = block.number;
             uint256 lastUpdatedWave = GD.updatedWave == 0
@@ -645,13 +555,13 @@ contract TwoHundredFiftySix {
                 : GD.updatedWave + 1;
 
             while (
-                GD.startedBlock + (lastUpdatedWave * _WAVE_DURATION) <
+                GD.startedBlock + (lastUpdatedWave * WAVE_DURATION) <
                 currentBlock
             ) {
                 tickets = _bytedArrayShuffler(
                     tickets,
                     _getRandomSeed(
-                        GD.startedBlock + (lastUpdatedWave * _WAVE_DURATION)
+                        GD.startedBlock + (lastUpdatedWave * WAVE_DURATION)
                     ),
                     tickets.length / 2
                 );
@@ -671,28 +581,20 @@ contract TwoHundredFiftySix {
         }
     }
 
-    function playerWithWinningTickets(
-        address player
-    )
+    function playerWithWinningTickets(address player)
         external
         view
-        returns (
-            bytes memory playerTickets,
-            bytes memory ticketsIndexes,
-            uint256 totalTicketsValue
-        )
+        returns (bytes memory playerTickets, uint256 totalTicketsValue)
     {
         if (player == address(0)) player = msg.sender;
 
         uint256 gameID = currentGameID;
         uint256 totalTickets = totalPlayerTickets[gameID][player];
-
-        _revertOnZeroUint(totalTickets);
-
         (Status stat, , , bytes memory tickets) = getLatestUpdate();
         uint8 latestIndex = uint8(tickets.length - 1);
 
-        require(stat == Status.inProcess, _OIPG_ERR);
+        _onlyInProgressMode(stat);
+        if (totalTickets == 0) revert PlayerHasNoTickets();
 
         while (totalTickets != 0) {
             if (
@@ -703,8 +605,6 @@ contract TwoHundredFiftySix {
                     playerTickets,
                     tickets[latestIndex]
                 );
-
-                ticketsIndexes = abi.encodePacked(latestIndex, ticketsIndexes);
 
                 unchecked {
                     totalTicketsValue++;
@@ -735,7 +635,7 @@ contract TwoHundredFiftySix {
             bytes memory tickets
         ) = getLatestUpdate();
 
-        require(stat == Status.inProcess, _OIPG_ERR);
+        _onlyInProgressMode(stat);
 
         TicketInfo[] memory allTicketsData = new TicketInfo[](tickets.length);
         uint256 index;
@@ -752,7 +652,7 @@ contract TwoHundredFiftySix {
             }
         }
 
-        return (_eligibleWithdrawals ,allTicketsData);
+        return (_eligibleWithdrawals, allTicketsData);
     }
 
     function currentTicketValue() external view returns (uint256) {
@@ -760,10 +660,12 @@ contract TwoHundredFiftySix {
         return _currentTicketValue(tickets.length);
     }
 
-    function getStaleOfferorAmount(
-        address account
-    ) external view returns (uint256) {
-        return _getStaleOfferorAmount(account);
+    function getStaleOfferorAmount(address offeror)
+        external
+        view
+        returns (uint256)
+    {
+        return _getStaleOfferorAmount(offeror);
     }
 
     function returnBytedCalldataArray(
@@ -777,62 +679,67 @@ contract TwoHundredFiftySix {
     /*****************************\
     |-*-*-*-*   PRIVATE   *-*-*-*-|
     \*****************************/
-    function _getStaleOfferorAmount(
-        address _account
-    ) private view returns (uint256) {
-        if (offerorData[_account].latestGameID == currentGameID)
-            return (offerorData[_account].totalOffersValue -
-                offerorData[_account].latestGameIDoffersValue);
-        return (offerorData[_account].totalOffersValue);
+    function _getStaleOfferorAmount(address offeror)
+        private
+        view
+        returns (uint256)
+    {
+        if (offerorData[offeror].latestGameID == currentGameID)
+            return (offerorData[offeror].totalOffersValue -
+                offerorData[offeror].latestGameIDoffersValue);
+        return (offerorData[offeror].totalOffersValue);
     }
 
     function _bytedArrayShuffler(
-        bytes memory _array,
-        uint256 _randomSeed,
-        uint256 _to
+        bytes memory array,
+        uint256 randomSeed,
+        uint256 to
     ) private view returns (bytes memory) {
         uint256 i;
         uint256 j;
-        uint256 n = _array.length;
+        uint256 n = array.length;
         while (i != n) {
             unchecked {
                 j =
-                    uint256(keccak256(abi.encodePacked(_randomSeed, i))) %
+                    uint256(keccak256(abi.encodePacked(randomSeed, i))) %
                     (i + 1);
-                (_array[i], _array[j]) = (_array[j], _array[i]);
+                (array[i], array[j]) = (array[j], array[i]);
                 i++;
             }
         }
 
-        return this.returnBytedCalldataArray(_array, 0, _to);
+        return this.returnBytedCalldataArray(array, 0, to);
     }
 
-    function _deleteOneIndex(
-        uint8 _index,
-        bytes memory _bytesArray
-    ) private view returns (bytes memory) {
+    function _deleteOneIndex(uint8 index, bytes memory bytesArray)
+        private
+        view
+        returns (bytes memory)
+    {
         return
-            _index != (_bytesArray.length - 1)
+            index != (bytesArray.length - 1)
                 ? abi.encodePacked(
-                    this.returnBytedCalldataArray(_bytesArray, 0, _index),
+                    this.returnBytedCalldataArray(bytesArray, 0, index),
                     this.returnBytedCalldataArray(
-                        _bytesArray,
-                        _index + 1,
-                        _bytesArray.length
+                        bytesArray,
+                        index + 1,
+                        bytesArray.length
                     )
                 )
-                : this.returnBytedCalldataArray(_bytesArray, 0, _index);
+                : this.returnBytedCalldataArray(bytesArray, 0, index);
     }
 
-    function _currentTicketValue(
-        uint256 _totalTickets
-    ) private view returns (uint256) {
-        if (_totalTickets == 0) return 0;
-        return USDT.balanceOf($THIS) / _totalTickets;
+    function _currentTicketValue(uint256 totalTickets)
+        private
+        view
+        returns (uint256)
+    {
+        if (totalTickets == 0) return 0;
+        return USDT.balanceOf(THIS) / totalTickets;
     }
 
     function _getRandomSeed(uint256 startBlock) private view returns (uint256) {
-        uint256 b = _WAVE_DURATION;
+        uint256 b = WAVE_DURATION;
         uint256 index = 20;
 
         uint256[] memory parts = new uint256[](5);
@@ -900,27 +807,43 @@ contract TwoHundredFiftySix {
         return parts[0];
     }
 
-    function _linearSearch(
-        bytes memory tickets,
-        uint8 ticketID
-    ) private pure returns (bool) {
+    function _linearSearch(bytes memory tickets, uint8 ticketID)
+        private
+        pure
+        returns (bool, uint8)
+    {
         for (uint256 i = tickets.length - 1; i >= 0; ) {
             if (uint8(tickets[i]) == ticketID) {
-                return true;
+                return (true, uint8(i));
             }
 
             unchecked {
                 i--;
             }
         }
-        return false;
+        return (false, 0);
     }
 
-    function _checkMTPG(uint8 number) private pure {
-        require(number < 9, _MCBG8_ERR);
+    function _checkMTPG(uint8 value) private pure {
+        _revertOnZeroUint(value);
+        if (value > 8) revert MTPG_CantBeGreaterThanEight(value);
     }
 
-    function _revertOnZeroUint(uint256 integer) private pure {
-        require(integer != 0, _ZUP_ERR);
+    function _revertOnZeroUint(uint256 uInt) private pure {
+        if (uInt == 0) revert ZeroUintProvided();
+    }
+
+    function _onlyInProgressMode(Status stat) private pure {
+        if (stat != Status.inProgress) revert OnlyInProgressMode(stat);
+    }
+
+    function _onlyWinnerTicket(bytes memory tickets, uint8 ticketID)
+        private
+        pure
+        returns (uint8)
+    {
+        (bool found, uint8 index) = _linearSearch(tickets, ticketID);
+        if (!found) revert OnlyWinnerTicket(ticketID);
+        return index;
     }
 }
