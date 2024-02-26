@@ -24,10 +24,10 @@ contract GameLogicTest is Test {
         vm.createSelectFork("https://polygon.drpc.org", 53600000);
 
         GAME = new TwoHundredFiftySix(
-            ADMIN,
-            USDT,
             MAX_TICKET_PER_GAME,
-            TICKET_PRICE
+            TICKET_PRICE,
+            USDT,
+            ADMIN
         );
 
         while (TICKET_BUYERS.length != MAX_PLAYERS) {
@@ -64,7 +64,7 @@ contract GameLogicTest is Test {
 
         vm.roll(block.number + WAVE_DURATION * 3 + 1);
 
-        uint8[] memory indexes = new uint8[](1);
+        uint8 ticketID;
 
         (
             TwoHundredFiftySix.Status stat,
@@ -77,8 +77,10 @@ contract GameLogicTest is Test {
 
         if (stat == TwoHundredFiftySix.Status.notStarted)
             stringifiedStatus = "Not Started!";
-        if (stat == TwoHundredFiftySix.Status.inProcess)
-            stringifiedStatus = "In Process...";
+        else if(stat == TwoHundredFiftySix.Status.ticketSale)
+            stringifiedStatus = "Ticket Saling Mode $";
+        else if (stat == TwoHundredFiftySix.Status.inProgress)
+            stringifiedStatus = "In Progress...";
         else stringifiedStatus = "Finished.";
 
         uint256 ticketValue = GAME.currentTicketValue();
@@ -95,8 +97,9 @@ contract GameLogicTest is Test {
         uint256 balanceOfTOI1 = IUSDT(USDT).balanceOf(ticketOwnerOfIndex1);
         uint256 balanceOfTOLI = IUSDT(USDT).balanceOf(ticketOwnerOfLastIndex);
 
+        ticketID = uint8(tickets[0]);
         vm.prank(ticketOwnerOfIndex1);
-        GAME.receiveLotteryWagedPrize(indexes);
+        GAME.receiveLotteryWagedPrize(ticketID);
 
         (
             ,
@@ -107,9 +110,9 @@ contract GameLogicTest is Test {
 
         uint256 ticketValue_1stTx = GAME.currentTicketValue();
 
-        indexes[0] = uint8(tickets_1stTx.length - 1);
+        ticketID = uint8(tickets_1stTx[tickets_1stTx.length - 1]);
         vm.prank(ticketOwnerOfLastIndex);
-        GAME.receiveLotteryWagedPrize(indexes);
+        GAME.receiveLotteryWagedPrize(ticketID);
 
         (
             ,
