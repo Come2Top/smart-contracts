@@ -1,16 +1,18 @@
+//  SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.18;
 
+import {IERC20} from "./interface/IERC20.sol";
+import {IUSDT} from "../contracts/interfaces/IUSDT.sol";
 import {Test, console2} from "forge-std/Test.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-
-import {IUSDT} from "../contracts/interfaces/IUSDT.sol";
-import {TwoHundredFiftySix} from "../contracts/TwoHundredFiftySix.sol";
+import {Treasury} from "../contracts/Treasury.sol";
+import {Come2Top} from "../contracts/Come2Top.sol";
 
 contract GameLogicTest is Test {
     using console2 for *;
     using Strings for uint256;
 
-    TwoHundredFiftySix private GAME;
+    Come2Top private GAME;
     address[] private TICKET_BUYERS;
     address private ADMIN = makeAddr("ADMIN");
 
@@ -19,16 +21,14 @@ contract GameLogicTest is Test {
     uint8 private constant MAX_TICKET_PER_GAME = 1;
     uint80 private constant TICKET_PRICE = 1e6;
     uint256 private constant MAX_PLAYERS = 256;
+    uint256 private constant MAX_UINT256 = type(uint256).max;
 
     function setUp() external {
         vm.createSelectFork("https://polygon.drpc.org", 53600000);
 
-        GAME = new TwoHundredFiftySix(
-            MAX_TICKET_PER_GAME,
-            TICKET_PRICE,
-            USDT,
-            ADMIN
-        );
+        address treasury = address(new Treasury());
+
+        GAME = new Come2Top(MAX_TICKET_PER_GAME, TICKET_PRICE, USDT, treasury);
 
         while (TICKET_BUYERS.length != MAX_PLAYERS) {
             TICKET_BUYERS.push(
@@ -44,11 +44,18 @@ contract GameLogicTest is Test {
 
             deal(USDT, TICKET_BUYERS[TICKET_BUYERS.length - 1], 1e6);
             vm.prank(TICKET_BUYERS[TICKET_BUYERS.length - 1]);
-            IUSDT(USDT).approve(address(GAME), 1e6);
+            IERC20(USDT).approve(address(GAME), MAX_UINT256);
         }
 
-        console2.log("Game deployed at:", address(GAME));
-        console2.log("Setup completed, going for tests...");
+        console2.log("Treasury Deployed at:             ", treasury);
+        console2.log("Game deployed at:                 ", address(GAME));
+        console2.log(
+            "Full allowance (Treasury => Game):",
+            IERC20(USDT).allowance(treasury, address(GAME)) == MAX_UINT256
+        );
+        console2.log("***********************************");
+        console2.log("*         Setup completed         *");
+        console2.log("***********************************");
     }
 
     function test() external {
@@ -67,7 +74,7 @@ contract GameLogicTest is Test {
         uint8 ticketID;
 
         (
-            TwoHundredFiftySix.Status stat,
+            Come2Top.Status stat,
             int256 eligibleWithdrawals,
             ,
             bytes memory tickets
@@ -75,11 +82,11 @@ contract GameLogicTest is Test {
 
         string memory stringifiedStatus;
 
-        if (stat == TwoHundredFiftySix.Status.notStarted)
+        if (stat == Come2Top.Status.notStarted)
             stringifiedStatus = "Not Started!";
-        else if(stat == TwoHundredFiftySix.Status.ticketSale)
+        else if (stat == Come2Top.Status.ticketSale)
             stringifiedStatus = "Ticket Saling Mode $";
-        else if (stat == TwoHundredFiftySix.Status.inProgress)
+        else if (stat == Come2Top.Status.inProgress)
             stringifiedStatus = "In Progress...";
         else stringifiedStatus = "Finished.";
 
@@ -135,79 +142,79 @@ contract GameLogicTest is Test {
         uint256 ticketValueNextWave = GAME.currentTicketValue();
 
         "____________________________________".log();
-        console2.log("Status:             ", stringifiedStatus);
-        console2.log("Current wave:       ", currentWave);
+        console2.log("Status:            ", stringifiedStatus);
+        console2.log("Current wave:      ", currentWave);
         console2.log(
-            "Game USDC balance:  ",
+            "Game USDC balance: ",
             IUSDT(USDT).balanceOf(address(GAME))
         );
         console2.log(
-            "Admin USDC balance: ",
+            "Admin USDC balance:",
             IUSDT(USDT).balanceOf(GAME.ADMIN())
         );
 
         "".log();
         console2.log(
-            "Ticket value before any withdraws:         ",
+            "Ticket value before any withdraws:        ",
             ticketValue
         );
         console2.log(
-            "Ticket value after 1st withdraw:           ",
+            "Ticket value after 1st withdraw:          ",
             ticketValue_1stTx
         );
         console2.log(
-            "Ticket value after 2nd withdraw:           ",
+            "Ticket value after 2nd withdraw:          ",
             ticketValue_2ndTx
         );
         console2.log(
-            "Ticket value of the next wave:             ",
+            "Ticket value of the next wave:            ",
             ticketValueNextWave
         );
 
         "".log();
         console2.log(
-            "Withdrawer 1 balance before withdraw:      ",
+            "Withdrawer 1 balance before withdraw:     ",
             balanceOfTOI1
         );
         console2.log(
-            "Withdrawer 1 balance after withdraw:       ",
+            "Withdrawer 1 balance after withdraw:      ",
             IUSDT(USDT).balanceOf(ticketOwnerOfIndex1)
         );
         console2.log(
-            "Withdrawer 2 balance before withdraw:      ",
+            "Withdrawer 2 balance before withdraw:     ",
             balanceOfTOLI
         );
         console2.log(
-            "Withdrawer 2 balance after withdraw:       ",
+            "Withdrawer 2 balance after withdraw:      ",
             IUSDT(USDT).balanceOf(ticketOwnerOfLastIndex)
         );
 
         "".log();
         console2.log(
-            "Eligible withdrawals before any withdraws: ",
+            "Eligible withdrawals before any withdraws:",
             uint256(eligibleWithdrawals)
         );
         console2.log(
-            "Eligible withdrawals after 1st withdraw:   ",
+            "Eligible withdrawals after 1st withdraw:  ",
             uint256(eligibleWithdrawals_1stTx)
         );
         console2.log(
-            "Eligible withdrawals after 2nd withdraw:   ",
+            "Eligible withdrawals after 2nd withdraw:  ",
             uint256(eligibleWithdrawals_2ndTx)
         );
         console2.log(
-            "Eligible withdrawals of the next wave:     ",
+            "Eligible withdrawals of the next wave:    ",
             uint256(eligibleWithdrawalsNextWave)
         );
 
         "".log();
-        console2.log("Tickets before any withdraws: ");
+        console2.log("Tickets before any withdraws:");
         tickets.logBytes();
-        console2.log("Tickets after 1st withdraw:   ");
+        console2.log("Tickets after 1st withdraw:");
         tickets_1stTx.logBytes();
-        console2.log("Tickets after 2nd withdraw:   ");
+        console2.log("Tickets after 2nd withdraw:");
         tickets_2ndTx.logBytes();
-        console2.log("Tickets of the next wave:     ");
+        console2.log("Tickets of the next wave:");
         ticketsNextWave.logBytes();
         "____________________________________".log();
     }

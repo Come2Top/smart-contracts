@@ -1,45 +1,16 @@
-/**********************************************************************\
-                         █▀▀ █   ▄▀█ █▀ █▀ █ █▀▀
-                         █▄▄ █▄▄ █▀█ ▄█ ▄█ █ █▄▄
-                                                        + ꓕ$ՈꓭOꓤ
-                     █▀█  ▄▀█  █▄ █  █▀▄  █▀█  █▀▄▀█    + 🆂🅴🅲🆄🆁🅴
-                     █▀▄  █▀█  █ ▀█  █▄▀  █▄█  █ ▀ █    + 🇦​​​​​🇺​​​​​🇹​​​​​⌖​​​​​🇲​​​​​🇦​​​​​🇹​​​​​🇪​​​​​🇩​​​​​
+/*
+    ██ ꓕ$ՈꓭOꓤ
+    ░░ 🆂🅴🅲🆄🆁🅴
+    ██ 🇦​​​​​🇺​​​​​🇹​​​​​⌖​​​​​🇲​​​​​🇦​​​​​🇹​​​​​🇪​​​​​🇩
+    ░░ https://www.come2.top
+*/
 
-               █   █▀▀ ▄▀█ █▀▄ █▀▀ █▀█ █▄▄ █▀█ ▄▀█ █▀█ █▀▄
-               █▄▄ ██▄ █▀█ █▄▀ ██▄ █▀▄ █▄█ █▄█ █▀█ █▀▄ █▄▀
-
-░░░░░░░░░░░░████████████████████████████████████████████████░░░░░░░░░░░░
-░░░░░░░░░░░██████████████░ Waiting For You <3 ░██████████████░░░░░░░░░░░
-░░░░░░░░░░████████████████████████████████████████████████████░░░░░░░░░░
-░░░░░░░░░█████████​█​█​█​█​█​█​█​█​█​█████████.------.​█​█​█​█​█​█​█​█​█​█​█​█​█​█​█​█​█​█​█░░░░░░░░░
-░░░░░░░░███████████████████████████.'   .' |████████████████████░░░░░░░░
-░░░░░░░███████████████,----,█████.'   .'   |█████████████████████░░░░░░░
-░░░░░░██████████████.'   .' \██.----.'    .'█████,---.,███████████░░░░░░
-░░░░░█████████████.----.'    |█|    |   .'██████/    / \███████████░░░░░
-░░░░██████████████|    |:'.  |█|    |  |--.████/    /  /████████████░░░░
-░░░███████████████|    |:/  /██|    |  |.' \██/    /  /██████████████░░░
-░░████████████████'----'/  /███|    |      |█|    /  |████████████████░░
-░░░█████████████████/  /  /████'----'.'\   |█|   |   \███████████████░░░
-░░░░███████████████/  /  /-.█████████\  \  |█|   |    ``\███████████░░░░
-░░░░░█████████████/  /  /.'|███/   /\/  /  |█|   |  /'\  \█████████░░░░░
-░░░░░░███████████/__/      |██/   /  \_/   |█|   |  |█|  |████████░░░░░░
-░░░░░░░█████████|   |    .'███\   \       /██|   |  \./  |███████░░░░░░░
-░░░░░░░░████████|   | .'███████\   \     /███\   \      /███████░░░░░░░░
-░░░░░░░░░███████'---'███████████`--`----'█████`---`--`-'███████░░░░░░░░░
-░░░░░░░░░░████████████████████████████████████████████████████░░░░░░░░░░
-░░░░░░░░░░░█████████████░ https://www.256.cash ░█████████████░░░░░░░░░░░
-░░░░░░░░░░░░████████████████████████████████████████████████░░░░░░░░░░░░
-\**********************************************************************/
-
-// SPDX-License-Identifier: --256--
+//  SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.18;
 
 import {IUSDT} from "./interfaces/IUSDT.sol";
-import {IERC20} from "./interfaces/IERC20.sol";
 
-import {OfferorsTreasury} from "./OfferorsTreasury.sol";
-
-contract TwoHundredFiftySix {
+contract Come2Top {
     /*******************************\
     |-*-*-*-*-*   TYPES   *-*-*-*-*-|
     \*******************************/
@@ -70,7 +41,6 @@ contract TwoHundredFiftySix {
     }
 
     struct TicketInfo {
-        uint256 index;
         uint256 ticketID;
         address owner;
     }
@@ -89,52 +59,20 @@ contract TwoHundredFiftySix {
     mapping(uint256 => mapping(address => uint8)) public totalPlayerTickets;
     mapping(uint256 => mapping(uint8 => Offer)) public offer;
 
-    /********************************\
-    |-*-*-*-*-*   ERRORS   *-*-*-*-*-|
-    \********************************/
-    error OnlyEOA();
-    error OnlyAdmin();
-    error OnlyOwnerOfTicket(uint256 ticketID);
-    error OnlyWinnerTicket(uint256 ticketID);
-
-    error OnlyInProgressMode(Status currentStat);
-    error OnlyPaused_AND_FinishedMode(bool isPaused);
-    error OnlyUnpaued_OR_TickectSaleMode(bool isPaused);
-
-    error OnlyHigherThanCurrentOffer_AND_TicketValue(
-        uint256 offer,
-        uint256 lastOffer,
-        uint256 ticketValue
-    );
-
-    error MTPG_CantBeGreaterThanEight(uint256 givenValue);
-
-    error ZeroEligibleWithdrawals();
-    error ZeroAddressProvided();
-    error ZeroUintProvided();
-
-    error CheckTicketsLength(uint256 ticketLength);
-    error FewerTicketsLeft(uint256 remainingTickets);
-    error SelectedTicketsSoldOutBefore();
-    error ParticipatedBefore();
-    error PlayerHasNoTickets();
-    error NoAmountToRefund();
-    error OfferNotFound();
-
-    error WaitForNextGameMatch();
-    error WaitForFirstWave();
-
     /*******************************\
     |-*-*-*-*   CONSTANTS   *-*-*-*-|
     \*******************************/
     IUSDT public immutable USDT;
-    address public immutable ADMIN;
-    OfferorsTreasury public immutable TREASURY;
+    address public immutable TREASURY;
+    address public immutable ADMIN = tx.origin;
     address public immutable THIS = address(this);
-    uint256 public constant OFFEREE_BENEFICIARY = 95;
-    uint256 public constant BASIS = 100;
-    uint256 public constant WAVE_DURATION = 93;
+    uint256 public constant MAX_TICKET_PRICE = 1e9;
+    uint256 public constant MIN_TICKET_PRICE = 1e6;
     uint256 public constant MAX_PARTIES = 256;
+    uint256 public constant BASIS = 100;
+    uint256 public constant OFFEREE_BENEFICIARY = 95;
+    uint256 public constant WAVE_DURATION = 93;
+    uint256 public constant MAX_TICKETS_PER_GAME = 8;
     bytes public constant TICKET256 =
         hex"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
 
@@ -190,22 +128,60 @@ contract TwoHundredFiftySix {
         uint256 indexed amount
     );
 
+    /********************************\
+    |-*-*-*-*-*   ERRORS   *-*-*-*-*-|
+    \********************************/
+    error ONLY_EOA();
+    error ONLY_ADMIN();
+    error ONLY_TICKET_OWNER(uint256 ticketID);
+    error ONLY_WINNER_TICKET(uint256 ticketID);
+    error ONLY_IN_PROGRESS_MODE(Status currentStat);
+    error ONLY_PAUSED_AND_FINISHED_MODE(bool isPaused);
+    error ONLY_UNPAUSED_OR_TICKET_SALE_MODE(bool isPaused);
+    error ONLY_HIGHER_THAN_CURRENT_OFFER_AND_TICKET_VALUE(
+        uint256 offer,
+        uint256 lastOffer,
+        uint256 ticketValue
+    );
+    error APROVE_OPERATION_FAILED();
+    error VALUE_CANT_BE_LOWER_THAN(uint256 givenValue);
+    error VALUE_CANT_BE_GREATER_THAN(uint256 givenValue);
+    error ZERO_ELIGIBLE_WITHDRAWALS();
+    error ZERO_ADDRESS_PROVIDED();
+    error ZERO_UINT_PROVIDED();
+    error CHECK_TICKETS_LENGTH(uint256 ticketLength);
+    error FEWER_TICKETS_LEFT(uint256 remainingTickets);
+    error SLECTED_TICKETS_SOLDOUT_BEFORE();
+    error PARTICIPATED_BEFORE();
+    error PLAYER_HAS_NO_TICKETS();
+    error NO_AMOUNT_TO_REFUND();
+    error OFFER_NOT_FOUND();
+    error WAIT_FOR_NEXT_GAME_MATCH();
+    error WAIT_FOR_FIRST_WAVE();
+
     /*******************************\
     |-*-*-*-*   MODIFIERS   *-*-*-*-|
     \*******************************/
     modifier onlyEOA() {
-        if (msg.sender != tx.origin) revert OnlyEOA();
+        if (msg.sender != tx.origin) revert ONLY_EOA();
         _;
     }
 
     modifier onlyAdmin() {
-        if (msg.sender != ADMIN) revert OnlyAdmin();
+        if (msg.sender != ADMIN) revert ONLY_ADMIN();
+        _;
+    }
+
+    modifier onlyTicketOwner(uint8 ticketID) {
+        if (msg.sender != ticketOwnership[currentGameID][ticketID])
+            revert ONLY_TICKET_OWNER(ticketID);
+
         _;
     }
 
     modifier onlyPausedAndFinishedGame() {
         if (!pause || gameData[currentGameID].eligibleWithdrawals != -1)
-            revert OnlyPaused_AND_FinishedMode(pause);
+            revert ONLY_PAUSED_AND_FINISHED_MODE(pause);
 
         _;
     }
@@ -213,24 +189,21 @@ contract TwoHundredFiftySix {
     /******************************\
     |-*-*-*-*   BUILT-IN   *-*-*-*-|
     \******************************/
-    constructor(
-        uint8 mtpg,
-        uint80 tp,
-        address usdt,
-        address admin
-    ) {
+    constructor(uint8 mtpg, uint80 tp, address usdt, address treasury) {
         _checkMTPG(mtpg);
-        if (tp == 0) revert ZeroUintProvided();
-        if (usdt == address(0) || admin == address(0))
-            revert ZeroAddressProvided();
+        _checkTP(tp);
+        if (usdt == address(0) || treasury == address(0))
+            revert ZERO_ADDRESS_PROVIDED();
 
         maxTicketsPerGame = mtpg;
         ticketPrice = tp;
         USDT = IUSDT(usdt);
-        ADMIN = admin;
-        TREASURY = new OfferorsTreasury(USDT);
+        TREASURY = treasury;
 
         gameData[0].tickets = TICKET256;
+
+        (bool ok, ) = treasury.call(abi.encode(usdt));
+        if (!ok) revert APROVE_OPERATION_FAILED();
     }
 
     /*******************************\
@@ -240,29 +213,25 @@ contract TwoHundredFiftySix {
         pause = !pause;
     }
 
-    function changeMaxTicketsPerGame(uint8 maxTicketsPerGame_)
-        external
-        onlyAdmin
-        onlyPausedAndFinishedGame
-    {
+    function changeMaxTicketsPerGame(
+        uint8 maxTicketsPerGame_
+    ) external onlyAdmin onlyPausedAndFinishedGame {
         _checkMTPG(maxTicketsPerGame_);
 
         maxTicketsPerGame = maxTicketsPerGame_;
     }
 
-    function changeTicketPrice(uint80 ticketPrice_)
-        external
-        onlyAdmin
-        onlyPausedAndFinishedGame
-    {
-        _revertOnZeroUint(ticketPrice_);
+    function changeTicketPrice(
+        uint80 ticketPrice_
+    ) external onlyAdmin onlyPausedAndFinishedGame {
+        _checkTP(ticketPrice_);
 
         ticketPrice = ticketPrice_;
     }
 
-    /******************************\
-    |-*-*-*-*-*   GAME   *-*-*-*-*-|
-    \******************************/
+    /********************************\
+    |-*-*-*-*   GAME-LOGIC   *-*-*-*-|
+    \********************************/
     function joinGame(uint8[] calldata ticketIDs) external onlyEOA {
         address sender = msg.sender;
         uint256 gameID = currentGameID;
@@ -284,14 +253,14 @@ contract TwoHundredFiftySix {
         bytes memory tickets = GD.tickets;
 
         if (pause && GD.soldTickets == 0)
-            revert OnlyUnpaued_OR_TickectSaleMode(pause);
+            revert ONLY_UNPAUSED_OR_TICKET_SALE_MODE(pause);
         if (totalTickets == 0 || totalTickets > ticketLimit)
-            revert CheckTicketsLength(totalTickets);
-        if (GD.startedBlock != 0) revert WaitForNextGameMatch();
+            revert CHECK_TICKETS_LENGTH(totalTickets);
+        if (GD.startedBlock != 0) revert WAIT_FOR_NEXT_GAME_MATCH();
         if (totalTickets + totalPlayerTickets[gameID][sender] > ticketLimit)
-            revert ParticipatedBefore();
+            revert PARTICIPATED_BEFORE();
         if (totalTickets > remainingTickets)
-            revert FewerTicketsLeft(remainingTickets);
+            revert FEWER_TICKETS_LEFT(remainingTickets);
 
         bytes memory realTickets;
 
@@ -324,11 +293,11 @@ contract TwoHundredFiftySix {
 
         totalTickets = realTickets.length;
 
-        if (totalTickets == 0) revert SelectedTicketsSoldOutBefore();
+        if (totalTickets == 0) revert SLECTED_TICKETS_SOLDOUT_BEFORE();
 
         totalPlayerTickets[gameID][sender] += uint8(totalTickets);
 
-        USDT.transferFrom(sender, THIS, (totalTickets * neededUSDT));
+        _transferFromHelper(sender, THIS, (totalTickets * neededUSDT));
 
         GD.tickets = tickets;
 
@@ -357,8 +326,8 @@ contract TwoHundredFiftySix {
 
         _onlyInProgressMode(stat);
         uint8 index = _onlyWinnerTicket(tickets, ticketID);
-        if (currentWave == 0) revert WaitForFirstWave();
-        if (eligibleWithdrawals == 0) revert ZeroEligibleWithdrawals();
+        if (currentWave == 0) revert WAIT_FOR_FIRST_WAVE();
+        if (eligibleWithdrawals == 0) revert ZERO_ELIGIBLE_WITHDRAWALS();
 
         if (tickets.length < 3) {
             fee = balance / BASIS;
@@ -366,7 +335,7 @@ contract TwoHundredFiftySix {
             gameData[gameID].tickets = tickets;
             gameData[gameID].eligibleWithdrawals = -1;
 
-            USDT.transfer(ADMIN, fee);
+            _transferHelper(ADMIN, fee);
 
             if (tickets.length == 1) {
                 address ticketOwner = ticketOwnership[gameID][ticketID];
@@ -374,12 +343,12 @@ contract TwoHundredFiftySix {
                 delete ticketOwnership[gameID][ticketID];
                 delete totalPlayerTickets[gameID][ticketOwner];
 
-                USDT.transfer(ticketOwner, balance - fee);
+                _transferHelper(ticketOwner, balance - fee);
 
                 emit GameFinished(gameID, ticketOwner, balance - fee, ticketID);
             } else {
                 if (sender != ticketOwnership[currentGameID][ticketID])
-                    revert OnlyOwnerOfTicket(ticketID);
+                    revert ONLY_TICKET_OWNER(ticketID);
 
                 address winner1 = ticketOwnership[gameID][uint8(tickets[0])];
                 address winner2 = ticketOwnership[gameID][uint8(tickets[1])];
@@ -392,8 +361,8 @@ contract TwoHundredFiftySix {
                 delete totalPlayerTickets[gameID][winner1];
                 delete totalPlayerTickets[gameID][winner2];
 
-                USDT.transfer(winner1, winner1Amount);
-                USDT.transfer(winner2, winner2Amount);
+                _transferHelper(winner1, winner1Amount);
+                _transferHelper(winner2, winner2Amount);
 
                 emit GameFinished(
                     gameID,
@@ -404,13 +373,15 @@ contract TwoHundredFiftySix {
             }
         } else {
             if (sender != ticketOwnership[currentGameID][ticketID])
-                revert OnlyOwnerOfTicket(ticketID);
+                revert ONLY_TICKET_OWNER(ticketID);
 
             delete ticketOwnership[gameID][ticketID];
             totalPlayerTickets[gameID][sender]--;
 
             gameData[gameID].tickets = _deleteOneIndex(index, tickets);
-            gameData[gameID].eligibleWithdrawals = int8(eligibleWithdrawals) - 1;
+            gameData[gameID].eligibleWithdrawals =
+                int8(eligibleWithdrawals) -
+                1;
 
             if (gameData[gameID].updatedWave != currentWave)
                 gameData[gameID].updatedWave = uint8(currentWave);
@@ -418,8 +389,8 @@ contract TwoHundredFiftySix {
             uint256 idealWinnerPrize = balance / tickets.length;
             fee = idealWinnerPrize / BASIS;
 
-            USDT.transfer(ADMIN, fee);
-            USDT.transfer(sender, idealWinnerPrize - fee);
+            _transferHelper(ADMIN, fee);
+            _transferHelper(sender, idealWinnerPrize - fee);
 
             emit GameUpdated(gameID, sender, idealWinnerPrize - fee, ticketID);
         }
@@ -436,14 +407,14 @@ contract TwoHundredFiftySix {
         _onlyWinnerTicket(tickets, ticketID);
 
         if (amount <= O.amount || amount < ticketValue)
-            revert OnlyHigherThanCurrentOffer_AND_TicketValue(
+            revert ONLY_HIGHER_THAN_CURRENT_OFFER_AND_TICKET_VALUE(
                 amount,
                 O.amount,
                 ticketValue
             );
 
         if (O.amount != 0) {
-            TREASURY.transferUSDT(O.maker, O.amount);
+            _transferFromHelper(TREASURY, O.maker, O.amount);
 
             unchecked {
                 offerorData[O.maker].latestGameIDoffersValue -= O.amount;
@@ -451,7 +422,7 @@ contract TwoHundredFiftySix {
             }
         }
 
-        USDT.transferFrom(THIS, address(TREASURY), ticketValue);
+        _transferHelper(TREASURY, ticketValue);
 
         offer[gameID][ticketID] = Offer(amount, sender);
 
@@ -468,13 +439,6 @@ contract TwoHundredFiftySix {
         emit OfferMade(sender, ticketID, amount, O.maker);
     }
 
-    modifier onlyTicketOwner(uint8 ticketID) {
-        if (msg.sender != ticketOwnership[currentGameID][ticketID])
-            revert OnlyOwnerOfTicket(ticketID);
-
-        _;
-    }
-
     function acceptOffers(uint8 ticketID) external onlyTicketOwner(ticketID) {
         address sender = msg.sender;
         uint256 gameID = currentGameID;
@@ -483,7 +447,7 @@ contract TwoHundredFiftySix {
 
         _onlyInProgressMode(stat);
         _onlyWinnerTicket(tickets, ticketID);
-        if (O.amount == 0) revert OfferNotFound();
+        if (O.amount == 0) revert OFFER_NOT_FOUND();
 
         delete offer[gameID][ticketID];
 
@@ -496,8 +460,8 @@ contract TwoHundredFiftySix {
 
         ticketOwnership[gameID][ticketID] = O.maker;
 
-        TREASURY.transferUSDT(THIS, O.amount);
-        USDT.transfer(sender, (O.amount * OFFEREE_BENEFICIARY) / BASIS);
+        _transferFromHelper(TREASURY, THIS, O.amount);
+        _transferHelper(sender, (O.amount * OFFEREE_BENEFICIARY) / BASIS);
 
         emit OfferAccepted(
             O.maker,
@@ -513,11 +477,11 @@ contract TwoHundredFiftySix {
 
         uint256 refundableAmount = _getStaleOfferorAmount(sender);
 
-        if (refundableAmount == 0) revert NoAmountToRefund();
+        if (refundableAmount == 0) revert NO_AMOUNT_TO_REFUND();
 
         offerorData[sender].totalOffersValue -= refundableAmount;
 
-        TREASURY.transferUSDT(to, refundableAmount);
+        _transferFromHelper(TREASURY, to, refundableAmount);
 
         emit StaleOffersTookBack(sender, to, refundableAmount);
     }
@@ -581,7 +545,9 @@ contract TwoHundredFiftySix {
         }
     }
 
-    function playerWithWinningTickets(address player)
+    function playerWithWinningTickets(
+        address player
+    )
         external
         view
         returns (bytes memory playerTickets, uint256 totalTicketsValue)
@@ -594,7 +560,7 @@ contract TwoHundredFiftySix {
         uint8 latestIndex = uint8(tickets.length - 1);
 
         _onlyInProgressMode(stat);
-        if (totalTickets == 0) revert PlayerHasNoTickets();
+        if (totalTickets == 0) revert PLAYER_HAS_NO_TICKETS();
 
         while (totalTickets != 0) {
             if (
@@ -642,7 +608,6 @@ contract TwoHundredFiftySix {
 
         while (index != tickets.length) {
             allTicketsData[index] = TicketInfo(
-                index,
                 uint8(tickets[index]),
                 ticketOwnership[gameID][uint8(tickets[index])]
             );
@@ -660,11 +625,9 @@ contract TwoHundredFiftySix {
         return _currentTicketValue(tickets.length);
     }
 
-    function getStaleOfferorAmount(address offeror)
-        external
-        view
-        returns (uint256)
-    {
+    function getStaleOfferorAmount(
+        address offeror
+    ) external view returns (uint256) {
         return _getStaleOfferorAmount(offeror);
     }
 
@@ -679,11 +642,21 @@ contract TwoHundredFiftySix {
     /*****************************\
     |-*-*-*-*   PRIVATE   *-*-*-*-|
     \*****************************/
-    function _getStaleOfferorAmount(address offeror)
-        private
-        view
-        returns (uint256)
-    {
+    function _transferHelper(address to, uint256 amount) private {
+        USDT.transfer(to, amount);
+    }
+
+    function _transferFromHelper(
+        address from,
+        address to,
+        uint256 amount
+    ) private {
+        USDT.transferFrom(from, to, amount);
+    }
+
+    function _getStaleOfferorAmount(
+        address offeror
+    ) private view returns (uint256) {
         if (offerorData[offeror].latestGameID == currentGameID)
             return (offerorData[offeror].totalOffersValue -
                 offerorData[offeror].latestGameIDoffersValue);
@@ -711,11 +684,10 @@ contract TwoHundredFiftySix {
         return this.returnBytedCalldataArray(array, 0, to);
     }
 
-    function _deleteOneIndex(uint8 index, bytes memory bytesArray)
-        private
-        view
-        returns (bytes memory)
-    {
+    function _deleteOneIndex(
+        uint8 index,
+        bytes memory bytesArray
+    ) private view returns (bytes memory) {
         return
             index != (bytesArray.length - 1)
                 ? abi.encodePacked(
@@ -729,11 +701,9 @@ contract TwoHundredFiftySix {
                 : this.returnBytedCalldataArray(bytesArray, 0, index);
     }
 
-    function _currentTicketValue(uint256 totalTickets)
-        private
-        view
-        returns (uint256)
-    {
+    function _currentTicketValue(
+        uint256 totalTickets
+    ) private view returns (uint256) {
         if (totalTickets == 0) return 0;
         return USDT.balanceOf(THIS) / totalTickets;
     }
@@ -807,11 +777,10 @@ contract TwoHundredFiftySix {
         return parts[0];
     }
 
-    function _linearSearch(bytes memory tickets, uint8 ticketID)
-        private
-        pure
-        returns (bool, uint8)
-    {
+    function _linearSearch(
+        bytes memory tickets,
+        uint8 ticketID
+    ) private pure returns (bool, uint8) {
         for (uint256 i = tickets.length - 1; i >= 0; ) {
             if (uint8(tickets[i]) == ticketID) {
                 return (true, uint8(i));
@@ -826,24 +795,31 @@ contract TwoHundredFiftySix {
 
     function _checkMTPG(uint8 value) private pure {
         _revertOnZeroUint(value);
-        if (value > 8) revert MTPG_CantBeGreaterThanEight(value);
+        if (value > MAX_TICKETS_PER_GAME)
+            revert VALUE_CANT_BE_GREATER_THAN(MAX_TICKETS_PER_GAME);
+    }
+
+    function _checkTP(uint80 value) private pure {
+        if (value < MIN_TICKET_PRICE)
+            revert VALUE_CANT_BE_LOWER_THAN(MIN_TICKET_PRICE);
+        if (value > MAX_TICKET_PRICE)
+            revert VALUE_CANT_BE_GREATER_THAN(MAX_TICKET_PRICE);
     }
 
     function _revertOnZeroUint(uint256 uInt) private pure {
-        if (uInt == 0) revert ZeroUintProvided();
+        if (uInt == 0) revert ZERO_UINT_PROVIDED();
     }
 
     function _onlyInProgressMode(Status stat) private pure {
-        if (stat != Status.inProgress) revert OnlyInProgressMode(stat);
+        if (stat != Status.inProgress) revert ONLY_IN_PROGRESS_MODE(stat);
     }
 
-    function _onlyWinnerTicket(bytes memory tickets, uint8 ticketID)
-        private
-        pure
-        returns (uint8)
-    {
+    function _onlyWinnerTicket(
+        bytes memory tickets,
+        uint8 ticketID
+    ) private pure returns (uint8) {
         (bool found, uint8 index) = _linearSearch(tickets, ticketID);
-        if (!found) revert OnlyWinnerTicket(ticketID);
+        if (!found) revert ONLY_WINNER_TICKET(ticketID);
         return index;
     }
 }
