@@ -1,10 +1,3 @@
-/*
-    ██ ꓕ$ՈꓭOꓤ
-    ░░ 🆂🅴🅲🆄🆁🅴
-    ██ 🇦​​​​​🇺​​​​​🇹​​​​​⌖​​​​​🇲​​​​​🇦​​​​​🇹​​​​​🇪​​​​​🇩
-    ░░ https://www.come2.top
-*/
-
 //  SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.18;
 
