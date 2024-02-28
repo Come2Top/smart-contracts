@@ -1,7 +1,19 @@
 //  SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.18;
 
-import {IUSDT} from "./interfaces/IUSDT.sol";
+interface IUSDT {
+    function transfer(address recipient, uint256 amount)
+        external
+        returns (bool);
+
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) external returns (bool);
+
+    function balanceOf(address account) external view returns (uint256);
+}
 
 contract Come2Top {
     /*******************************\
@@ -131,10 +143,13 @@ contract Come2Top {
     error ONLY_IN_PROGRESS_MODE(Status currentStat);
     error ONLY_PAUSED_AND_FINISHED_MODE(bool isPaused);
     error ONLY_UNPAUSED_OR_TICKET_SALE_MODE(bool isPaused);
-    error ONLY_HIGHER_THAN_CURRENT_OFFER_AND_TICKET_VALUE(
+    error ONLY_HIGHER_THAN_CURRENT_TICKET_VALUE(
         uint256 offer,
-        uint256 lastOffer,
         uint256 ticketValue
+    );
+    error ONLY_HIGHER_THAN_CURRENT_OFFER_VALUE(
+        uint256 offer,
+        uint256 lastOfferValue
     );
     error APROVE_OPERATION_FAILED();
     error VALUE_CANT_BE_LOWER_THAN(uint256 givenValue);
@@ -182,7 +197,12 @@ contract Come2Top {
     /******************************\
     |-*-*-*-*   BUILT-IN   *-*-*-*-|
     \******************************/
-    constructor(uint8 mtpg, uint80 tp, address usdt, address treasury) {
+    constructor(
+        uint8 mtpg,
+        uint80 tp,
+        address usdt,
+        address treasury
+    ) {
         _checkMTPG(mtpg);
         _checkTP(tp);
         if (usdt == address(0) || treasury == address(0))
@@ -206,17 +226,21 @@ contract Come2Top {
         pause = !pause;
     }
 
-    function changeMaxTicketsPerGame(
-        uint8 maxTicketsPerGame_
-    ) external onlyAdmin onlyPausedAndFinishedGame {
+    function changeMaxTicketsPerGame(uint8 maxTicketsPerGame_)
+        external
+        onlyAdmin
+        onlyPausedAndFinishedGame
+    {
         _checkMTPG(maxTicketsPerGame_);
 
         maxTicketsPerGame = maxTicketsPerGame_;
     }
 
-    function changeTicketPrice(
-        uint80 ticketPrice_
-    ) external onlyAdmin onlyPausedAndFinishedGame {
+    function changeTicketPrice(uint80 ticketPrice_)
+        external
+        onlyAdmin
+        onlyPausedAndFinishedGame
+    {
         _checkTP(ticketPrice_);
 
         ticketPrice = ticketPrice_;
@@ -395,39 +419,42 @@ contract Come2Top {
         (Status stat, , , bytes memory tickets) = getLatestUpdate();
         uint256 ticketValue = _currentTicketValue(tickets.length);
         Offer memory O = offer[gameID][ticketID];
+        uint256 offerorStaleAmount = _getStaleOfferorAmount(sender);
 
         _onlyInProgressMode(stat);
         _onlyWinnerTicket(tickets, ticketID);
 
-        if (amount <= O.amount || amount < ticketValue)
-            revert ONLY_HIGHER_THAN_CURRENT_OFFER_AND_TICKET_VALUE(
-                amount,
-                O.amount,
-                ticketValue
-            );
+        if (amount < ticketValue)
+            revert ONLY_HIGHER_THAN_CURRENT_TICKET_VALUE(amount, ticketValue);
+        if (amount <= O.amount)
+            revert ONLY_HIGHER_THAN_CURRENT_OFFER_VALUE(amount, O.amount);
+
+        if (offerorStaleAmount < amount) {
+            uint256 diffOfferWithStaleAmount = amount - offerorStaleAmount;
+
+            _transferFromHelper(sender, TREASURY, diffOfferWithStaleAmount);
+
+            unchecked {
+                offerorData[sender]
+                    .totalOffersValue += diffOfferWithStaleAmount;
+            }
+        }
+
+        if (offerorData[sender].latestGameID != gameID) {
+            offerorData[sender].latestGameID = uint160(gameID);
+            offerorData[sender].latestGameIDoffersValue = uint96(amount);
+        } else offerorData[sender].latestGameIDoffersValue += uint96(amount);
 
         if (O.amount != 0) {
             _transferFromHelper(TREASURY, O.maker, O.amount);
 
             unchecked {
-                offerorData[O.maker].latestGameIDoffersValue -= O.amount;
                 offerorData[O.maker].totalOffersValue -= O.amount;
+                offerorData[O.maker].latestGameIDoffersValue -= O.amount;
             }
         }
 
-        _transferHelper(TREASURY, ticketValue);
-
         offer[gameID][ticketID] = Offer(amount, sender);
-
-        unchecked {
-            offerorData[sender].totalOffersValue += ticketValue;
-        }
-
-        if (offerorData[sender].latestGameID != gameID) {
-            offerorData[sender].latestGameID = uint160(gameID);
-            offerorData[sender].latestGameIDoffersValue = uint96(ticketValue);
-        } else
-            offerorData[sender].latestGameIDoffersValue += uint96(ticketValue);
 
         emit OfferMade(sender, ticketID, amount, O.maker);
     }
@@ -519,9 +546,7 @@ contract Come2Top {
         return (_eligibleWithdrawals, allTicketsData);
     }
 
-    function playerWithWinningTickets(
-        address player
-    )
+    function playerWithWinningTickets(address player)
         external
         view
         returns (uint256 totalTicketsValue, bytes memory playerTickets)
@@ -540,7 +565,6 @@ contract Come2Top {
             if (
                 ticketOwnership[gameID][uint8(tickets[latestIndex])] == player
             ) {
-                //TODO: abi.decode full returned values into a structure for better readability
                 playerTickets = abi.encodePacked(
                     playerTickets,
                     tickets[latestIndex]
@@ -562,9 +586,11 @@ contract Come2Top {
         totalTicketsValue *= _currentTicketValue(tickets.length);
     }
 
-    function getStaleOfferorAmount(
-        address offeror
-    ) external view returns (uint256) {
+    function getStaleOfferorAmount(address offeror)
+        external
+        view
+        returns (uint256)
+    {
         return _getStaleOfferorAmount(offeror);
     }
 
@@ -647,9 +673,11 @@ contract Come2Top {
         USDT.transferFrom(from, to, amount);
     }
 
-    function _getStaleOfferorAmount(
-        address offeror
-    ) private view returns (uint256) {
+    function _getStaleOfferorAmount(address offeror)
+        private
+        view
+        returns (uint256)
+    {
         if (offerorData[offeror].latestGameID == currentGameID)
             return (offerorData[offeror].totalOffersValue -
                 offerorData[offeror].latestGameIDoffersValue);
@@ -677,10 +705,11 @@ contract Come2Top {
         return this.returnBytedCalldataArray(array, 0, to);
     }
 
-    function _deleteOneIndex(
-        uint8 index,
-        bytes memory bytesArray
-    ) private view returns (bytes memory) {
+    function _deleteOneIndex(uint8 index, bytes memory bytesArray)
+        private
+        view
+        returns (bytes memory)
+    {
         return
             index != (bytesArray.length - 1)
                 ? abi.encodePacked(
@@ -694,9 +723,11 @@ contract Come2Top {
                 : this.returnBytedCalldataArray(bytesArray, 0, index);
     }
 
-    function _currentTicketValue(
-        uint256 totalTickets
-    ) private view returns (uint256) {
+    function _currentTicketValue(uint256 totalTickets)
+        private
+        view
+        returns (uint256)
+    {
         if (totalTickets == 0) return 0;
         return USDT.balanceOf(THIS) / totalTickets;
     }
@@ -762,18 +793,16 @@ contract Come2Top {
 
         unchecked {
             parts[1] = (parts[0] / 2) + (parts[2] / 2);
-            parts[3] = (parts[2] / 2) + (parts[4] / 2);
-            parts[0] = uint256(
-                keccak256(abi.encodePacked(parts[1] * parts[3]))
-            );
+            parts[3] = (parts[4] / 2) + (parts[2] / 2);
+            return uint256(keccak256(abi.encodePacked(parts[1] * parts[3])));
         }
-        return parts[0];
     }
 
-    function _linearSearch(
-        bytes memory tickets,
-        uint8 ticketID
-    ) private pure returns (bool, uint8) {
+    function _linearSearch(bytes memory tickets, uint8 ticketID)
+        private
+        pure
+        returns (bool, uint8)
+    {
         for (uint256 i = tickets.length - 1; i >= 0; ) {
             if (uint8(tickets[i]) == ticketID) {
                 return (true, uint8(i));
@@ -807,10 +836,11 @@ contract Come2Top {
         if (stat != Status.inProgress) revert ONLY_IN_PROGRESS_MODE(stat);
     }
 
-    function _onlyWinnerTicket(
-        bytes memory tickets,
-        uint8 ticketID
-    ) private pure returns (uint8) {
+    function _onlyWinnerTicket(bytes memory tickets, uint8 ticketID)
+        private
+        pure
+        returns (uint8)
+    {
         (bool found, uint8 index) = _linearSearch(tickets, ticketID);
         if (!found) revert ONLY_WINNER_TICKET(ticketID);
         return index;

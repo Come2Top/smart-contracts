@@ -2,11 +2,10 @@
 pragma solidity 0.8.18;
 
 import {IERC20} from "./interface/IERC20.sol";
-import {IUSDT} from "../contracts/interfaces/IUSDT.sol";
 import {Test, console2} from "forge-std/Test.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {C2Treasury} from "../contracts/C2Treasury.sol";
-import {Come2Top} from "../contracts/Come2Top.sol";
+import "../contracts/Come2Top.sol";
 
 contract GameLogicTest is Test {
     using console2 for *;
