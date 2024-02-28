@@ -5,7 +5,7 @@ import {IERC20} from "./interface/IERC20.sol";
 import {IUSDT} from "../contracts/interfaces/IUSDT.sol";
 import {Test, console2} from "forge-std/Test.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {Treasury} from "../contracts/Treasury.sol";
+import {C2Treasury} from "../contracts/C2Treasury.sol";
 import {Come2Top} from "../contracts/Come2Top.sol";
 
 contract GameLogicTest is Test {
@@ -26,7 +26,7 @@ contract GameLogicTest is Test {
     function setUp() external {
         vm.createSelectFork("https://polygon.drpc.org", 53600000);
 
-        address treasury = address(new Treasury());
+        address treasury = address(new C2Treasury());
 
         GAME = new Come2Top(MAX_TICKET_PER_GAME, TICKET_PRICE, USDT, treasury);
 
@@ -47,10 +47,10 @@ contract GameLogicTest is Test {
             IERC20(USDT).approve(address(GAME), MAX_UINT256);
         }
 
-        console2.log("Treasury Deployed at:             ", treasury);
-        console2.log("Game deployed at:                 ", address(GAME));
+        console2.log("C2Treasury Deployed at:             ", treasury);
+        console2.log("Game deployed at:                   ", address(GAME));
         console2.log(
-            "Full allowance (Treasury => Game):",
+            "Full allowance (C2Treasury => Game):",
             IERC20(USDT).allowance(treasury, address(GAME)) == MAX_UINT256
         );
         console2.log("***********************************");

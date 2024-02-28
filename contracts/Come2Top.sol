@@ -482,6 +482,100 @@ contract Come2Top {
     /******************************\
     |-*-*-*-*-*   VIEW   *-*-*-*-*-|
     \******************************/
+    function currentTicketValue() external view returns (uint256) {
+        (, , , bytes memory tickets) = getLatestUpdate();
+        return _currentTicketValue(tickets.length);
+    }
+
+    function currentWinnersWithTickets()
+        external
+        view
+        returns (int256 eligibleWithdrawals, TicketInfo[] memory)
+    {
+        uint256 gameID = currentGameID;
+        (
+            Status stat,
+            int256 _eligibleWithdrawals,
+            ,
+            bytes memory tickets
+        ) = getLatestUpdate();
+
+        _onlyInProgressMode(stat);
+
+        TicketInfo[] memory allTicketsData = new TicketInfo[](tickets.length);
+        uint256 index;
+
+        while (index != tickets.length) {
+            allTicketsData[index] = TicketInfo(
+                uint8(tickets[index]),
+                ticketOwnership[gameID][uint8(tickets[index])]
+            );
+
+            unchecked {
+                index++;
+            }
+        }
+
+        return (_eligibleWithdrawals, allTicketsData);
+    }
+
+    function playerWithWinningTickets(
+        address player
+    )
+        external
+        view
+        returns (uint256 totalTicketsValue, bytes memory playerTickets)
+    {
+        if (player == address(0)) player = msg.sender;
+
+        uint256 gameID = currentGameID;
+        uint256 totalTickets = totalPlayerTickets[gameID][player];
+        (Status stat, , , bytes memory tickets) = getLatestUpdate();
+        uint8 latestIndex = uint8(tickets.length - 1);
+
+        _onlyInProgressMode(stat);
+        if (totalTickets == 0) revert PLAYER_HAS_NO_TICKETS();
+
+        while (totalTickets != 0) {
+            if (
+                ticketOwnership[gameID][uint8(tickets[latestIndex])] == player
+            ) {
+                //TODO: abi.decode full returned values into a structure for better readability
+                playerTickets = abi.encodePacked(
+                    playerTickets,
+                    tickets[latestIndex]
+                );
+
+                unchecked {
+                    totalTicketsValue++;
+                    totalTickets--;
+                }
+            }
+
+            if (latestIndex == 0) break;
+
+            unchecked {
+                latestIndex--;
+            }
+        }
+
+        totalTicketsValue *= _currentTicketValue(tickets.length);
+    }
+
+    function getStaleOfferorAmount(
+        address offeror
+    ) external view returns (uint256) {
+        return _getStaleOfferorAmount(offeror);
+    }
+
+    function returnBytedCalldataArray(
+        bytes calldata array,
+        uint256 from,
+        uint256 to
+    ) external pure returns (bytes memory) {
+        return array[from:to];
+    }
+
     function getLatestUpdate()
         public
         view
@@ -536,100 +630,6 @@ contract Come2Top {
                 }
             }
         }
-    }
-
-    function playerWithWinningTickets(
-        address player
-    )
-        external
-        view
-        returns (bytes memory playerTickets, uint256 totalTicketsValue)
-    {
-        if (player == address(0)) player = msg.sender;
-
-        uint256 gameID = currentGameID;
-        uint256 totalTickets = totalPlayerTickets[gameID][player];
-        (Status stat, , , bytes memory tickets) = getLatestUpdate();
-        uint8 latestIndex = uint8(tickets.length - 1);
-
-        _onlyInProgressMode(stat);
-        if (totalTickets == 0) revert PLAYER_HAS_NO_TICKETS();
-
-        while (totalTickets != 0) {
-            if (
-                ticketOwnership[gameID][uint8(tickets[latestIndex])] == player
-            ) {
-                //TODO: abi.decode full returned values into a structure for better readability
-                playerTickets = abi.encodePacked(
-                    playerTickets,
-                    tickets[latestIndex]
-                );
-
-                unchecked {
-                    totalTicketsValue++;
-                    totalTickets--;
-                }
-            }
-
-            if (latestIndex == 0) break;
-
-            unchecked {
-                latestIndex--;
-            }
-        }
-
-        totalTicketsValue *= _currentTicketValue(tickets.length);
-    }
-
-    function currentWinnersWithTickets()
-        external
-        view
-        returns (int256 eligibleWithdrawals, TicketInfo[] memory)
-    {
-        uint256 gameID = currentGameID;
-        (
-            Status stat,
-            int256 _eligibleWithdrawals,
-            ,
-            bytes memory tickets
-        ) = getLatestUpdate();
-
-        _onlyInProgressMode(stat);
-
-        TicketInfo[] memory allTicketsData = new TicketInfo[](tickets.length);
-        uint256 index;
-
-        while (index != tickets.length) {
-            allTicketsData[index] = TicketInfo(
-                uint8(tickets[index]),
-                ticketOwnership[gameID][uint8(tickets[index])]
-            );
-
-            unchecked {
-                index++;
-            }
-        }
-
-        return (_eligibleWithdrawals, allTicketsData);
-    }
-
-    function currentTicketValue() external view returns (uint256) {
-        (, , , bytes memory tickets) = getLatestUpdate();
-        return _currentTicketValue(tickets.length);
-    }
-
-    function getStaleOfferorAmount(
-        address offeror
-    ) external view returns (uint256) {
-        return _getStaleOfferorAmount(offeror);
-    }
-
-    function returnBytedCalldataArray(
-        bytes calldata array,
-        uint256 from,
-        uint256 to
-    ) external pure returns (bytes memory) {
-        return array[from:to];
     }
 
     /*****************************\
