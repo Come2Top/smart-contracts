@@ -3,13 +3,11 @@ pragma solidity 0.8.18;
 
 import {IERC20} from "./interface/IERC20.sol";
 import {Test, console2} from "forge-std/Test.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {C2Treasury} from "../contracts/C2Treasury.sol";
 import "../contracts/Come2Top.sol";
 
 contract GameLogicTest is Test {
     using console2 for *;
-    using Strings for uint256;
 
     Come2Top private GAME;
     address[] private TICKET_BUYERS;
@@ -35,7 +33,7 @@ contract GameLogicTest is Test {
                     string(
                         abi.encodePacked(
                             "TICKET_BUYER_",
-                            (TICKET_BUYERS.length).toString()
+                            vm.toString(TICKET_BUYERS.length)
                         )
                     )
                 )
