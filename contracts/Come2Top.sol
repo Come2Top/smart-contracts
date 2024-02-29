@@ -1,20 +1,18 @@
 //  SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.18;
 
-interface IUSDT {
-    function transfer(address recipient, uint256 amount)
-        external
-        returns (bool);
+/**
+    @author @FarajiOranj
+    @custom:auditor @MatinR1
 
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
-
-    function balanceOf(address account) external view returns (uint256);
-}
-
+    @title Come2Top Main Contract.
+    @notice A secure, automatic 
+        and fully decentralized platform
+        to build an ideal betting platform 
+        without the involvement of third parties
+        with a small interaction cost for users and actors.
+        For more information & further questions, visit: https://www.come2.top
+*/
 contract Come2Top {
     /*******************************\
     |-*-*-*-*-*   TYPES   *-*-*-*-*-|
@@ -222,10 +220,22 @@ contract Come2Top {
     /*******************************\
     |-*-*-*   ADMINSTRATION   *-*-*-|
     \*******************************/
+    /**
+        @notice Toggles the pause state of the contract.
+        @dev Allows the admin to toggle the pause state of the contract.
+            When the contract is paused, certain functions may be restricted or disabled.
+            Only the admin can call this function to toggle the pause state.
+    */
     function togglePause() external onlyAdmin {
         pause = !pause;
     }
 
+    /**
+        @notice Changes the maximum number of tickets allowed per game.
+        @dev Allows the admin to change the maximum number of tickets allowed per game. 
+            Only the admin can call this function.
+        @param maxTicketsPerGame_ The new maximum number of tickets allowed per game.
+    */
     function changeMaxTicketsPerGame(uint8 maxTicketsPerGame_)
         external
         onlyAdmin
@@ -236,6 +246,12 @@ contract Come2Top {
         maxTicketsPerGame = maxTicketsPerGame_;
     }
 
+    /**
+        @notice Changes the ticket price for joining the game.
+        @dev Allows the admin to change the ticket price for joining the game. 
+            Only the admin can call this function. 
+        @param ticketPrice_ The new ticket price to be set.
+    */
     function changeTicketPrice(uint80 ticketPrice_)
         external
         onlyAdmin
@@ -249,6 +265,14 @@ contract Come2Top {
     /********************************\
     |-*-*-*-*   GAME-LOGIC   *-*-*-*-|
     \********************************/
+    /**
+        @notice Players can buy tickets for betting.
+        @dev Manages the ticket allocation, ownership, and purchase process.
+            Also ensures that the maximum number of tickets specified by {maxTicketsPerGame}
+            and the ticket price set by {ticketPrice} are adhered to.
+            The player joining the game, must be an externally owned account (EOA).
+        @param ticketIDs The ticket IDs that players want to buy for bet.
+    */
     function joinGame(uint8[] calldata ticketIDs) external onlyEOA {
         address sender = msg.sender;
         uint256 gameID = currentGameID;
@@ -328,6 +352,15 @@ contract Come2Top {
         } else GD.soldTickets += uint8(totalTickets);
     }
 
+    /**
+        @notice Allows a player to receive the prize for a winning lottery ticket.
+        @dev This function is used by a player to claim the prize for a winning lottery ticket.
+            It checks various conditions such as the game status, ticket ownership
+            and eligibility for withdrawals before transferring the prize amount to the player.
+            If the game has ended and there are two winners
+            the prize amount is split between the them.
+        @param ticketID The ID of the winning ticket for which the player wants to receive the prize.
+    */
     function receiveLotteryWagedPrize(uint8 ticketID) external {
         uint256 fee;
         address sender = msg.sender;
@@ -413,6 +446,18 @@ contract Come2Top {
         }
     }
 
+    /**
+        @notice Allows a player to make an offer for a ticket.
+        @dev Allows a player to make an offer for a specific ticket.
+            The player specifies the ticket ID and the amount of the offer.
+            If the offered amount is higher than the current ticket value and the last offer
+            the offer is accepted and stored.
+            If a higher offer is made for the same ticket
+            the previous offer is refunded to the maker.
+            The player making the offer, must be an externally owned account (EOA).
+        @param ticketID The ID of the ticket for which the offer is being made.
+        @param amount The amount of the offer in USDT tokens.
+    */
     function makeOffer(uint8 ticketID, uint96 amount) external onlyEOA {
         address sender = msg.sender;
         uint256 gameID = currentGameID;
@@ -459,6 +504,15 @@ contract Come2Top {
         emit OfferMade(sender, ticketID, amount, O.maker);
     }
 
+    /**
+        @notice Allows the ticket owner to accept offers made for a specific ticket.
+        @dev Allows the ticket owner to accept an offer made by an offeror for their benefit.
+            It checks various conditions such as:
+            the game status, ownership of the ticket, existence of an offer for the ticket
+            and the amount of the offer before transferring ownership of the ticket to the offer maker.
+            Only the ticket owner can call this function.
+        @param ticketID The ID of the ticket for which the offer is being accepted.
+    */
     function acceptOffers(uint8 ticketID) external onlyTicketOwner(ticketID) {
         address sender = msg.sender;
         uint256 gameID = currentGameID;
@@ -491,6 +545,14 @@ contract Come2Top {
         );
     }
 
+    /**
+        @notice Allows the offeror to take back their stale offers and receive a refund.
+        @dev Enables the player to withdraw their offers that have not been accepted
+            and receive a refund in return.
+            Only the player who made the offers can call this function.
+        @param to The address to which the refund amount will be transferred.
+            If not provided, the refund will be sent to the caller.
+    */
     function takeBackStaleOffers(address to) external {
         address sender = msg.sender;
         if (to == address(0)) to = sender;
@@ -509,11 +571,22 @@ contract Come2Top {
     /******************************\
     |-*-*-*-*-*   VIEW   *-*-*-*-*-|
     \******************************/
+    /// @custom:see {_currentTicketValue()}
     function currentTicketValue() external view returns (uint256) {
         (, , , bytes memory tickets) = getLatestUpdate();
         return _currentTicketValue(tickets.length);
     }
 
+    /**
+        @notice Returns the current winners with their winning tickets.
+        @dev Allows anyone to retrieve information about the current winners
+            along with their winning tickets. It returns the number of eligible withdrawals
+            and an array of TicketInfo structures containing the ticket ID and owner address
+            for each winning ticket.
+        @return eligibleWithdrawals The number of eligible withdrawals for the current game.
+        @return allTicketsData An array of TicketInfo structures containing the ticket ID
+            and owner address for each winning ticket.
+    */
     function currentWinnersWithTickets()
         external
         view
@@ -546,6 +619,17 @@ contract Come2Top {
         return (_eligibleWithdrawals, allTicketsData);
     }
 
+    /**
+        @notice Retrieves the total value of winning tickets 
+            and the tickets owned by a specific player.
+        @dev Allows anyone to retrieve information about the total value of winning tickets
+            and the tickets owned by a specific player.
+            It calculates the total value of winning tickets owned by the player
+            based on the current ticket value and the number of tickets owned.
+        @param player The address of the player for whom the information is being retrieved.
+        @return totalTicketsValue The total value of winning tickets owned by the player in USDT tokens.
+        @return playerTickets A byte array containing the IDs of the winning tickets owned by the player.
+    */
     function playerWithWinningTickets(address player)
         external
         view
@@ -586,6 +670,7 @@ contract Come2Top {
         totalTicketsValue *= _currentTicketValue(tickets.length);
     }
 
+    /// @custom:see {_getStaleOfferorAmount()}
     function getStaleOfferorAmount(address offeror)
         external
         view
@@ -594,6 +679,14 @@ contract Come2Top {
         return _getStaleOfferorAmount(offeror);
     }
 
+    /**
+        @notice Retrieves a portion of a byte array.
+        @dev Returns a portion of a byte array specified by the start and end indices.
+        @param array The byte array from which the portion is being retrieved.
+        @param from The start index of the portion to be retrieved.
+        @param to The end index of the portion to be retrieved.
+        @return bytes The portion of the byte array specified by the start and end indices.
+    */
     function returnBytedCalldataArray(
         bytes calldata array,
         uint256 from,
@@ -602,6 +695,14 @@ contract Come2Top {
         return array[from:to];
     }
 
+    /**
+        @notice Retrieves the latest update of the current game.
+        @dev It provides essential information about the game's current state.
+        @return stat The current status of the game (notStarted, ticketSale, inProgress, finished).
+        @return eligibleWithdrawals The number of eligible withdrawals for the current wave of the game.
+        @return currentWave The current wave of the game.
+        @return tickets The byte array containing the winning ticket IDs for the current game.
+    */
     function getLatestUpdate()
         public
         view
@@ -661,10 +762,22 @@ contract Come2Top {
     /*****************************\
     |-*-*-*-*   PRIVATE   *-*-*-*-|
     \*****************************/
+
+    /**
+        @dev Allows the contract to transfer USDT tokens to a specified address.
+        @param to The address to which the USDT tokens will be transferred.
+        @param amount The amount of USDT tokens to be transferred.
+    */
     function _transferHelper(address to, uint256 amount) private {
         USDT.transfer(to, amount);
     }
 
+    /**
+        @dev Allows the contract to transfer USDT tokens from one address to another.
+        @param from The address from which the USDT tokens will be transferred.
+        @param to The address to which the USDT tokens will be transferred.
+        @param amount The amount of USDT tokens to be transferred.
+    */
     function _transferFromHelper(
         address from,
         address to,
@@ -673,6 +786,11 @@ contract Come2Top {
         USDT.transferFrom(from, to, amount);
     }
 
+    /**
+        @notice Retrieves the total stale offer amount for a specific offeror.
+        @param offeror The address of the offeror for whom the stale offer amount is being retrieved.
+        @return uint256 The total stale offer amount for the specified offeror.
+    */
     function _getStaleOfferorAmount(address offeror)
         private
         view
@@ -684,6 +802,16 @@ contract Come2Top {
         return (offerorData[offeror].totalOffersValue);
     }
 
+    /**
+        @dev Shuffles a byte array by swapping elements based on a random seed value. 
+            It iterates through the array and generates a random index to swap elements
+            ensuring that the seed value influences the shuffling process.
+            ( Modified version of Fisher-Yates Algo )
+        @param array The byte array to be shuffled.
+        @param randomSeed The random seed value used for shuffling.
+        @param to The index until which shuffling should be performed.
+        @return The shuffled byte array.
+    */
     function _bytedArrayShuffler(
         bytes memory array,
         uint256 randomSeed,
@@ -705,6 +833,13 @@ contract Come2Top {
         return this.returnBytedCalldataArray(array, 0, to);
     }
 
+    /**
+        @dev Deletes a specific index from a byte array.
+            It returns a new byte array excluding the element at the specified index.
+        @param index The index to be deleted from the byte array.
+        @param bytesArray The byte array from which the index will be deleted.
+        @return bytes The new byte array after deleting the specified index.
+    */
     function _deleteOneIndex(uint8 index, bytes memory bytesArray)
         private
         view
@@ -723,6 +858,13 @@ contract Come2Top {
                 : this.returnBytedCalldataArray(bytesArray, 0, index);
     }
 
+    /**
+        @notice Returns the current value of a winning ticket in USDT tokens.
+        @dev Calculates and returns the current value of a ticket
+            by dividing the balance of USDT tokens in the contract
+            by the total number of winning tickets.
+        @return uint256 The current value of a winning ticket in USDT tokens.
+    */
     function _currentTicketValue(uint256 totalTickets)
         private
         view
@@ -732,6 +874,13 @@ contract Come2Top {
         return USDT.balanceOf(THIS) / totalTickets;
     }
 
+    /**
+        @dev Calculates a random seed value based on a series of block hashes.
+            It selects various block hashes retrieved from previous block numbers and performs
+            mathematical operations to calculate a random seed.
+        @param startBlock The block number from where the calculation of the random seed starts.
+        @return uint256 The random seed value generated based on block hashes.
+    */
     function _getRandomSeed(uint256 startBlock) private view returns (uint256) {
         uint256 b = WAVE_DURATION;
         uint256 index = 20;
@@ -798,6 +947,14 @@ contract Come2Top {
         }
     }
 
+    /**
+        @dev Performs a linear search on the provided list of tickets
+            to find a specific ticket ID.
+        @param tickets The list of tickets to search within.
+        @param ticketID The ticket ID to search for.
+        @return bool True if the ticket ID is found in the list, false otherwise.
+        @return uint8 The index of the found ticket ID in the list.
+    */
     function _linearSearch(bytes memory tickets, uint8 ticketID)
         private
         pure
@@ -815,12 +972,25 @@ contract Come2Top {
         return (false, 0);
     }
 
+    /**
+        @dev It verifies that the value is not zero
+            and not greater than the maximum limit predefined as {MAX_TICKETS_PER_GAME}.
+        @param value The value to be checked for maximum tickets per game.
+    */
     function _checkMTPG(uint8 value) private pure {
         _revertOnZeroUint(value);
         if (value > MAX_TICKETS_PER_GAME)
             revert VALUE_CANT_BE_GREATER_THAN(MAX_TICKETS_PER_GAME);
     }
 
+    /**
+        @dev Checks if the provided ticket price value is within the valid range.
+            It verifies that the ticket price value is not lower than the {MIN_TICKET_PRICE} 
+            and not higher than the {MAX_TICKET_PRICE}.
+            If the value is outside the valid range
+            it reverts the transaction with an appropriate error message.
+        @param value The ticket price value to be checked
+    */
     function _checkTP(uint80 value) private pure {
         if (value < MIN_TICKET_PRICE)
             revert VALUE_CANT_BE_LOWER_THAN(MIN_TICKET_PRICE);
@@ -828,14 +998,30 @@ contract Come2Top {
             revert VALUE_CANT_BE_GREATER_THAN(MAX_TICKET_PRICE);
     }
 
+    /**
+        @dev Checks if the provided uint value is zero and reverts the transaction if it is.
+        @param uInt The uint value to be checked.
+    */
     function _revertOnZeroUint(uint256 uInt) private pure {
         if (uInt == 0) revert ZERO_UINT_PROVIDED();
     }
 
+    /**
+        @dev Checks the current status of the game and reverts the transaction
+            if the game status is not in progress.
+        @param stat The current status of the game (notStarted, ticketSale, inProgress, finished).
+    */
     function _onlyInProgressMode(Status stat) private pure {
         if (stat != Status.inProgress) revert ONLY_IN_PROGRESS_MODE(stat);
     }
 
+    /**
+        @dev Performs a linear search on the provided list of tickets to find the specific ticket ID.
+            If the ticket ID is not found in the list of tickets, the transaction will be reverted.
+        @param tickets The list of tickets to search within.
+        @param ticketID The ticket ID to search for.
+        @return uint8 The index of the found ticket ID in the list.
+    */
     function _onlyWinnerTicket(bytes memory tickets, uint8 ticketID)
         private
         pure
@@ -845,4 +1031,40 @@ contract Come2Top {
         if (!found) revert ONLY_WINNER_TICKET(ticketID);
         return index;
     }
+}
+
+/// @notice IUSD interface, which is used for easier interactions with USDT contract.
+interface IUSDT {
+    /**
+        @notice Allows the contract to transfer USDT tokens to a specified address.
+        @dev Allows the contract to transfer USDT tokens to a specified address.
+        @param to The address to which the USDT tokens will be transferred.
+        @param amount The amount of USDT tokens to be transferred.
+    */
+    function transfer(address to, uint256 amount)
+        external
+        returns (bool);
+
+    /**
+        @notice Allows the contract to transfer USDT tokens from one address to another.
+        @dev Allows the contract to transfer USDT tokens from one address to another.
+        @param from The address from which the USDT tokens will be transferred.
+        @param to The address to which the USDT tokens will be transferred.
+        @param amount The amount of USDT tokens to be transferred.
+        @return bool indicating if the transfer was successful or not.
+    */
+    function transferFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (bool);
+
+    /**
+        @notice Retrieves the balance of USDT tokens for a specific account.
+        @dev Allows anyone to retrieve the balance of USDT tokens 
+            for a specific account by calling the balanceOf function of the IUSDT interface.
+        @param account The address of the account for which the balance is being retrieved.
+        @return uint256 The balance of USDT tokens for the specified account.
+    */
+    function balanceOf(address account) external view returns (uint256);
 }
