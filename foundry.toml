@@ -5,12 +5,8 @@ libs = ["lib"]
 solc = "0.8.18"
 via_ir = true
 optimizer = true
-optimizer_runs = 10
+optimizer_runs = 221
 fs_permissions = [{ access = "read", path = "./"}]
-remappings = [
-  '@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/',
-  '@solmate/=lib/solmate/src/',
-]
 
 [rpc_endpoints]
 # mainnets
