@@ -3,22 +3,25 @@ pragma solidity 0.8.18;
 
 /**
     @author @FarajiOranj
-    @custom:auditor @MatinR1
-
     @title Come2Top Offerors Treasury.
     @dev Contract will be used by Come2Top contract
         as a seperate Treasury for Offerors.
 */
 contract C2Treasury {
-    bool private _$;
+    bool private initialized;
 
     fallback() external {
-        (bool $, ) = abi.decode(msg.data, (address)).call(
-            abi.encodeWithSelector(0x095ea7b3, msg.sender, type(uint256).max)
+        address spender = msg.sender;
+        bytes4 approveSelector = 0x095ea7b3;
+        uint256 approveAmount = type(uint256).max;
+        address token = abi.decode(msg.data, (address));
+
+        (bool success, ) = token.call(
+            abi.encodeWithSelector(approveSelector, spender, approveAmount)
         );
 
-        assert($ && !_$);
+        assert(success && !initialized);
 
-        _$ = true;
+        initialized = true;
     }
 }

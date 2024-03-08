@@ -1,0 +1,964 @@
+[
+	{
+		"inputs": [
+			{
+				"internalType": "uint8",
+				"name": "mtpw",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint80",
+				"name": "tp",
+				"type": "uint80"
+			},
+			{
+				"internalType": "address",
+				"name": "usdt",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "treasury",
+				"type": "address"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"inputs": [],
+		"name": "APROVE_OPERATION_FAILED",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "ticketLength",
+				"type": "uint256"
+			}
+		],
+		"name": "CHECK_TICKETS_LENGTH",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "remainingTickets",
+				"type": "uint256"
+			}
+		],
+		"name": "FEWER_TICKETS_LEFT",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "NO_AMOUNT_TO_REFUND",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "OFFER_NOT_FOUND",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "ONLY_ADMIN",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "ONLY_EOA",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "offer",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "lastOfferValue",
+				"type": "uint256"
+			}
+		],
+		"name": "ONLY_HIGHER_THAN_CURRENT_OFFER_VALUE",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "offer",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "ticketValue",
+				"type": "uint256"
+			}
+		],
+		"name": "ONLY_HIGHER_THAN_CURRENT_TICKET_VALUE",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bool",
+				"name": "isPaused",
+				"type": "bool"
+			}
+		],
+		"name": "ONLY_PAUSED_AND_FINISHED_MODE",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "ticketID",
+				"type": "uint256"
+			}
+		],
+		"name": "ONLY_TICKET_OWNER",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bool",
+				"name": "isPaused",
+				"type": "bool"
+			}
+		],
+		"name": "ONLY_UNPAUSED_OR_TICKET_SALE_MODE",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "ticketID",
+				"type": "uint256"
+			}
+		],
+		"name": "ONLY_WINNER_TICKET",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "currentStat",
+				"type": "uint8"
+			}
+		],
+		"name": "ONLY_WITHDRAWABLE_MODE",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "PARTICIPATED_BEFORE",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "PLAYER_HAS_NO_TICKETS",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "SLECTED_TICKETS_SOLDOUT_BEFORE",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "givenValue",
+				"type": "uint256"
+			}
+		],
+		"name": "VALUE_CANT_BE_GREATER_THAN",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "givenValue",
+				"type": "uint256"
+			}
+		],
+		"name": "VALUE_CANT_BE_LOWER_THAN",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "WAIT_FOR_FIRST_WAVE",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "WAIT_FOR_NEXT_WAGER_MATCH",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "ZERO_ADDRESS_PROVIDED",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "ZERO_UINT_PROVIDED",
+		"type": "error"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "ticketID",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "lastOwner",
+				"type": "address"
+			}
+		],
+		"name": "OfferAccepted",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "maker",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "ticketID",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "lastOfferor",
+				"type": "address"
+			}
+		],
+		"name": "OfferMade",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "maker",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "StaleOffersTookBack",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "buyer",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "bytes",
+				"name": "ticketIDs",
+				"type": "bytes"
+			}
+		],
+		"name": "TicketsSold",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "wagerID",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "winner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "ticketID",
+				"type": "uint256"
+			}
+		],
+		"name": "WagerFinished",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "wagerID",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "address[2]",
+				"name": "winners",
+				"type": "address[2]"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256[2]",
+				"name": "amounts",
+				"type": "uint256[2]"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256[2]",
+				"name": "ticketIDs",
+				"type": "uint256[2]"
+			}
+		],
+		"name": "WagerFinished",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "wagerID",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "startedBlockNo",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "prizeAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "WagerStarted",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "wagerID",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "winner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "ticketID",
+				"type": "uint256"
+			}
+		],
+		"name": "WagerUpdated",
+		"type": "event"
+	},
+	{
+		"inputs": [],
+		"name": "ADMIN",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "MAGIC_VALUE",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "THIS",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "TICKET256",
+		"outputs": [
+			{
+				"internalType": "bytes",
+				"name": "",
+				"type": "bytes"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "TREASURY",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "USDT",
+		"outputs": [
+			{
+				"internalType": "contract IUSDT",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint8",
+				"name": "ticketID",
+				"type": "uint8"
+			}
+		],
+		"name": "acceptOffers",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint8",
+				"name": "maxTicketsPerWager_",
+				"type": "uint8"
+			}
+		],
+		"name": "changeMaxTicketsPerWager",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint80",
+				"name": "ticketPrice_",
+				"type": "uint80"
+			}
+		],
+		"name": "changeTicketPrice",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "currentTicketValue",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "currentWagerID",
+		"outputs": [
+			{
+				"internalType": "uint160",
+				"name": "",
+				"type": "uint160"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "currentWinnersWithTickets",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "eligibleWithdrawals",
+				"type": "int256"
+			},
+			{
+				"components": [
+					{
+						"internalType": "uint256",
+						"name": "ticketID",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					}
+				],
+				"internalType": "struct Come2Top.TicketInfo[]",
+				"name": "",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getLatestUpdate",
+		"outputs": [
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "stat",
+				"type": "uint8"
+			},
+			{
+				"internalType": "int256",
+				"name": "eligibleWithdrawals",
+				"type": "int256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "currentWave",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes",
+				"name": "tickets",
+				"type": "bytes"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "offeror",
+				"type": "address"
+			}
+		],
+		"name": "getStaleOfferorAmount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint8[]",
+				"name": "ticketIDs",
+				"type": "uint8[]"
+			}
+		],
+		"name": "joinWager",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint8",
+				"name": "ticketID",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint96",
+				"name": "amount",
+				"type": "uint96"
+			}
+		],
+		"name": "makeOffer",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "maxTicketsPerWager",
+		"outputs": [
+			{
+				"internalType": "uint8",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint8",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"name": "offer",
+		"outputs": [
+			{
+				"internalType": "uint96",
+				"name": "amount",
+				"type": "uint96"
+			},
+			{
+				"internalType": "address",
+				"name": "maker",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "offerorData",
+		"outputs": [
+			{
+				"internalType": "uint96",
+				"name": "latestWagerIDoffersValue",
+				"type": "uint96"
+			},
+			{
+				"internalType": "uint160",
+				"name": "latestWagerID",
+				"type": "uint160"
+			},
+			{
+				"internalType": "uint256",
+				"name": "totalOffersValue",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "pause",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "player",
+				"type": "address"
+			}
+		],
+		"name": "playerWithWinningTickets",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "totalTicketsValue",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes",
+				"name": "playerTickets",
+				"type": "bytes"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint8",
+				"name": "ticketID",
+				"type": "uint8"
+			}
+		],
+		"name": "receiveLotteryWagedPrize",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes",
+				"name": "array",
+				"type": "bytes"
+			},
+			{
+				"internalType": "uint256",
+				"name": "from",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "to",
+				"type": "uint256"
+			}
+		],
+		"name": "returnBytedCalldataArray",
+		"outputs": [
+			{
+				"internalType": "bytes",
+				"name": "",
+				"type": "bytes"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			}
+		],
+		"name": "takeBackStaleOffers",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint8",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"name": "ticketOwnership",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "ticketPrice",
+		"outputs": [
+			{
+				"internalType": "uint80",
+				"name": "",
+				"type": "uint80"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "togglePause",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "totalPlayerTickets",
+		"outputs": [
+			{
+				"internalType": "uint8",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "wagerData",
+		"outputs": [
+			{
+				"internalType": "int8",
+				"name": "eligibleWithdrawals",
+				"type": "int8"
+			},
+			{
+				"internalType": "uint8",
+				"name": "soldTickets",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint8",
+				"name": "updatedWave",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint216",
+				"name": "startedBlock",
+				"type": "uint216"
+			},
+			{
+				"internalType": "bytes",
+				"name": "tickets",
+				"type": "bytes"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+]
