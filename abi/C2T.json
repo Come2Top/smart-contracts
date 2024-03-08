@@ -807,7 +807,7 @@
 				"type": "uint8"
 			}
 		],
-		"name": "receiveLotteryWagedPrize",
+		"name": "receiveWagerPrize",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"

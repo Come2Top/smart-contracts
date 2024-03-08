@@ -73,12 +73,12 @@ contract Come2Top {
     uint256 private constant MAX_TICKET_PRICE = 1e9;
     uint256 private constant MIN_TICKET_PRICE = 1e6;
     uint256 private constant MAX_PARTIES = 256;
-    uint256 private constant WAVE_ELIGIBLES_TIME = 180;
+    uint256 private constant WAVE_ELIGIBLES_TIME = 240;
     uint256 private constant BASIS = 100;
     uint256 private constant OFFEREE_BENEFICIARY = 95;
     uint256 private constant WAVE_DURATION = 71;
     uint256 private constant TOTAL_BLOCK_HASHES = 21;
-    uint256 private constant MAX_TICKETS_PER_WAGER = 8;
+    uint256 private constant MAX_MAX_TICKETS_PER_WAGER = 8;
     int8 private constant N_ONE = -1;
     uint8 private constant ZERO = 0;
     uint8 private constant ONE = 1;
@@ -378,7 +378,7 @@ contract Come2Top {
             the prize amount is split between them.
         @param ticketID The ID of the winning ticket for which the player wants to receive the prize.
     */
-    function receiveLotteryWagedPrize(uint8 ticketID) external {
+    function receiveWagerPrize(uint8 ticketID) external {
         address sender = msg.sender;
         uint256 wagerID = currentWagerID;
         uint256 balance = USDT.balanceOf(THIS);
@@ -1064,14 +1064,14 @@ contract Come2Top {
 
     /**
         @dev It verifies that the value is not zero
-            and not greater than the maximum limit predefined as {MAX_TICKETS_PER_WAGER}.
+            and not greater than the maximum limit predefined as {MAX_MAX_TICKETS_PER_WAGER}.
         @param value The value to be checked for maximum tickets per wager.
     */
     function _checkMTPW(uint8 value) private pure {
         _revertOnZeroUint(value);
 
-        if (value > MAX_TICKETS_PER_WAGER)
-            revert VALUE_CANT_BE_GREATER_THAN(MAX_TICKETS_PER_WAGER);
+        if (value > MAX_MAX_TICKETS_PER_WAGER)
+            revert VALUE_CANT_BE_GREATER_THAN(MAX_MAX_TICKETS_PER_WAGER);
     }
 
     /**
