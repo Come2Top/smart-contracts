@@ -20,7 +20,7 @@ contract C2Treasury {
             abi.encodeWithSelector(approveSelector, spender, approveAmount)
         );
 
-        assert(success && !initialized);
+        require(success && !initialized);
 
         initialized = true;
     }
