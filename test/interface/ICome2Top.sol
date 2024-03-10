@@ -124,6 +124,8 @@ interface Interface {
     \******************************/
     function TICKET256() external view returns (bytes memory);
 
+    function MAGIC_VALUE() external view returns (uint256);
+
     function THIS() external view returns (address);
 
     function ADMIN() external view returns (address);
@@ -131,8 +133,6 @@ interface Interface {
     function USDT() external view returns (address);
 
     function TREASURY() external view returns (address);
-
-    function MAGIC_VALUE() external view returns (uint256);
 
     function pause() external view returns (bool);
 
