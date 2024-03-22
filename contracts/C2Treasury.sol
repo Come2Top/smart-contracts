@@ -1,8 +1,8 @@
-//  SPDX-License-Identifier: UNLICENSED
+//  SPDX-License-Identifier: -- Risk-Labs --
 pragma solidity 0.8.18;
 
 /**
-    @author @FarajiOranj
+    @author @Risk-Labs
     @title Come2Top Offerors Treasury.
     @dev Contract will be used by Come2Top contract
         as a seperate Treasury for Offerors.
