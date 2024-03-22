@@ -1,7 +1,4 @@
-## Mainnet Deployment:
+## Mainnet: 0x4E1Be77E61Cf67D7eD7c8FeCA530dc3741F626eE
+## Testnet: 0xACa608EFDA3a70a13E65D7c623bC9c85aC2e9E31
 
-**C2Treasury: 0xa45e147208e0e04D4e1BfAEEA4e27a85b853Ec4B**
-
-**Come2Top: 0x19c6224D3d4Ba9AE572660c1d139524ecDb52692**
-
-## Test: ``forge test <verbosity>``
+## Test: ``forge test -vv``
