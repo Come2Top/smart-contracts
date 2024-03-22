@@ -59,11 +59,6 @@
 	},
 	{
 		"inputs": [],
-		"name": "OFFER_NOT_FOUND",
-		"type": "error"
-	},
-	{
-		"inputs": [],
 		"name": "ONLY_ADMIN",
 		"type": "error"
 	},
@@ -242,6 +237,12 @@
 				"internalType": "address",
 				"name": "lastOwner",
 				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "ticketValue",
+				"type": "uint256"
 			}
 		],
 		"name": "OfferAccepted",
@@ -273,6 +274,12 @@
 				"internalType": "address",
 				"name": "lastOfferor",
 				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "ticketValue",
+				"type": "uint256"
 			}
 		],
 		"name": "OfferMade",
@@ -481,7 +488,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "TICKET256",
+		"name": "TICKET",
 		"outputs": [
 			{
 				"internalType": "bytes",
@@ -522,19 +529,6 @@
 		"inputs": [
 			{
 				"internalType": "uint8",
-				"name": "ticketID",
-				"type": "uint8"
-			}
-		],
-		"name": "acceptOffers",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint8",
 				"name": "maxTicketsPerWager_",
 				"type": "uint8"
 			}
@@ -559,19 +553,6 @@
 	},
 	{
 		"inputs": [],
-		"name": "currentTicketValue",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
 		"name": "currentWagerID",
 		"outputs": [
 			{
@@ -584,38 +565,21 @@
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "currentWinnersWithTickets",
-		"outputs": [
+		"inputs": [
 			{
-				"internalType": "int256",
-				"name": "eligibleWithdrawals",
-				"type": "int256"
-			},
-			{
-				"components": [
-					{
-						"internalType": "uint256",
-						"name": "ticketID",
-						"type": "uint256"
-					},
-					{
-						"internalType": "address",
-						"name": "owner",
-						"type": "address"
-					}
-				],
-				"internalType": "struct Come2Top.TicketInfo[]",
-				"name": "",
-				"type": "tuple[]"
+				"internalType": "uint8[]",
+				"name": "ticketIDs",
+				"type": "uint8[]"
 			}
 		],
-		"stateMutability": "view",
+		"name": "join",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
 		"inputs": [],
-		"name": "getLatestUpdate",
+		"name": "latestUpdate",
 		"outputs": [
 			{
 				"internalType": "enum Come2Top.Status",
@@ -639,38 +603,6 @@
 			}
 		],
 		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "offeror",
-				"type": "address"
-			}
-		],
-		"name": "getStaleOfferorAmount",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint8[]",
-				"name": "ticketIDs",
-				"type": "uint8[]"
-			}
-		],
-		"name": "joinWager",
-		"outputs": [],
-		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -807,7 +739,7 @@
 				"type": "uint8"
 			}
 		],
-		"name": "receiveWagerPrize",
+		"name": "redeem",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -830,7 +762,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "returnBytedCalldataArray",
+		"name": "sliceBytedArray",
 		"outputs": [
 			{
 				"internalType": "bytes",
@@ -839,6 +771,25 @@
 			}
 		],
 		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "offeror",
+				"type": "address"
+			}
+		],
+		"name": "staleOffers",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -886,6 +837,19 @@
 				"internalType": "uint80",
 				"name": "",
 				"type": "uint80"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "ticketValue",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",
@@ -956,6 +920,36 @@
 				"internalType": "bytes",
 				"name": "tickets",
 				"type": "bytes"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "winnersWithTickets",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "eligibleWithdrawals",
+				"type": "int256"
+			},
+			{
+				"components": [
+					{
+						"internalType": "uint256",
+						"name": "ticketID",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					}
+				],
+				"internalType": "struct Come2Top.TicketInfo[]",
+				"name": "",
+				"type": "tuple[]"
 			}
 		],
 		"stateMutability": "view",
