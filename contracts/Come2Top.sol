@@ -69,16 +69,16 @@ contract Come2Top {
     address public immutable ADMIN = tx.origin;
     address public immutable THIS = address(this);
     uint256 public immutable MAGIC_VALUE;
+    uint256 private immutable MAX_PARTIES = TICKET_SIZE.length;
     address private constant ZERO_ADDRESS = address(0x0);
     uint256 private constant MAX_TICKET_PRICE = 1e9;
     uint256 private constant MIN_TICKET_PRICE = 1e6;
-    uint256 private constant MAX_PARTIES = 256;
-    uint256 private constant WAVE_ELIGIBLES_TIME = 240;
+    uint256 private constant WAVE_ELIGIBLES_TIME = 420;
     uint256 private constant BASIS = 100;
     uint256 private constant OFFEREE_BENEFICIARY = 95;
     uint256 private constant WAVE_DURATION = 71;
     uint256 private constant TOTAL_BLOCK_HASHES = 21;
-    uint256 private constant MAX_MAX_TICKETS_PER_WAGER = 8;
+    uint256 private constant MAX_MAX_TICKETS_PER_WAGER = 4;
     int8 private constant N_ONE = -1;
     uint8 private constant ZERO = 0;
     uint8 private constant ONE = 1;
@@ -89,7 +89,7 @@ contract Come2Top {
     uint8 private constant TEN = 10;
     uint8 private constant ELEVEN = 11;
     uint8 private constant TWENTY = 20;
-    bytes public constant TICKET256 =
+    bytes public constant TICKET_SIZE =
         hex"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
 
     /********************************\
@@ -128,14 +128,16 @@ contract Come2Top {
         address indexed maker,
         uint256 indexed ticketID,
         uint256 indexed amount,
-        address lastOfferor
+        address lastOfferor,
+        uint256 ticketValue
     );
 
     event OfferAccepted(
         address indexed newOwner,
         uint256 indexed ticketID,
         uint256 indexed amount,
-        address lastOwner
+        address lastOwner,
+        uint256 ticketValue
     );
 
     event StaleOffersTookBack(
@@ -173,7 +175,6 @@ contract Come2Top {
     error PARTICIPATED_BEFORE();
     error PLAYER_HAS_NO_TICKETS();
     error NO_AMOUNT_TO_REFUND();
-    error OFFER_NOT_FOUND();
     error WAIT_FOR_NEXT_WAGER_MATCH();
     error WAIT_FOR_FIRST_WAVE();
 
@@ -188,13 +189,6 @@ contract Come2Top {
 
     modifier onlyAdmin() {
         if (msg.sender != ADMIN) revert ONLY_ADMIN();
-
-        _;
-    }
-
-    modifier onlyTicketOwner(uint8 ticketID) {
-        if (msg.sender != ticketOwnership[currentWagerID][ticketID])
-            revert ONLY_TICKET_OWNER(ticketID);
 
         _;
     }
@@ -226,7 +220,7 @@ contract Come2Top {
         USDT = IUSDT(usdt);
         TREASURY = treasury;
         MAGIC_VALUE = uint160(address(this));
-        wagerData[ZERO].tickets = TICKET256;
+        wagerData[ZERO].tickets = TICKET_SIZE;
 
         (bool ok, ) = treasury.call(abi.encode(usdt));
 
@@ -289,7 +283,7 @@ contract Come2Top {
             The player joining the wager, must be an externally owned account (EOA).
         @param ticketIDs The ticket IDs that players want to buy for a wager.
     */
-    function joinWager(uint8[] calldata ticketIDs) external onlyEOA {
+    function join(uint8[] calldata ticketIDs) external onlyEOA {
         address sender = msg.sender;
         uint256 wagerID = currentWagerID;
         uint256 neededUSDT = ticketPrice;
@@ -305,7 +299,7 @@ contract Come2Top {
             }
 
             BD = wagerData[wagerID];
-            BD.tickets = TICKET256;
+            BD.tickets = TICKET_SIZE;
         } else BD = wagerData[wagerID];
 
         uint256 remainingTickets = MAX_PARTIES - BD.soldTickets;
@@ -363,22 +357,34 @@ contract Come2Top {
         if (totalTickets == remainingTickets) {
             uint256 currentBlock = block.number;
             BD.startedBlock = uint216(currentBlock);
-            BD.tickets = TICKET256;
+            BD.tickets = TICKET_SIZE;
 
             emit WagerStarted(wagerID, currentBlock, MAX_PARTIES * neededUSDT);
         } else BD.soldTickets += uint8(totalTickets);
     }
 
     /**
-        @notice Allows a player to receive the prize for a winning lottery ticket.
-        @dev This function is used by a player to claim the prize for a winning lottery ticket.
-            It checks various conditions such as the wager status, ticket ownership
-            and eligibility for withdrawals before transferring the prize amount to the player.
-            If the wager has ended and there are two winners
-            the prize amount is split between them.
-        @param ticketID The ID of the winning ticket for which the player wants to receive the prize.
+        @notice Allows the ticket owner to either accept an offer made for their ticket 
+            or claim the prize for a winning lottery ticket. 
+        @dev
+            1. When accepting an offer:
+                If the player has received an offer for their ticket
+                    that is higher than the current ticket value 
+                    and the last offer, they can accept the offer.
+                The function transfers the ownership of the ticket 
+                    to the offer maker and transfers the offered amount 
+                    to the ticket owner.
+
+            2. When claiming a prize for a winning lottery ticket:
+                If the ticket owner tries to claim the prize for a winning ticket
+                    the function checks if the wager status allows for withdrawals
+                    if the player owns the ticket
+                    and if the ticket is eligible for withdrawals.
+                If the wager has ended and there are two winners
+                    the prize amount is split between them.
+        @param ticketID The ID of the ticket for which the offer is being accepted.
     */
-    function receiveWagerPrize(uint8 ticketID) external {
+    function redeem(uint8 ticketID) external {
         address sender = msg.sender;
         uint256 wagerID = currentWagerID;
         uint256 balance = USDT.balanceOf(THIS);
@@ -389,14 +395,49 @@ contract Come2Top {
             int256 eligibleWithdrawals,
             uint256 currentWave,
             bytes memory tickets
-        ) = getLatestUpdate();
+        ) = latestUpdate();
+
+        Offer memory O = offer[wagerID][ticketID];
 
         _onlyWithrawable(currentWave, stat);
 
         uint8 index = _onlyWinnerTicket(tickets, ticketID);
 
+        if (
+            O.amount >= _ticketValue(tickets.length) &&
+            O.maker != ZERO_ADDRESS &&
+            tickets.length != ONE
+        ) {
+            if (sender != ticketOwnership[currentWagerID][ticketID])
+                revert ONLY_TICKET_OWNER(ticketID);
+
+            delete offer[wagerID][ticketID].maker;
+
+            unchecked {
+                offerorData[O.maker].latestWagerIDoffersValue -= O.amount;
+                offerorData[O.maker].totalOffersValue -= O.amount;
+                totalPlayerTickets[wagerID][sender]--;
+                totalPlayerTickets[wagerID][O.maker]++;
+            }
+
+            ticketOwnership[wagerID][ticketID] = O.maker;
+
+            _transferFromHelper(TREASURY, THIS, O.amount);
+            _transferHelper(sender, (O.amount * OFFEREE_BENEFICIARY) / BASIS);
+
+            emit OfferAccepted(
+                O.maker,
+                ticketID,
+                (O.amount * OFFEREE_BENEFICIARY) / BASIS,
+                sender,
+                _ticketValue(tickets.length)
+            );
+
+            return;
+        }
+
         if (tickets.length < THREE) {
-            fee = balance / BASIS;
+            fee = (balance / BASIS) * TWO;
             wagerData[wagerID].tickets = tickets;
             wagerData[wagerID].eligibleWithdrawals = N_ONE;
 
@@ -410,15 +451,22 @@ contract Come2Top {
 
                 _transferHelper(ticketOwner, balance - fee);
 
-                emit WagerFinished(wagerID, ticketOwner, balance - fee, ticketID);
+                emit WagerFinished(
+                    wagerID,
+                    ticketOwner,
+                    balance - fee,
+                    ticketID
+                );
             } else {
                 if (sender != ticketOwnership[currentWagerID][ticketID])
                     revert ONLY_TICKET_OWNER(ticketID);
 
-                address winner1 = ticketOwnership[wagerID][uint8(tickets[ZERO])];
+                address winner1 = ticketOwnership[wagerID][
+                    uint8(tickets[ZERO])
+                ];
                 address winner2 = ticketOwnership[wagerID][uint8(tickets[ONE])];
-                uint256 winner2Amount = (balance - fee) / TWO;
-                uint256 winner1Amount = balance - fee - winner2Amount;
+                uint256 winner1Amount = (balance - fee) / TWO;
+                uint256 winner2Amount = balance - fee - winner1Amount;
 
                 delete ticketOwnership[wagerID][uint8(tickets[ZERO])];
                 delete ticketOwnership[wagerID][uint8(tickets[ONE])];
@@ -447,7 +495,7 @@ contract Come2Top {
 
             totalPlayerTickets[wagerID][sender]--;
 
-            wagerData[wagerID].tickets = _deleteOneIndex(index, tickets);
+            wagerData[wagerID].tickets = _deleteIndex(index, tickets);
             wagerData[wagerID].eligibleWithdrawals =
                 int8(eligibleWithdrawals) +
                 N_ONE;
@@ -456,12 +504,17 @@ contract Come2Top {
                 wagerData[wagerID].updatedWave = uint8(currentWave);
 
             uint256 idealWinnerPrize = balance / tickets.length;
-            fee = idealWinnerPrize / BASIS;
+            fee = (idealWinnerPrize / BASIS) * TWO;
 
             _transferHelper(ADMIN, fee);
             _transferHelper(sender, idealWinnerPrize - fee);
 
-            emit WagerUpdated(wagerID, sender, idealWinnerPrize - fee, ticketID);
+            emit WagerUpdated(
+                wagerID,
+                sender,
+                idealWinnerPrize - fee,
+                ticketID
+            );
         }
     }
 
@@ -486,17 +539,18 @@ contract Come2Top {
             ,
             uint256 currentWave,
             bytes memory tickets
-        ) = getLatestUpdate();
+        ) = latestUpdate();
 
-        uint256 ticketValue = _currentTicketValue(tickets.length);
+        uint256 TV = _ticketValue(tickets.length);
+        TV += (TV * FIVE) / BASIS;
         Offer memory O = offer[wagerID][ticketID];
-        uint256 offerorStaleAmount = _getStaleOfferorAmount(sender);
+        uint256 offerorStaleAmount = _staleOffers(sender);
 
         _onlyWithrawable(currentWave, stat);
         _onlyWinnerTicket(tickets, ticketID);
 
-        if (amount < ticketValue)
-            revert ONLY_HIGHER_THAN_CURRENT_TICKET_VALUE(amount, ticketValue);
+        if (amount < TV)
+            revert ONLY_HIGHER_THAN_CURRENT_TICKET_VALUE(amount, TV);
 
         if (amount <= O.amount)
             revert ONLY_HIGHER_THAN_CURRENT_OFFER_VALUE(amount, O.amount);
@@ -517,7 +571,7 @@ contract Come2Top {
             offerorData[sender].latestWagerIDoffersValue = uint96(amount);
         } else offerorData[sender].latestWagerIDoffersValue += uint96(amount);
 
-        if (O.amount != ZERO) {
+        if (O.maker != ZERO_ADDRESS) {
             _transferFromHelper(TREASURY, O.maker, O.amount);
 
             unchecked {
@@ -528,49 +582,12 @@ contract Come2Top {
 
         offer[wagerID][ticketID] = Offer(amount, sender);
 
-        emit OfferMade(sender, ticketID, amount, O.maker);
-    }
-
-    /**
-        @notice Allows the ticket owner to accept offers made for a specific ticket.
-        @dev Allows the ticket owner to accept an offer made by an offeror for their benefit.
-            It checks various conditions such as:
-            the wager status, ownership of the ticket, existence of an offer for the ticket
-            and the amount of the offer before transferring ownership of the ticket to the offer maker.
-            Only the ticket owner can call this function.
-        @param ticketID The ID of the ticket for which the offer is being accepted.
-    */
-    function acceptOffers(uint8 ticketID) external onlyTicketOwner(ticketID) {
-        address sender = msg.sender;
-        uint256 wagerID = currentWagerID;
-        Offer memory O = offer[wagerID][ticketID];
-
-        (Status stat, , , bytes memory tickets) = getLatestUpdate();
-
-        _onlyWithrawable(ONE, stat);
-        _onlyWinnerTicket(tickets, ticketID);
-
-        if (O.amount == ZERO) revert OFFER_NOT_FOUND();
-
-        delete offer[wagerID][ticketID];
-
-        unchecked {
-            offerorData[O.maker].latestWagerIDoffersValue -= O.amount;
-            offerorData[O.maker].totalOffersValue -= O.amount;
-            totalPlayerTickets[wagerID][sender]--;
-            totalPlayerTickets[wagerID][O.maker]++;
-        }
-
-        ticketOwnership[wagerID][ticketID] = O.maker;
-
-        _transferFromHelper(TREASURY, THIS, O.amount);
-        _transferHelper(sender, (O.amount * OFFEREE_BENEFICIARY) / BASIS);
-
-        emit OfferAccepted(
-            O.maker,
+        emit OfferMade(
+            sender,
             ticketID,
-            (O.amount * OFFEREE_BENEFICIARY) / BASIS,
-            sender
+            amount,
+            O.maker,
+            _ticketValue(tickets.length)
         );
     }
 
@@ -587,7 +604,7 @@ contract Come2Top {
 
         if (to == ZERO_ADDRESS) to = sender;
 
-        uint256 refundableAmount = _getStaleOfferorAmount(sender);
+        uint256 refundableAmount = _staleOffers(sender);
 
         if (refundableAmount == ZERO) revert NO_AMOUNT_TO_REFUND();
 
@@ -601,13 +618,13 @@ contract Come2Top {
     /******************************\
     |-*-*-*-*-*   VIEW   *-*-*-*-*-|
     \******************************/
-    /// @custom:see {_currentTicketValue()}
-    function currentTicketValue() external view returns (uint256) {
-        (Status stat, , , bytes memory tickets) = getLatestUpdate();
+    /// @custom:see {_ticketValue()}
+    function ticketValue() external view returns (uint256) {
+        (Status stat, , , bytes memory tickets) = latestUpdate();
 
         if (stat == Status.ticketSale) return ticketPrice;
 
-        return _currentTicketValue(tickets.length);
+        return _ticketValue(tickets.length);
     }
 
     /**
@@ -620,7 +637,7 @@ contract Come2Top {
         @return allTicketsData An array of TicketInfo structures containing the ticket ID
             and owner address for each winning ticket.
     */
-    function currentWinnersWithTickets()
+    function winnersWithTickets()
         external
         view
         returns (int256 eligibleWithdrawals, TicketInfo[] memory)
@@ -632,7 +649,7 @@ contract Come2Top {
             int256 _eligibleWithdrawals,
             uint256 currentWave,
             bytes memory tickets
-        ) = getLatestUpdate();
+        ) = latestUpdate();
 
         _onlyWithrawable(currentWave, stat);
 
@@ -679,7 +696,7 @@ contract Come2Top {
             ,
             uint256 currentWave,
             bytes memory tickets
-        ) = getLatestUpdate();
+        ) = latestUpdate();
 
         uint8 latestIndex = uint8(tickets.length - ONE);
 
@@ -709,16 +726,12 @@ contract Come2Top {
             }
         }
 
-        totalTicketsValue *= _currentTicketValue(tickets.length);
+        totalTicketsValue *= _ticketValue(tickets.length);
     }
 
-    /// @custom:see {_getStaleOfferorAmount()}
-    function getStaleOfferorAmount(address offeror)
-        external
-        view
-        returns (uint256)
-    {
-        return _getStaleOfferorAmount(offeror);
+    /// @custom:see {_staleOffers()}
+    function staleOffers(address offeror) external view returns (uint256) {
+        return _staleOffers(offeror);
     }
 
     /**
@@ -729,7 +742,7 @@ contract Come2Top {
         @param to The end index of the portion to be retrieved.
         @return bytes The portion of the byte array specified by the start and end indices.
     */
-    function returnBytedCalldataArray(
+    function sliceBytedArray(
         bytes calldata array,
         uint256 from,
         uint256 to
@@ -745,7 +758,7 @@ contract Come2Top {
         @return currentWave The current wave of the wager.
         @return tickets The byte array containing the winning ticket IDs for the current wager.
     */
-    function getLatestUpdate()
+    function latestUpdate()
         public
         view
         returns (
@@ -801,9 +814,9 @@ contract Come2Top {
                         accumulatedBlocks <
                     currentBlock
                 ) {
-                    tickets = _bytedArrayShuffler(
+                    tickets = _shuffleBytedArray(
                         tickets,
-                        _getRandomSeed(
+                        _calculateRandomSeed(
                             BD.startedBlock +
                                 (lastUpdatedWave * WAVE_DURATION) +
                                 accumulatedBlocks
@@ -871,11 +884,7 @@ contract Come2Top {
         @param offeror The address of the offeror for whom the stale offer amount is being retrieved.
         @return uint256 The total stale offer amount for the specified offeror.
     */
-    function _getStaleOfferorAmount(address offeror)
-        private
-        view
-        returns (uint256)
-    {
+    function _staleOffers(address offeror) private view returns (uint256) {
         if (offerorData[offeror].latestWagerID == currentWagerID)
             return (offerorData[offeror].totalOffersValue -
                 offerorData[offeror].latestWagerIDoffersValue);
@@ -893,7 +902,7 @@ contract Come2Top {
         @param to The index until which shuffling should be performed.
         @return The shuffled byte array.
     */
-    function _bytedArrayShuffler(
+    function _shuffleBytedArray(
         bytes memory array,
         uint256 randomSeed,
         uint256 to
@@ -911,7 +920,7 @@ contract Come2Top {
             }
         }
 
-        return this.returnBytedCalldataArray(array, ZERO, to);
+        return this.sliceBytedArray(array, ZERO, to);
     }
 
     /**
@@ -921,7 +930,7 @@ contract Come2Top {
         @param bytesArray The byte array from which the index will be deleted.
         @return bytes The new byte array after deleting the specified index.
     */
-    function _deleteOneIndex(uint8 index, bytes memory bytesArray)
+    function _deleteIndex(uint8 index, bytes memory bytesArray)
         private
         view
         returns (bytes memory)
@@ -929,14 +938,14 @@ contract Come2Top {
         return
             index != (bytesArray.length - ONE)
                 ? abi.encodePacked(
-                    this.returnBytedCalldataArray(bytesArray, ZERO, index),
-                    this.returnBytedCalldataArray(
+                    this.sliceBytedArray(bytesArray, ZERO, index),
+                    this.sliceBytedArray(
                         bytesArray,
                         index + ONE,
                         bytesArray.length
                     )
                 )
-                : this.returnBytedCalldataArray(bytesArray, ZERO, index);
+                : this.sliceBytedArray(bytesArray, ZERO, index);
     }
 
     /**
@@ -946,11 +955,7 @@ contract Come2Top {
             by the total number of winning tickets.
         @return uint256 The current value of a winning ticket in USDT tokens.
     */
-    function _currentTicketValue(uint256 totalTickets)
-        private
-        view
-        returns (uint256)
-    {
+    function _ticketValue(uint256 totalTickets) private view returns (uint256) {
         if (totalTickets == ZERO) return ZERO;
 
         return USDT.balanceOf(THIS) / totalTickets;
@@ -963,7 +968,11 @@ contract Come2Top {
         @param startBlock The block number from where the calculation of the random seed starts.
         @return uint256 The random seed value generated based on block hashes.
     */
-    function _getRandomSeed(uint256 startBlock) private view returns (uint256) {
+    function _calculateRandomSeed(uint256 startBlock)
+        private
+        view
+        returns (uint256)
+    {
         uint256 b = WAVE_DURATION;
         uint256 index = TWENTY;
 
@@ -1044,7 +1053,7 @@ contract Come2Top {
         @return bool True if the ticket ID is found in the list, false otherwise.
         @return uint8 The index of the found ticket ID in the list.
     */
-    function _linearSearch(bytes memory tickets, uint8 ticketID)
+    function _findTicket(bytes memory tickets, uint8 ticketID)
         private
         pure
         returns (bool, uint8)
@@ -1121,7 +1130,7 @@ contract Come2Top {
         pure
         returns (uint8)
     {
-        (bool found, uint8 index) = _linearSearch(tickets, ticketID);
+        (bool found, uint8 index) = _findTicket(tickets, ticketID);
 
         if (!found) revert ONLY_WINNER_TICKET(ticketID);
 
