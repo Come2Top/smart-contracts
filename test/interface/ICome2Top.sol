@@ -93,7 +93,6 @@ interface ICome2Top {
     error PARTICIPATED_BEFORE();
     error PLAYER_HAS_NO_TICKETS();
     error NO_AMOUNT_TO_REFUND();
-    error OFFER_NOT_FOUND();
     error WAIT_FOR_NEXT_WAGER_MATCH();
     error WAIT_FOR_FIRST_WAVE();
 
@@ -109,44 +108,28 @@ interface ICome2Top {
     /*********************************\
     |-*-*-*-*   WAGER-LOGIC   *-*-*-*-|
     \*********************************/
-    function joinWager(uint8[] memory ticketIDs) external;
+    function join(uint8[] memory ticketIDs) external;
 
-    function receiveWagerPrize(uint8 ticketID) external;
+    function redeem(uint8 ticketID) external;
 
     function makeOffer(uint8 ticketID, uint96 amount) external;
-
-    function acceptOffers(uint8 ticketID) external;
 
     function takeBackStaleOffers(address to) external;
 
     /******************************\
     |-*-*-*-*-*   VIEW   *-*-*-*-*-|
     \******************************/
-    function TICKET256() external view returns (bytes memory);
-
-    function MAGIC_VALUE() external view returns (uint256);
-
-    function THIS() external view returns (address);
-
-    function ADMIN() external view returns (address);
-
-    function USDT() external view returns (address);
-
-    function TREASURY() external view returns (address);
-
     function pause() external view returns (bool);
 
     function maxTicketsPerWager() external view returns (uint8);
 
-    function currentWagerID() external view returns (uint160);
-
     function ticketPrice() external view returns (uint80);
 
-    function totalPlayerTickets(uint256, address) external view returns (uint8);
+    function currentWagerID() external view returns (uint160);
 
-    function ticketOwnership(uint256, uint8) external view returns (address);
-
-    function wagerData(uint256)
+    function wagerData(
+        uint256
+    )
         external
         view
         returns (
@@ -157,12 +140,9 @@ interface ICome2Top {
             bytes memory tickets
         );
 
-    function offer(uint256, uint8)
-        external
-        view
-        returns (uint96 amount, address maker);
-
-    function offerorData(address)
+    function offerorData(
+        address
+    )
         external
         view
         returns (
@@ -171,7 +151,50 @@ interface ICome2Top {
             uint256 totalOffersValue
         );
 
-    function getLatestUpdate()
+    function ticketOwnership(uint256, uint8) external view returns (address);
+
+    function totalPlayerTickets(uint256, address) external view returns (uint8);
+
+    function offer(
+        uint256,
+        uint8
+    ) external view returns (uint96 amount, address maker);
+
+    function USDT() external view returns (address);
+
+    function TREASURY() external view returns (address);
+
+    function ADMIN() external view returns (address);
+
+    function THIS() external view returns (address);
+
+    function MAGIC_VALUE() external view returns (uint256);
+
+    function TICKET() external view returns (bytes memory);
+
+    function ticketValue() external view returns (uint256);
+
+    function winnersWithTickets()
+        external
+        view
+        returns (int256 eligibleWithdrawals, TicketInfo[] memory);
+
+    function playerWithWinningTickets(
+        address player
+    )
+        external
+        view
+        returns (uint256 totalTicketsValue, bytes memory playerTickets);
+
+    function staleOffers(address offeror) external view returns (uint256);
+
+    function sliceBytedArray(
+        bytes memory array,
+        uint256 from,
+        uint256 to
+    ) external pure returns (bytes memory);
+
+    function latestUpdate()
         external
         view
         returns (
@@ -180,27 +203,4 @@ interface ICome2Top {
             uint256 currentWave,
             bytes memory tickets
         );
-
-    function currentTicketValue() external view returns (uint256);
-
-    function currentWinnersWithTickets()
-        external
-        view
-        returns (int256 eligibleWithdrawals, TicketInfo[] memory);
-
-    function playerWithWinningTickets(address player)
-        external
-        view
-        returns (uint256 totalTicketsValue, bytes memory playerTickets);
-
-    function getStaleOfferorAmount(address offeror)
-        external
-        view
-        returns (uint256);
-
-    function returnBytedCalldataArray(
-        bytes memory array,
-        uint256 from,
-        uint256 to
-    ) external pure returns (bytes memory);
 }
