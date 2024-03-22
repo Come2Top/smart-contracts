@@ -1,14 +1,11 @@
-//  SPDX-License-Identifier: UNLICENSED
+//  SPDX-License-Identifier: -- Risk-Labs --
 pragma solidity 0.8.18;
 
 /**
-    @author @FarajiOranj
+    @author @Risk-Labs
     @title Come2Top Main Contract.
-    @notice A secure, automatic 
-        and fully decentralized platform
-        to build an ideal wagering platform 
-        without the involvement of third parties
-        with a small interaction cost for users and actors.
+    @notice Come2Top is a secure, automated, and fully decentralized wagering platform
+        built on the Polygon Mainnet, that works without the involvement of third parties.
         For more information & further questions, visit: https://www.come2.top
 */
 contract Come2Top {
@@ -69,16 +66,17 @@ contract Come2Top {
     address public immutable ADMIN = tx.origin;
     address public immutable THIS = address(this);
     uint256 public immutable MAGIC_VALUE;
-    uint256 private immutable MAX_PARTIES = TICKET_SIZE.length;
+    bytes public constant TICKET =
+        hex"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
     address private constant ZERO_ADDRESS = address(0x0);
     uint256 private constant MAX_TICKET_PRICE = 1e9;
     uint256 private constant MIN_TICKET_PRICE = 1e6;
+    uint256 private constant MAX_PARTIES = 256;
     uint256 private constant WAVE_ELIGIBLES_TIME = 420;
     uint256 private constant BASIS = 100;
     uint256 private constant OFFEREE_BENEFICIARY = 95;
     uint256 private constant WAVE_DURATION = 71;
     uint256 private constant TOTAL_BLOCK_HASHES = 21;
-    uint256 private constant MAX_MAX_TICKETS_PER_WAGER = 4;
     int8 private constant N_ONE = -1;
     uint8 private constant ZERO = 0;
     uint8 private constant ONE = 1;
@@ -89,8 +87,6 @@ contract Come2Top {
     uint8 private constant TEN = 10;
     uint8 private constant ELEVEN = 11;
     uint8 private constant TWENTY = 20;
-    bytes public constant TICKET_SIZE =
-        hex"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
 
     /********************************\
     |-*-*-*-*-*   EVENTS   *-*-*-*-*-|
@@ -220,7 +216,7 @@ contract Come2Top {
         USDT = IUSDT(usdt);
         TREASURY = treasury;
         MAGIC_VALUE = uint160(address(this));
-        wagerData[ZERO].tickets = TICKET_SIZE;
+        wagerData[ZERO].tickets = TICKET;
 
         (bool ok, ) = treasury.call(abi.encode(usdt));
 
@@ -241,22 +237,6 @@ contract Come2Top {
     }
 
     /**
-        @notice Changes the maximum number of tickets allowed per wager.
-        @dev Allows the admin to change the maximum number of tickets allowed per wager. 
-            Only the admin can call this function.
-        @param maxTicketsPerWager_ The new maximum number of tickets allowed per wager.
-    */
-    function changeMaxTicketsPerWager(uint8 maxTicketsPerWager_)
-        external
-        onlyAdmin
-        onlyPausedAndFinishedWager
-    {
-        _checkMTPW(maxTicketsPerWager_);
-
-        maxTicketsPerWager = maxTicketsPerWager_;
-    }
-
-    /**
         @notice Changes the ticket price for joining the wager.
         @dev Allows the admin to change the ticket price for joining the wager. 
             Only the admin can call this function. 
@@ -270,6 +250,22 @@ contract Come2Top {
         _checkTP(ticketPrice_);
 
         ticketPrice = ticketPrice_;
+    }
+
+    /**
+        @notice Changes the maximum number of tickets allowed per wager.
+        @dev Allows the admin to change the maximum number of tickets allowed per wager. 
+            Only the admin can call this function.
+        @param maxTicketsPerWager_ The new maximum number of tickets allowed per wager.
+    */
+    function changeMaxTicketsPerWager(uint8 maxTicketsPerWager_)
+        external
+        onlyAdmin
+        onlyPausedAndFinishedWager
+    {
+        _checkMTPW(maxTicketsPerWager_);
+
+        maxTicketsPerWager = maxTicketsPerWager_;
     }
 
     /*********************************\
@@ -299,7 +295,7 @@ contract Come2Top {
             }
 
             BD = wagerData[wagerID];
-            BD.tickets = TICKET_SIZE;
+            BD.tickets = TICKET;
         } else BD = wagerData[wagerID];
 
         uint256 remainingTickets = MAX_PARTIES - BD.soldTickets;
@@ -357,7 +353,7 @@ contract Come2Top {
         if (totalTickets == remainingTickets) {
             uint256 currentBlock = block.number;
             BD.startedBlock = uint216(currentBlock);
-            BD.tickets = TICKET_SIZE;
+            BD.tickets = TICKET;
 
             emit WagerStarted(wagerID, currentBlock, MAX_PARTIES * neededUSDT);
         } else BD.soldTickets += uint8(totalTickets);
@@ -1073,14 +1069,14 @@ contract Come2Top {
 
     /**
         @dev It verifies that the value is not zero
-            and not greater than the maximum limit predefined as {MAX_MAX_TICKETS_PER_WAGER}.
+            and not greater than the maximum limit predefined as {FOUR}.
         @param value The value to be checked for maximum tickets per wager.
     */
     function _checkMTPW(uint8 value) private pure {
         _revertOnZeroUint(value);
 
-        if (value > MAX_MAX_TICKETS_PER_WAGER)
-            revert VALUE_CANT_BE_GREATER_THAN(MAX_MAX_TICKETS_PER_WAGER);
+        if (value > FOUR)
+            revert VALUE_CANT_BE_GREATER_THAN(FOUR);
     }
 
     /**
