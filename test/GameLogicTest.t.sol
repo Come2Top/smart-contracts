@@ -67,7 +67,17 @@ contract GameLogicTest is Test {
             i--;
         }
 
-        vm.roll(block.number + 4 * WAVE_DURATION + WAVE_ELIGIBLE_TIME + WAVE_ELIGIBLE_TIME/2 + WAVE_ELIGIBLE_TIME/3 + 1);
+        vm.roll(
+            block.number +
+                4 *
+                WAVE_DURATION +
+                WAVE_ELIGIBLE_TIME +
+                WAVE_ELIGIBLE_TIME /
+                2 +
+                WAVE_ELIGIBLE_TIME /
+                3 +
+                1
+        );
 
         uint8 ticketID;
 
@@ -81,14 +91,14 @@ contract GameLogicTest is Test {
         string memory stringifiedStatus;
 
         if (stat == Come2Top.Status.notStarted)
-            stringifiedStatus = "Not Started!";
+            stringifiedStatus = "Not Started";
         else if (stat == Come2Top.Status.ticketSale)
-            stringifiedStatus = "Ticket Saling Mode $";
+            stringifiedStatus = "Ticket Saling Mode";
         else if (stat == Come2Top.Status.waitForCommingWave)
-            stringifiedStatus = "Wait For Next Wave!";
-        else if(stat == Come2Top.Status.Withdrawable)
-            stringifiedStatus = "Withdrawable.";
-        else stringifiedStatus = "Finished.";
+            stringifiedStatus = "Wait For Next Wave";
+        else if (stat == Come2Top.Status.Withdrawable)
+            stringifiedStatus = "Withdrawable";
+        else stringifiedStatus = "Finished";
 
         uint256 ticketValue = GAME.ticketValue();
 
@@ -143,79 +153,60 @@ contract GameLogicTest is Test {
 
         "____________________________________".log();
         console2.log("Status:            ", stringifiedStatus);
-        console2.log("Current wave:      ", currentWave);
-        console2.log("Next wave:      ", nextWave);
+        console2.log("Current Wave:      ", currentWave);
+        console2.log("Next Wave:         ", nextWave);
         console2.log(
-            "Game USDT balance: ",
+            "Game USDT Balance: ",
             IUSDT(USDT).balanceOf(address(GAME))
         );
         console2.log(
-            "Admin USDT balance:",
+            "Admin USDT Balance:",
             IUSDT(USDT).balanceOf(GAME.ADMIN())
         );
 
         "".log();
-        console2.log(
-            "Ticket value before any withdraws:        ",
-            ticketValue
-        );
-        console2.log(
-            "Ticket value after 1st withdraw:          ",
-            ticketValue_1stTx
-        );
-        console2.log(
-            "Ticket value after 2nd withdraw:          ",
-            ticketValue_2ndTx
-        );
-        console2.log(
-            "Ticket value of the next wave:            ",
-            ticketValueNextWave
-        );
+        "Ticket Value".log();
+        console2.log("   before any withdraws:", ticketValue);
+        console2.log("   after 1st withdraw:  ", ticketValue_1stTx);
+        console2.log("   after 2nd withdraw:  ", ticketValue_2ndTx);
+        console2.log("   next wave:           ", ticketValueNextWave);
 
         "".log();
+        "First Withdrawer Balance".log();
+        console2.log("   before withdraw:", balanceOfTOI1);
         console2.log(
-            "Withdrawer 1 balance before withdraw:     ",
-            balanceOfTOI1
-        );
-        console2.log(
-            "Withdrawer 1 balance after withdraw:      ",
+            "   after withdraw: ",
             IUSDT(USDT).balanceOf(ticketOwnerOfIndex1)
         );
+        "Second Withdrawer Balance".log();
+        console2.log("   before withdraw:", balanceOfTOLI);
         console2.log(
-            "Withdrawer 2 balance before withdraw:     ",
-            balanceOfTOLI
-        );
-        console2.log(
-            "Withdrawer 2 balance after withdraw:      ",
+            "   after withdraw: ",
             IUSDT(USDT).balanceOf(ticketOwnerOfLastIndex)
         );
 
         "".log();
+        "Eligible Withdrawals".log();
+        console2.log("   before any withdraws:", eligibleWithdrawals);
+        console2.log("   after 1st withdraw:  ", eligibleWithdrawals_1stTx);
         console2.log(
-            "Eligible withdrawals before any withdraws:",
-            eligibleWithdrawals
-        );
-        console2.log(
-            "Eligible withdrawals after 1st withdraw:  ",
-            eligibleWithdrawals_1stTx
-        );
-        console2.log(
-            "Eligible withdrawals after 2nd withdraw:  ",
+            "   after 2nd withdraw:  ",
             uint256(eligibleWithdrawals_2ndTx)
         );
         console2.log(
-            "Eligible withdrawals of the next wave:    ",
+            "   next wave:           ",
             uint256(eligibleWithdrawalsNextWave)
         );
 
         "".log();
-        console2.log("Tickets before any withdraws:");
+        "Tickets".log();
+        "   before any withdraws:".log();
         tickets.logBytes();
-        console2.log("Tickets after 1st withdraw:");
+        "   after 1st withdraw:".log();
         tickets_1stTx.logBytes();
-        console2.log("Tickets after 2nd withdraw:");
+        "   after 2nd withdraw:".log();
         tickets_2ndTx.logBytes();
-        console2.log("Tickets of the next wave:");
+        "   next wave:".log();
         ticketsNextWave.logBytes();
         "____________________________________".log();
     }
