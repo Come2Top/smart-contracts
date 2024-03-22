@@ -1075,8 +1075,7 @@ contract Come2Top {
     function _checkMTPW(uint8 value) private pure {
         _revertOnZeroUint(value);
 
-        if (value > FOUR)
-            revert VALUE_CANT_BE_GREATER_THAN(FOUR);
+        if (value > FOUR) revert VALUE_CANT_BE_GREATER_THAN(FOUR);
     }
 
     /**
