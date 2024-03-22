@@ -15,7 +15,7 @@ contract GameLogicTest is Test {
 
     address private constant USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
     uint256 WAVE_DURATION = 71;
-    uint256 WAVE_ELIGIBLE_TIME = 240;
+    uint256 WAVE_ELIGIBLE_TIME = 420;
     uint8 private constant MAX_TICKET_PER_GAME = 1;
     uint80 private constant TICKET_PRICE = 1e6;
     uint256 private constant MAX_PLAYERS = 256;
@@ -62,12 +62,12 @@ contract GameLogicTest is Test {
         while (i != 0) {
             vm.prank(TICKET_BUYERS[i - 1], TICKET_BUYERS[i - 1]);
             ticketToBuy[0] = uint8(MAX_PLAYERS - i);
-            GAME.joinWager(ticketToBuy);
+            GAME.join(ticketToBuy);
 
             i--;
         }
 
-        vm.roll(block.number + WAVE_DURATION * 8 + (WAVE_ELIGIBLE_TIME + WAVE_ELIGIBLE_TIME/2 + WAVE_ELIGIBLE_TIME/3 + WAVE_ELIGIBLE_TIME/4 + WAVE_ELIGIBLE_TIME/5 + WAVE_ELIGIBLE_TIME/6 + WAVE_ELIGIBLE_TIME/7) + 1);
+        vm.roll(block.number + 4 * WAVE_DURATION + WAVE_ELIGIBLE_TIME + WAVE_ELIGIBLE_TIME/2 + WAVE_ELIGIBLE_TIME/3 + 1);
 
         uint8 ticketID;
 
@@ -76,7 +76,7 @@ contract GameLogicTest is Test {
             int256 eligibleWithdrawals,
             uint256 currentWave,
             bytes memory tickets
-        ) = GAME.getLatestUpdate();
+        ) = GAME.latestUpdate();
 
         string memory stringifiedStatus;
 
@@ -90,60 +90,61 @@ contract GameLogicTest is Test {
             stringifiedStatus = "Withdrawable.";
         else stringifiedStatus = "Finished.";
 
-        uint256 ticketValue = GAME.currentTicketValue();
+        uint256 ticketValue = GAME.ticketValue();
 
         address ticketOwnerOfIndex1 = GAME.ticketOwnership(
             0,
             uint8(tickets[0])
         );
-        // address ticketOwnerOfLastIndex = GAME.ticketOwnership(
-        //     0,
-        //     uint8(tickets[tickets.length - 1])
-        // );
+        address ticketOwnerOfLastIndex = GAME.ticketOwnership(
+            0,
+            uint8(tickets[tickets.length - 1])
+        );
 
         uint256 balanceOfTOI1 = IUSDT(USDT).balanceOf(ticketOwnerOfIndex1);
-        // uint256 balanceOfTOLI = IUSDT(USDT).balanceOf(ticketOwnerOfLastIndex);
+        uint256 balanceOfTOLI = IUSDT(USDT).balanceOf(ticketOwnerOfLastIndex);
 
         ticketID = uint8(tickets[0]);
         vm.prank(ticketOwnerOfIndex1);
-        GAME.receiveWagerPrize(ticketID);
+        GAME.redeem(ticketID);
 
         (
             ,
             int256 eligibleWithdrawals_1stTx,
             ,
             bytes memory tickets_1stTx
-        ) = GAME.getLatestUpdate();
+        ) = GAME.latestUpdate();
 
-        uint256 ticketValue_1stTx = GAME.currentTicketValue();
+        uint256 ticketValue_1stTx = GAME.ticketValue();
 
-        // ticketID = uint8(tickets_1stTx[tickets_1stTx.length - 1]);
-        // vm.prank(ticketOwnerOfLastIndex);
-        // GAME.receiveWagerPrize(ticketID);
+        ticketID = uint8(tickets_1stTx[tickets_1stTx.length - 1]);
+        vm.prank(ticketOwnerOfLastIndex);
+        GAME.redeem(ticketID);
 
-        // (
-        //     ,
-        //     int256 eligibleWithdrawals_2ndTx,
-        //     ,
-        //     bytes memory tickets_2ndTx
-        // ) = GAME.getLatestUpdate();
+        (
+            ,
+            int256 eligibleWithdrawals_2ndTx,
+            ,
+            bytes memory tickets_2ndTx
+        ) = GAME.latestUpdate();
 
-        // uint256 ticketValue_2ndTx = GAME.currentTicketValue();
+        uint256 ticketValue_2ndTx = GAME.ticketValue();
 
-        // vm.roll(block.number + WAVE_DURATION + WAVE_ELIGIBLE_TIME / 5);
+        vm.roll(block.number + WAVE_DURATION + WAVE_ELIGIBLE_TIME / 4);
 
-        // (
-        //     ,
-        //     int256 eligibleWithdrawalsNextWave,
-        //     uint256 currentWave,
-        //     bytes memory ticketsNextWave
-        // ) = GAME.getLatestUpdate();
+        (
+            ,
+            int256 eligibleWithdrawalsNextWave,
+            uint256 nextWave,
+            bytes memory ticketsNextWave
+        ) = GAME.latestUpdate();
 
-        // uint256 ticketValueNextWave = GAME.currentTicketValue();
+        uint256 ticketValueNextWave = GAME.ticketValue();
 
         "____________________________________".log();
         console2.log("Status:            ", stringifiedStatus);
         console2.log("Current wave:      ", currentWave);
+        console2.log("Next wave:      ", nextWave);
         console2.log(
             "Game USDT balance: ",
             IUSDT(USDT).balanceOf(address(GAME))
@@ -162,14 +163,14 @@ contract GameLogicTest is Test {
             "Ticket value after 1st withdraw:          ",
             ticketValue_1stTx
         );
-        // console2.log(
-        //     "Ticket value after 2nd withdraw:          ",
-        //     ticketValue_2ndTx
-        // );
-        // console2.log(
-        //     "Ticket value of the next wave:            ",
-        //     ticketValueNextWave
-        // );
+        console2.log(
+            "Ticket value after 2nd withdraw:          ",
+            ticketValue_2ndTx
+        );
+        console2.log(
+            "Ticket value of the next wave:            ",
+            ticketValueNextWave
+        );
 
         "".log();
         console2.log(
@@ -180,14 +181,14 @@ contract GameLogicTest is Test {
             "Withdrawer 1 balance after withdraw:      ",
             IUSDT(USDT).balanceOf(ticketOwnerOfIndex1)
         );
-        // console2.log(
-        //     "Withdrawer 2 balance before withdraw:     ",
-        //     balanceOfTOLI
-        // );
-        // console2.log(
-        //     "Withdrawer 2 balance after withdraw:      ",
-        //     IUSDT(USDT).balanceOf(ticketOwnerOfLastIndex)
-        // );
+        console2.log(
+            "Withdrawer 2 balance before withdraw:     ",
+            balanceOfTOLI
+        );
+        console2.log(
+            "Withdrawer 2 balance after withdraw:      ",
+            IUSDT(USDT).balanceOf(ticketOwnerOfLastIndex)
+        );
 
         "".log();
         console2.log(
@@ -198,24 +199,24 @@ contract GameLogicTest is Test {
             "Eligible withdrawals after 1st withdraw:  ",
             eligibleWithdrawals_1stTx
         );
-        // console2.log(
-        //     "Eligible withdrawals after 2nd withdraw:  ",
-        //     uint256(eligibleWithdrawals_2ndTx)
-        // );
-        // console2.log(
-        //     "Eligible withdrawals of the next wave:    ",
-        //     uint256(eligibleWithdrawalsNextWave)
-        // );
+        console2.log(
+            "Eligible withdrawals after 2nd withdraw:  ",
+            uint256(eligibleWithdrawals_2ndTx)
+        );
+        console2.log(
+            "Eligible withdrawals of the next wave:    ",
+            uint256(eligibleWithdrawalsNextWave)
+        );
 
         "".log();
         console2.log("Tickets before any withdraws:");
         tickets.logBytes();
         console2.log("Tickets after 1st withdraw:");
         tickets_1stTx.logBytes();
-        // console2.log("Tickets after 2nd withdraw:");
-        // tickets_2ndTx.logBytes();
-        // console2.log("Tickets of the next wave:");
-        // ticketsNextWave.logBytes();
+        console2.log("Tickets after 2nd withdraw:");
+        tickets_2ndTx.logBytes();
+        console2.log("Tickets of the next wave:");
+        ticketsNextWave.logBytes();
         "____________________________________".log();
     }
 }
