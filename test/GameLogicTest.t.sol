@@ -3,7 +3,7 @@ pragma solidity 0.8.18;
 
 import {IERC20} from "./interface/IERC20.sol";
 import {Test, console2} from "forge-std/Test.sol";
-import {C2Treasury} from "../contracts/C2Treasury.sol";
+import {Treasury} from "../contracts/Treasury.sol";
 import "../contracts/Come2Top.sol";
 
 contract GameLogicTest is Test {
@@ -16,15 +16,15 @@ contract GameLogicTest is Test {
     address private constant USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
     uint256 WAVE_DURATION = 71;
     uint256 WAVE_ELIGIBLE_TIME = 420;
-    uint8 private constant MAX_TICKET_PER_GAME = 1;
-    uint80 private constant TICKET_PRICE = 1e6;
+    uint8 private constant MAX_TICKET_PER_GAME = 4;
+    uint80 private constant TICKET_PRICE = 2e6;
     uint256 private constant MAX_PLAYERS = 256;
     uint256 private constant MAX_UINT256 = type(uint256).max;
 
     function setUp() external {
         vm.createSelectFork("https://polygon.drpc.org", 53600000);
 
-        address treasury = address(new C2Treasury());
+        address treasury = address(new Treasury());
 
         GAME = new Come2Top(MAX_TICKET_PER_GAME, TICKET_PRICE, USDT, treasury);
 
@@ -45,10 +45,10 @@ contract GameLogicTest is Test {
             IERC20(USDT).approve(address(GAME), MAX_UINT256);
         }
 
-        console2.log("C2Treasury Deployed at:             ", treasury);
-        console2.log("Game deployed at:                   ", address(GAME));
+        console2.log("Treasury Deployed at:             ", treasury);
+        console2.log("Game deployed at:                 ", address(GAME));
         console2.log(
-            "Full allowance (C2Treasury => Game):",
+            "Full allowance (Treasury => Game):",
             IERC20(USDT).allowance(treasury, address(GAME)) == MAX_UINT256
         );
         console2.log("***********************************");
@@ -67,40 +67,33 @@ contract GameLogicTest is Test {
             i--;
         }
 
-        vm.roll(
-            block.number +
-                4 *
-                WAVE_DURATION +
-                WAVE_ELIGIBLE_TIME +
-                WAVE_ELIGIBLE_TIME /
-                2 +
-                WAVE_ELIGIBLE_TIME /
-                3 +
-                1
-        );
+        vm.roll(block.number + WAVE_DURATION + 1);
 
         uint8 ticketID;
 
         (
             Come2Top.Status stat,
-            int256 eligibleWithdrawals,
+            uint256 maxPurchasableTickets,
+            uint256 startedBlock,
             uint256 currentWave,
-            bytes memory tickets
-        ) = GAME.latestUpdate();
+            uint256 currentTicketValue,
+            uint256 remainingTickets,
+            int256 eligibleWithdrawals,
+            uint256 nextWaveTicketValue,
+            uint256 nextWaveWinrate,
+            bytes memory tickets,
+            Come2Top.TicketInfo[] memory winnerTicketsInfo
+        ) = GAME.wagerInfo();
 
         string memory stringifiedStatus;
 
-        if (stat == Come2Top.Status.notStarted)
-            stringifiedStatus = "Not Started";
-        else if (stat == Come2Top.Status.ticketSale)
+        if (stat == Come2Top.Status.ticketSale)
             stringifiedStatus = "Ticket Saling Mode";
         else if (stat == Come2Top.Status.waitForCommingWave)
             stringifiedStatus = "Wait For Next Wave";
         else if (stat == Come2Top.Status.Withdrawable)
             stringifiedStatus = "Withdrawable";
         else stringifiedStatus = "Finished";
-
-        uint256 ticketValue = GAME.ticketValue();
 
         address ticketOwnerOfIndex1 = GAME.ticketOwnership(
             0,
@@ -140,7 +133,7 @@ contract GameLogicTest is Test {
 
         uint256 ticketValue_2ndTx = GAME.ticketValue();
 
-        vm.roll(block.number + WAVE_DURATION + WAVE_ELIGIBLE_TIME / 4);
+        vm.roll(block.number + WAVE_DURATION + WAVE_ELIGIBLE_TIME);
 
         (
             ,
@@ -152,21 +145,26 @@ contract GameLogicTest is Test {
         uint256 ticketValueNextWave = GAME.ticketValue();
 
         "____________________________________".log();
-        console2.log("Status:            ", stringifiedStatus);
-        console2.log("Current Wave:      ", currentWave);
-        console2.log("Next Wave:         ", nextWave);
+        console2.log("Maximum Purchasable Tickets:", maxPurchasableTickets);
+        console2.log("Started Block:              ", startedBlock);
+        console2.log("Remaining Tickets:          ", remainingTickets - 2);
+        console2.log("Status:                     ", stringifiedStatus);
+        console2.log("Current Wave:               ", currentWave);
+        console2.log("Next Wave:                  ", nextWave);
+        console2.log("Next Wave Ticket Value:     ", nextWaveTicketValue);
+        console2.log("Next Wave Ticket Winrate:   ", nextWaveWinrate);
         console2.log(
-            "Game USDT Balance: ",
+            "Game USDT Balance:          ",
             IUSDT(USDT).balanceOf(address(GAME))
         );
         console2.log(
-            "Admin USDT Balance:",
+            "Admin USDT Balance:         ",
             IUSDT(USDT).balanceOf(GAME.ADMIN())
         );
 
         "".log();
         "Ticket Value".log();
-        console2.log("   before any withdraws:", ticketValue);
+        console2.log("   before any withdraws:", currentTicketValue);
         console2.log("   after 1st withdraw:  ", ticketValue_1stTx);
         console2.log("   after 2nd withdraw:  ", ticketValue_2ndTx);
         console2.log("   next wave:           ", ticketValueNextWave);
@@ -209,5 +207,14 @@ contract GameLogicTest is Test {
         "   next wave:".log();
         ticketsNextWave.logBytes();
         "____________________________________".log();
+        for (uint256 x; x < winnerTicketsInfo.length; x++) {
+            console2.log("Ticket ID:  ", winnerTicketsInfo[x].ticketID);
+            "Ticket Owner:".log();
+            winnerTicketsInfo[x].owner.log();
+            console2.log("Offer:      ", winnerTicketsInfo[x].offer.amount);
+            "Offeror:     ".log();
+            winnerTicketsInfo[x].offer.maker.log();
+            "+++++++++++++++++++++++++".log();
+        }
     }
 }
