@@ -13,7 +13,6 @@ contract Come2Top {
     |-*-*-*-*-*   TYPES   *-*-*-*-*-|
     \*******************************/
     enum Status {
-        notStarted,
         ticketSale,
         waitForCommingWave,
         Withdrawable,
@@ -40,6 +39,7 @@ contract Come2Top {
     }
 
     struct TicketInfo {
+        Offer offer;
         uint256 ticketID;
         address owner;
     }
@@ -50,7 +50,8 @@ contract Come2Top {
     bool public pause;
     uint8 public maxTicketsPerWager;
     uint80 public ticketPrice;
-    uint160 public currentWagerID;
+    uint80 public currentWagerID;
+    uint80 public cooldownBlockNo;
 
     mapping(uint256 => WagerData) public wagerData;
     mapping(address => OfferorData) public offerorData;
@@ -69,6 +70,7 @@ contract Come2Top {
     bytes public constant TICKET =
         hex"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
     address private constant ZERO_ADDRESS = address(0x0);
+    uint256 private constant COOLDOWN = 210;
     uint256 private constant MAX_TICKET_PRICE = 1e9;
     uint256 private constant MIN_TICKET_PRICE = 1e6;
     uint256 private constant MAX_PARTIES = 256;
@@ -110,14 +112,16 @@ contract Come2Top {
         uint256 indexed wagerID,
         address indexed winner,
         uint256 indexed amount,
-        uint256 ticketID
+        uint256 ticketID,
+        uint256 cooldown
     );
 
     event WagerFinished(
         uint256 indexed wagerID,
         address[TWO] winners,
         uint256[TWO] amounts,
-        uint256[TWO] ticketIDs
+        uint256[TWO] ticketIDs,
+        uint256 cooldown
     );
 
     event OfferMade(
@@ -171,6 +175,7 @@ contract Come2Top {
     error PARTICIPATED_BEFORE();
     error PLAYER_HAS_NO_TICKETS();
     error NO_AMOUNT_TO_REFUND();
+    error COOLDOWN_NOT_YET_ENDED(uint256 cooldownBlock, uint256 currentBlock);
     error WAIT_FOR_NEXT_WAGER_MATCH();
     error WAIT_FOR_FIRST_WAVE();
 
@@ -289,6 +294,9 @@ contract Come2Top {
         WagerData storage BD;
 
         if (wagerData[wagerID].eligibleWithdrawals == N_ONE) {
+            if (cooldownBlockNo >= block.number)
+                revert COOLDOWN_NOT_YET_ENDED(cooldownBlockNo, block.number);
+
             unchecked {
                 wagerID++;
                 currentWagerID++;
@@ -365,10 +373,10 @@ contract Come2Top {
         @dev
             1. When accepting an offer:
                 If the player has received an offer for their ticket
-                    that is higher than the current ticket value 
+                    that is higher than the current ticket value
                     and the last offer, they can accept the offer.
-                The function transfers the ownership of the ticket 
-                    to the offer maker and transfers the offered amount 
+                The function transfers the ownership of the ticket
+                    to the offer maker and transfers the offered amount
                     to the ticket owner.
 
             2. When claiming a prize for a winning lottery ticket:
@@ -393,17 +401,18 @@ contract Come2Top {
             bytes memory tickets
         ) = latestUpdate();
 
-        Offer memory O = offer[wagerID][ticketID];
-
         _onlyWithrawable(currentWave, stat);
 
         uint8 index = _onlyWinnerTicket(tickets, ticketID);
+        uint256 plus5TV = _ticketValue(tickets.length);
+        plus5TV += (plus5TV / BASIS) * FIVE;
 
         if (
-            O.amount >= _ticketValue(tickets.length) &&
-            O.maker != ZERO_ADDRESS &&
+            offer[wagerID][ticketID].amount >= plus5TV &&
+            offer[wagerID][ticketID].maker != ZERO_ADDRESS &&
             tickets.length != ONE
         ) {
+            Offer memory O = offer[wagerID][ticketID];
             if (sender != ticketOwnership[currentWagerID][ticketID])
                 revert ONLY_TICKET_OWNER(ticketID);
 
@@ -439,6 +448,8 @@ contract Come2Top {
 
             _transferHelper(ADMIN, fee);
 
+            cooldownBlockNo = uint80(block.number + COOLDOWN);
+
             if (tickets.length == ONE) {
                 address ticketOwner = ticketOwnership[wagerID][ticketID];
 
@@ -451,7 +462,8 @@ contract Come2Top {
                     wagerID,
                     ticketOwner,
                     balance - fee,
-                    ticketID
+                    ticketID,
+                    cooldownBlockNo
                 );
             } else {
                 if (sender != ticketOwnership[currentWagerID][ticketID])
@@ -480,7 +492,8 @@ contract Come2Top {
                     [
                         uint256(uint8(tickets[ZERO])),
                         uint256(uint8(tickets[ONE]))
-                    ]
+                    ],
+                    cooldownBlockNo
                 );
             }
         } else {
@@ -614,6 +627,88 @@ contract Come2Top {
     /******************************\
     |-*-*-*-*-*   VIEW   *-*-*-*-*-|
     \******************************/
+    /**
+        @notice Returns all informations about the current wager.
+        @dev This function will be used by Back-End side.
+        @return stat The current status of the wager (ticketSale, waitForCommingWave, Withdrawable, finished).
+        @return maxPurchasableTickets Maximum purchasable tickets for each address, based on {maxTicketsPerWager}.
+        @return startedBlock Started block number of game, in which all tickets sold out.
+        @return currentWave The current wave of the wager.
+        @return currentTicketValue The current value of a winning ticket in USDT tokens.
+        @return remainingTickets Total number of current wave winner tickets.
+        @return eligibleWithdrawals The number of eligible withdrawals for the current wave of the wager.
+        @return nextWaveTicketValue The value of a winning ticket in USDT tokens for the coming wave.
+        @return nextWaveWinrate The chance of winning each ticket for the coming wave.
+        @return tickets The byte array containing the winning ticket IDs for the current wager.
+        @return ticketsData An array of TicketInfo structures containing the ticket ID
+            owner address and offer data for each winning ticket.
+    */
+    function wagerInfo()
+        external
+        view
+        returns (
+            Status stat,
+            uint256 maxPurchasableTickets,
+            uint256 startedBlock,
+            uint256 currentWave,
+            uint256 currentTicketValue,
+            uint256 remainingTickets,
+            int256 eligibleWithdrawals,
+            uint256 nextWaveTicketValue,
+            uint256 nextWaveWinrate,
+            bytes memory tickets,
+            TicketInfo[] memory ticketsData
+        )
+    {
+        uint256 wagerID = currentWagerID;
+        startedBlock = wagerData[wagerID].startedBlock;
+        maxPurchasableTickets = maxTicketsPerWager;
+        (stat, eligibleWithdrawals, currentWave, tickets) = latestUpdate();
+
+        if (tickets.length != ONE || stat != Status.finished) {
+            nextWaveTicketValue = USDT.balanceOf(THIS) / (tickets.length / TWO);
+
+            nextWaveWinrate =
+                ((tickets.length / TWO) * (BASIS**TWO)) /
+                tickets.length;
+
+            if (stat == Status.ticketSale)
+                remainingTickets = MAX_PARTIES - wagerData[wagerID].soldTickets;
+            else remainingTickets = tickets.length;
+        }
+
+        ticketsData = new TicketInfo[](tickets.length);
+
+        if (stat == Status.ticketSale) currentTicketValue = ticketPrice;
+        else currentTicketValue = _ticketValue(tickets.length);
+
+        uint256 plus5pTV = currentTicketValue +
+            (currentTicketValue * FIVE) /
+            BASIS;
+
+        if (tickets.length != ZERO) {
+            uint256 index;
+            while (index != tickets.length) {
+                uint256 loadedOffer = offer[wagerID][uint8(tickets[index])]
+                    .amount;
+                ticketsData[index] = TicketInfo(
+                    Offer(
+                        loadedOffer >= plus5pTV ? uint96(loadedOffer) : ZERO,
+                        loadedOffer >= plus5pTV
+                            ? offer[wagerID][uint8(tickets[index])].maker
+                            : ZERO_ADDRESS
+                    ),
+                    uint8(tickets[index]),
+                    ticketOwnership[wagerID][uint8(tickets[index])]
+                );
+
+                unchecked {
+                    index++;
+                }
+            }
+        }
+    }
+
     /// @custom:see {_ticketValue()}
     function ticketValue() external view returns (uint256) {
         (Status stat, , , bytes memory tickets) = latestUpdate();
@@ -631,12 +726,12 @@ contract Come2Top {
             for each winning ticket.
         @return eligibleWithdrawals The number of eligible withdrawals for the current wager.
         @return allTicketsData An array of TicketInfo structures containing the ticket ID
-            and owner address for each winning ticket.
+            owner address and offer data for each winning ticket.
     */
     function winnersWithTickets()
         external
         view
-        returns (int256 eligibleWithdrawals, TicketInfo[] memory)
+        returns (int256 eligibleWithdrawals, TicketInfo[] memory allTicketsData)
     {
         uint256 wagerID = currentWagerID;
 
@@ -644,18 +739,34 @@ contract Come2Top {
             Status stat,
             int256 _eligibleWithdrawals,
             uint256 currentWave,
-            bytes memory tickets
+            bytes memory winnerTickets
         ) = latestUpdate();
 
         _onlyWithrawable(currentWave, stat);
 
-        TicketInfo[] memory allTicketsData = new TicketInfo[](tickets.length);
+        allTicketsData = new TicketInfo[](winnerTickets.length);
         uint256 index;
 
-        while (index != tickets.length) {
+        uint256 currentTicketValue;
+        if (stat == Status.ticketSale) currentTicketValue = ticketPrice;
+        else currentTicketValue = _ticketValue(winnerTickets.length);
+
+        uint256 plus5TV = currentTicketValue +
+            (currentTicketValue / BASIS) *
+            FIVE;
+
+        while (index != winnerTickets.length) {
+            uint256 loadOffer = offer[wagerID][uint8(winnerTickets[index])]
+                .amount;
             allTicketsData[index] = TicketInfo(
-                uint8(tickets[index]),
-                ticketOwnership[wagerID][uint8(tickets[index])]
+                Offer(
+                    loadOffer >= plus5TV ? uint96(loadOffer) : ZERO,
+                    loadOffer >= plus5TV
+                        ? offer[wagerID][uint8(winnerTickets[index])].maker
+                        : ZERO_ADDRESS
+                ),
+                uint8(winnerTickets[index]),
+                ticketOwnership[wagerID][uint8(winnerTickets[index])]
             );
 
             unchecked {
@@ -749,10 +860,10 @@ contract Come2Top {
     /**
         @notice Retrieves the latest update of the current wager.
         @dev It provides essential information about the wager's current state.
-        @return stat The current status of the wager (notStarted, ticketSale, waitForCommingWave, Withdrawable, finished).
+        @return stat The current status of the wager (ticketSale, waitForCommingWave, Withdrawable, finished).
         @return eligibleWithdrawals The number of eligible withdrawals for the current wave of the wager.
         @return currentWave The current wave of the wager.
-        @return tickets The byte array containing the winning ticket IDs for the current wager.
+        @return winnerTickets The byte array containing the winning ticket IDs for the current wager.
     */
     function latestUpdate()
         public
@@ -761,19 +872,16 @@ contract Come2Top {
             Status stat,
             int256 eligibleWithdrawals,
             uint256 currentWave,
-            bytes memory tickets
+            bytes memory winnerTickets
         )
     {
         uint256 wagerID = currentWagerID;
         WagerData memory BD = wagerData[wagerID];
-        tickets = BD.tickets;
+        winnerTickets = BD.tickets;
         currentWave = BD.updatedWave;
         eligibleWithdrawals = BD.eligibleWithdrawals;
 
-        if (BD.startedBlock == ZERO)
-            stat = BD.soldTickets != ZERO
-                ? Status.ticketSale
-                : Status.notStarted;
+        if (BD.startedBlock == ZERO) stat = Status.ticketSale;
         else if (BD.eligibleWithdrawals == N_ONE) stat = Status.finished;
         else {
             uint256 lastUpdatedWave;
@@ -795,7 +903,7 @@ contract Come2Top {
                         Status.waitForCommingWave,
                         eligibleWithdrawals,
                         currentWave,
-                        tickets
+                        winnerTickets
                     );
 
                 lastUpdatedWave = ONE;
@@ -810,14 +918,14 @@ contract Come2Top {
                         accumulatedBlocks <
                     currentBlock
                 ) {
-                    tickets = _shuffleBytedArray(
-                        tickets,
+                    winnerTickets = _shuffleBytedArray(
+                        winnerTickets,
                         _calculateRandomSeed(
                             BD.startedBlock +
                                 (lastUpdatedWave * WAVE_DURATION) +
                                 accumulatedBlocks
                         ),
-                        tickets.length / TWO
+                        winnerTickets.length / TWO
                     );
 
                     unchecked {
@@ -826,10 +934,12 @@ contract Come2Top {
                             lastUpdatedWave;
                         currentWave++;
                         lastUpdatedWave++;
-                        eligibleWithdrawals = int256(tickets.length / TWO);
+                        eligibleWithdrawals = int256(
+                            winnerTickets.length / TWO
+                        );
                     }
 
-                    if (tickets.length == ONE) {
+                    if (winnerTickets.length == ONE) {
                         eligibleWithdrawals = int8(ONE);
 
                         break;
@@ -1105,7 +1215,7 @@ contract Come2Top {
     /**
         @dev Checks the current status of the wager and reverts the transaction
             if the wager status is not withrawable.
-        @param stat The current status of the wager (notStarted, ticketSale, waitForCommingWave, Withdrawable, finished).
+        @param stat The current status of the wager (ticketSale, waitForCommingWave, Withdrawable, finished).
     */
     function _onlyWithrawable(uint256 currentWave, Status stat) private pure {
         if (currentWave == ZERO) revert WAIT_FOR_FIRST_WAVE();
