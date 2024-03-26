@@ -45,6 +45,22 @@
 		"inputs": [
 			{
 				"internalType": "uint256",
+				"name": "cooldownBlock",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "currentBlock",
+				"type": "uint256"
+			}
+		],
+		"name": "COOLDOWN_NOT_YET_ENDED",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
 				"name": "remainingTickets",
 				"type": "uint256"
 			}
@@ -355,6 +371,12 @@
 				"internalType": "uint256",
 				"name": "ticketID",
 				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "cooldown",
+				"type": "uint256"
 			}
 		],
 		"name": "WagerFinished",
@@ -386,6 +408,12 @@
 				"internalType": "uint256[2]",
 				"name": "ticketIDs",
 				"type": "uint256[2]"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "cooldown",
+				"type": "uint256"
 			}
 		],
 		"name": "WagerFinished",
@@ -553,12 +581,25 @@
 	},
 	{
 		"inputs": [],
+		"name": "cooldownBlockNo",
+		"outputs": [
+			{
+				"internalType": "uint80",
+				"name": "",
+				"type": "uint80"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
 		"name": "currentWagerID",
 		"outputs": [
 			{
-				"internalType": "uint160",
+				"internalType": "uint80",
 				"name": "",
-				"type": "uint160"
+				"type": "uint80"
 			}
 		],
 		"stateMutability": "view",
@@ -598,7 +639,7 @@
 			},
 			{
 				"internalType": "bytes",
-				"name": "tickets",
+				"name": "winnerTickets",
 				"type": "bytes"
 			}
 		],
@@ -927,15 +968,77 @@
 	},
 	{
 		"inputs": [],
-		"name": "winnersWithTickets",
+		"name": "wagerInfo",
 		"outputs": [
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "stat",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "maxPurchasableTickets",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "startedBlock",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "currentWave",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "currentTicketValue",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "remainingTickets",
+				"type": "uint256"
+			},
 			{
 				"internalType": "int256",
 				"name": "eligibleWithdrawals",
 				"type": "int256"
 			},
 			{
+				"internalType": "uint256",
+				"name": "nextWaveTicketValue",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "nextWaveWinrate",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes",
+				"name": "tickets",
+				"type": "bytes"
+			},
+			{
 				"components": [
+					{
+						"components": [
+							{
+								"internalType": "uint96",
+								"name": "amount",
+								"type": "uint96"
+							},
+							{
+								"internalType": "address",
+								"name": "maker",
+								"type": "address"
+							}
+						],
+						"internalType": "struct Come2Top.Offer",
+						"name": "offer",
+						"type": "tuple"
+					},
 					{
 						"internalType": "uint256",
 						"name": "ticketID",
@@ -948,7 +1051,54 @@
 					}
 				],
 				"internalType": "struct Come2Top.TicketInfo[]",
-				"name": "",
+				"name": "ticketsData",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "winnersWithTickets",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "eligibleWithdrawals",
+				"type": "int256"
+			},
+			{
+				"components": [
+					{
+						"components": [
+							{
+								"internalType": "uint96",
+								"name": "amount",
+								"type": "uint96"
+							},
+							{
+								"internalType": "address",
+								"name": "maker",
+								"type": "address"
+							}
+						],
+						"internalType": "struct Come2Top.Offer",
+						"name": "offer",
+						"type": "tuple"
+					},
+					{
+						"internalType": "uint256",
+						"name": "ticketID",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					}
+				],
+				"internalType": "struct Come2Top.TicketInfo[]",
+				"name": "allTicketsData",
 				"type": "tuple[]"
 			}
 		],
