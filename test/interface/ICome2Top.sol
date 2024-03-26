@@ -7,7 +7,13 @@ interface ICome2Top {
     \*******************************/
     type Status is uint8;
 
+    struct Offer {
+        uint96 amount;
+        address maker;
+    }
+
     struct TicketInfo {
+        Offer offer;
         uint256 ticketID;
         address owner;
     }
@@ -34,14 +40,16 @@ interface ICome2Top {
         uint256 indexed wagerID,
         address indexed winner,
         uint256 indexed amount,
-        uint256 ticketID
+        uint256 ticketID,
+        uint256 cooldown
     );
 
     event WagerFinished(
         uint256 indexed wagerID,
         address[2] winners,
         uint256[2] amounts,
-        uint256[2] ticketIDs
+        uint256[2] ticketIDs,
+        uint256 cooldown
     );
 
     event OfferMade(
@@ -93,6 +101,7 @@ interface ICome2Top {
     error PARTICIPATED_BEFORE();
     error PLAYER_HAS_NO_TICKETS();
     error NO_AMOUNT_TO_REFUND();
+    error COOLDOWN_NOT_YET_ENDED(uint256 cooldownBlock, uint256 currentBlock);
     error WAIT_FOR_NEXT_WAGER_MATCH();
     error WAIT_FOR_FIRST_WAVE();
 
@@ -127,9 +136,7 @@ interface ICome2Top {
 
     function currentWagerID() external view returns (uint160);
 
-    function wagerData(
-        uint256
-    )
+    function wagerData(uint256)
         external
         view
         returns (
@@ -140,9 +147,7 @@ interface ICome2Top {
             bytes memory tickets
         );
 
-    function offerorData(
-        address
-    )
+    function offerorData(address)
         external
         view
         returns (
@@ -155,10 +160,10 @@ interface ICome2Top {
 
     function totalPlayerTickets(uint256, address) external view returns (uint8);
 
-    function offer(
-        uint256,
-        uint8
-    ) external view returns (uint96 amount, address maker);
+    function offer(uint256, uint8)
+        external
+        view
+        returns (uint96 amount, address maker);
 
     function USDT() external view returns (address);
 
@@ -172,16 +177,31 @@ interface ICome2Top {
 
     function TICKET() external view returns (bytes memory);
 
+    function wagerInfo()
+        external
+        view
+        returns (
+            Status stat,
+            uint256 maxPurchasableTickets,
+            uint256 startedBlock,
+            uint256 currentWave,
+            uint256 currentTicketValue,
+            uint256 remainingTickets,
+            int256 eligibleWithdrawals,
+            uint256 nextWaveTicketValue,
+            uint256 nextWaveWinrate,
+            bytes memory tickets,
+            TicketInfo[] memory ticketsData
+        );
+
     function ticketValue() external view returns (uint256);
 
     function winnersWithTickets()
         external
         view
-        returns (int256 eligibleWithdrawals, TicketInfo[] memory);
+        returns (int256 eligibleWithdrawals, TicketInfo[] memory allTicketsData);
 
-    function playerWithWinningTickets(
-        address player
-    )
+    function playerWithWinningTickets(address player)
         external
         view
         returns (uint256 totalTicketsValue, bytes memory playerTickets);
@@ -201,6 +221,6 @@ interface ICome2Top {
             Status stat,
             int256 eligibleWithdrawals,
             uint256 currentWave,
-            bytes memory tickets
+            bytes memory winnerTickets
         );
 }
