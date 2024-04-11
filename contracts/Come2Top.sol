@@ -1,5 +1,5 @@
-//  SPDX-License-Identifier: -- Risk-Labs --
-pragma solidity 0.8.18;
+//  SPDX-License-Identifier: -- Come2Top --
+pragma solidity 0.8.20;
 
 /**
     @author @Risk-Labs
@@ -50,8 +50,8 @@ contract Come2Top {
     bool public pause;
     uint8 public maxTicketsPerWager;
     uint80 public ticketPrice;
-    uint80 public currentWagerID;
-    uint80 public cooldownBlockNo;
+    address public owner;
+    uint256 public currentWagerID;
 
     mapping(uint256 => WagerData) public wagerData;
     mapping(address => OfferorData) public offerorData;
@@ -64,21 +64,18 @@ contract Come2Top {
     \*******************************/
     IUSDT public immutable USDT;
     address public immutable TREASURY;
-    address public immutable ADMIN = tx.origin;
     address public immutable THIS = address(this);
     uint256 public immutable MAGIC_VALUE;
-    bytes public constant TICKET =
+    bytes public constant TICKETS =
         hex"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
     address private constant ZERO_ADDRESS = address(0x0);
-    uint256 private constant COOLDOWN = 210;
     uint256 private constant MAX_TICKET_PRICE = 1e9;
     uint256 private constant MIN_TICKET_PRICE = 1e6;
     uint256 private constant MAX_PARTIES = 256;
-    uint256 private constant WAVE_ELIGIBLES_TIME = 420;
+    uint256 private constant WAVE_ELIGIBLES_TIME = 240;
     uint256 private constant BASIS = 100;
     uint256 private constant OFFEREE_BENEFICIARY = 95;
-    uint256 private constant WAVE_DURATION = 71;
-    uint256 private constant TOTAL_BLOCK_HASHES = 21;
+    uint256 private constant WAVE_DURATION = 16;
     int8 private constant N_ONE = -1;
     uint8 private constant ZERO = 0;
     uint8 private constant ONE = 1;
@@ -86,9 +83,8 @@ contract Come2Top {
     uint8 private constant THREE = 3;
     uint8 private constant FOUR = 4;
     uint8 private constant FIVE = 5;
-    uint8 private constant TEN = 10;
-    uint8 private constant ELEVEN = 11;
-    uint8 private constant TWENTY = 20;
+    uint8 private constant SEVEN = 7;
+    uint8 private constant EIGHT = 8;
 
     /********************************\
     |-*-*-*-*-*   EVENTS   *-*-*-*-*-|
@@ -112,16 +108,14 @@ contract Come2Top {
         uint256 indexed wagerID,
         address indexed winner,
         uint256 indexed amount,
-        uint256 ticketID,
-        uint256 cooldown
+        uint256 ticketID
     );
 
     event WagerFinished(
         uint256 indexed wagerID,
         address[TWO] winners,
         uint256[TWO] amounts,
-        uint256[TWO] ticketIDs,
-        uint256 cooldown
+        uint256[TWO] ticketIDs
     );
 
     event OfferMade(
@@ -150,7 +144,7 @@ contract Come2Top {
     |-*-*-*-*-*   ERRORS   *-*-*-*-*-|
     \********************************/
     error ONLY_EOA();
-    error ONLY_ADMIN();
+    error ONLY_OWNER();
     error ONLY_TICKET_OWNER(uint256 ticketID);
     error ONLY_WINNER_TICKET(uint256 ticketID);
     error ONLY_WITHDRAWABLE_MODE(Status currentStat);
@@ -188,8 +182,8 @@ contract Come2Top {
         _;
     }
 
-    modifier onlyAdmin() {
-        if (msg.sender != ADMIN) revert ONLY_ADMIN();
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert ONLY_OWNER();
 
         _;
     }
@@ -216,12 +210,13 @@ contract Come2Top {
         if (usdt == ZERO_ADDRESS || treasury == ZERO_ADDRESS)
             revert ZERO_ADDRESS_PROVIDED();
 
+        owner = msg.sender;
         maxTicketsPerWager = mtpw;
         ticketPrice = tp;
         USDT = IUSDT(usdt);
         TREASURY = treasury;
         MAGIC_VALUE = uint160(address(this));
-        wagerData[ZERO].tickets = TICKET;
+        wagerData[ZERO].tickets = TICKETS;
 
         (bool ok, ) = treasury.call(abi.encode(usdt));
 
@@ -231,25 +226,31 @@ contract Come2Top {
     /*******************************\
     |-*-*-*   ADMINSTRATION   *-*-*-|
     \*******************************/
+    function changeOwner(address newOwner) external onlyOwner {
+        if (owner == ZERO_ADDRESS) revert ZERO_ADDRESS_PROVIDED();
+        
+        owner = newOwner;
+    }
+
     /**
         @notice Toggles the pause state of the contract.
-        @dev Allows the admin to toggle the pause state of the contract.
+        @dev Allows the owner to toggle the pause state of the contract.
             When the contract is paused, certain functions may be restricted or disabled.
-            Only the admin can call this function to toggle the pause state.
+            Only the owner can call this function to toggle the pause state.
     */
-    function togglePause() external onlyAdmin {
+    function togglePause() external onlyOwner {
         pause = !pause;
     }
 
     /**
         @notice Changes the ticket price for joining the wager.
-        @dev Allows the admin to change the ticket price for joining the wager. 
-            Only the admin can call this function. 
+        @dev Allows the owner to change the ticket price for joining the wager. 
+            Only the owner can call this function. 
         @param ticketPrice_ The new ticket price to be set.
     */
     function changeTicketPrice(uint80 ticketPrice_)
         external
-        onlyAdmin
+        onlyOwner
         onlyPausedAndFinishedWager
     {
         _checkTP(ticketPrice_);
@@ -259,13 +260,13 @@ contract Come2Top {
 
     /**
         @notice Changes the maximum number of tickets allowed per wager.
-        @dev Allows the admin to change the maximum number of tickets allowed per wager. 
-            Only the admin can call this function.
+        @dev Allows the owner to change the maximum number of tickets allowed per wager. 
+            Only the owner can call this function.
         @param maxTicketsPerWager_ The new maximum number of tickets allowed per wager.
     */
     function changeMaxTicketsPerWager(uint8 maxTicketsPerWager_)
         external
-        onlyAdmin
+        onlyOwner
         onlyPausedAndFinishedWager
     {
         _checkMTPW(maxTicketsPerWager_);
@@ -294,16 +295,13 @@ contract Come2Top {
         WagerData storage BD;
 
         if (wagerData[wagerID].eligibleWithdrawals == N_ONE) {
-            if (cooldownBlockNo >= block.number)
-                revert COOLDOWN_NOT_YET_ENDED(cooldownBlockNo, block.number);
-
             unchecked {
                 wagerID++;
                 currentWagerID++;
             }
 
             BD = wagerData[wagerID];
-            BD.tickets = TICKET;
+            BD.tickets = TICKETS;
         } else BD = wagerData[wagerID];
 
         uint256 remainingTickets = MAX_PARTIES - BD.soldTickets;
@@ -361,7 +359,7 @@ contract Come2Top {
         if (totalTickets == remainingTickets) {
             uint256 currentBlock = block.number;
             BD.startedBlock = uint216(currentBlock);
-            BD.tickets = TICKET;
+            BD.tickets = TICKETS;
 
             emit WagerStarted(wagerID, currentBlock, MAX_PARTIES * neededUSDT);
         } else BD.soldTickets += uint8(totalTickets);
@@ -446,9 +444,7 @@ contract Come2Top {
             wagerData[wagerID].tickets = tickets;
             wagerData[wagerID].eligibleWithdrawals = N_ONE;
 
-            _transferHelper(ADMIN, fee);
-
-            cooldownBlockNo = uint80(block.number + COOLDOWN);
+            _transferHelper(owner, fee);
 
             if (tickets.length == ONE) {
                 address ticketOwner = ticketOwnership[wagerID][ticketID];
@@ -462,8 +458,7 @@ contract Come2Top {
                     wagerID,
                     ticketOwner,
                     balance - fee,
-                    ticketID,
-                    cooldownBlockNo
+                    ticketID
                 );
             } else {
                 if (sender != ticketOwnership[currentWagerID][ticketID])
@@ -492,8 +487,7 @@ contract Come2Top {
                     [
                         uint256(uint8(tickets[ZERO])),
                         uint256(uint8(tickets[ONE]))
-                    ],
-                    cooldownBlockNo
+                    ]
                 );
             }
         } else {
@@ -515,7 +509,7 @@ contract Come2Top {
             uint256 idealWinnerPrize = balance / tickets.length;
             fee = (idealWinnerPrize / BASIS) * TWO;
 
-            _transferHelper(ADMIN, fee);
+            _transferHelper(owner, fee);
             _transferHelper(sender, idealWinnerPrize - fee);
 
             emit WagerUpdated(
@@ -657,7 +651,7 @@ contract Come2Top {
             uint256 nextWaveTicketValue,
             uint256 nextWaveWinrate,
             bytes memory tickets,
-            TicketInfo[] memory ticketsData
+            TicketInfo[MAX_PARTIES] memory ticketsData
         )
     {
         uint256 wagerID = currentWagerID;
@@ -665,46 +659,51 @@ contract Come2Top {
         maxPurchasableTickets = maxTicketsPerWager;
         (stat, eligibleWithdrawals, currentWave, tickets) = latestUpdate();
 
-        if (tickets.length != ONE || stat != Status.finished) {
-            nextWaveTicketValue = USDT.balanceOf(THIS) / (tickets.length / TWO);
-
-            nextWaveWinrate =
-                ((tickets.length / TWO) * (BASIS**TWO)) /
-                tickets.length;
-
-            if (stat == Status.ticketSale)
-                remainingTickets = MAX_PARTIES - wagerData[wagerID].soldTickets;
-            else remainingTickets = tickets.length;
-        }
-
-        ticketsData = new TicketInfo[](tickets.length);
-
         if (stat == Status.ticketSale) currentTicketValue = ticketPrice;
         else currentTicketValue = _ticketValue(tickets.length);
+
+        remainingTickets = tickets.length;
+
+        if (tickets.length != ONE && stat != Status.finished) {
+            if (stat == Status.ticketSale) {
+                remainingTickets = MAX_PARTIES - wagerData[wagerID].soldTickets;
+                nextWaveTicketValue = ticketPrice * TWO;
+                nextWaveWinrate = (BASIS**TWO) / TWO;
+            } else {
+                nextWaveTicketValue =
+                    USDT.balanceOf(THIS) /
+                    (tickets.length / TWO);
+                nextWaveWinrate =
+                    ((tickets.length / TWO) * (BASIS**TWO)) /
+                    tickets.length;
+            }
+        }
 
         uint256 plus5pTV = currentTicketValue +
             (currentTicketValue * FIVE) /
             BASIS;
 
-        if (tickets.length != ZERO) {
-            uint256 index;
-            while (index != tickets.length) {
-                uint256 loadedOffer = offer[wagerID][uint8(tickets[index])]
-                    .amount;
-                ticketsData[index] = TicketInfo(
-                    Offer(
-                        loadedOffer >= plus5pTV ? uint96(loadedOffer) : ZERO,
-                        loadedOffer >= plus5pTV
-                            ? offer[wagerID][uint8(tickets[index])].maker
-                            : ZERO_ADDRESS
-                    ),
-                    uint8(tickets[index]),
-                    ticketOwnership[wagerID][uint8(tickets[index])]
-                );
+        uint256 index;
+        bytes memory chosenTickets = stat == Status.ticketSale
+            ? TICKETS
+            : tickets;
 
-                unchecked {
-                    index++;
-                }
+        while (index != chosenTickets.length) {
+            uint256 loadedOffer = offer[wagerID][uint8(chosenTickets[index])]
+                .amount;
+            ticketsData[uint8(chosenTickets[index])] = TicketInfo(
+                Offer(
+                    loadedOffer >= plus5pTV ? uint96(loadedOffer) : ZERO,
+                    loadedOffer >= plus5pTV
+                        ? offer[wagerID][uint8(chosenTickets[index])].maker
+                        : ZERO_ADDRESS
+                ),
+                uint8(chosenTickets[index]),
+                ticketOwnership[wagerID][uint8(chosenTickets[index])]
+            );
+
+            unchecked {
+                index++;
             }
         }
     }
@@ -1079,74 +1078,15 @@ contract Come2Top {
         view
         returns (uint256)
     {
-        uint256 b = WAVE_DURATION;
-        uint256 index = TWENTY;
-
-        uint256[] memory parts = new uint256[](FIVE);
-        uint256[] memory blockHashes = new uint256[](TOTAL_BLOCK_HASHES);
-
-        while (blockHashes[ZERO] == ZERO) {
-            blockHashes[index] = uint256(blockhash(startBlock - b));
-
-            if (index == ZERO) break;
-            else {
-                unchecked {
-                    index--;
-                    b--;
-                }
-            }
-        }
-
-        for (uint256 i; i < TEN; ) {
-            unchecked {
-                parts[ZERO] += blockHashes[i];
-                i++;
-            }
-        }
-
-        parts[TWO] = blockHashes[TEN];
-
-        for (uint256 i = ELEVEN; i < TOTAL_BLOCK_HASHES; ) {
-            unchecked {
-                parts[FOUR] -= blockHashes[i];
-                i++;
-            }
-        }
-
-        uint256 cachedNum;
-        if (parts[ZERO] > parts[TWO] && parts[ZERO] > parts[FOUR]) {
-            if (parts[TWO] < parts[FOUR]) {
-                cachedNum = parts[TWO];
-                parts[TWO] = parts[FOUR];
-                parts[FOUR] = cachedNum;
-            }
-        } else {
-            if (parts[FOUR] > parts[ZERO] && parts[FOUR] > parts[TWO]) {
-                cachedNum = parts[FOUR];
-
-                if (parts[ZERO] > parts[TWO]) {
-                    parts[FOUR] = parts[TWO];
-                    parts[TWO] = parts[ZERO];
-                } else parts[FOUR] = parts[ZERO];
-            } else {
-                cachedNum = parts[TWO];
-
-                if (parts[ZERO] < parts[FOUR]) {
-                    parts[TWO] = parts[FOUR];
-                    parts[FOUR] = parts[ZERO];
-                } else parts[TWO] = parts[ZERO];
-            }
-
-            parts[ZERO] = cachedNum;
-        }
-
         unchecked {
-            parts[ONE] = (parts[ZERO] / TWO) + (parts[TWO] / TWO);
-            parts[THREE] = (parts[FOUR] / TWO) + (parts[TWO] / TWO);
-
             return
                 uint256(
-                    keccak256(abi.encodePacked(parts[ONE] * parts[THREE]))
+                    keccak256(
+                        abi.encodePacked(
+                            uint256(blockhash(startBlock - SEVEN)) +
+                                uint256(blockhash(startBlock - EIGHT))
+                        )
+                    )
                 ) * MAGIC_VALUE;
         }
     }
@@ -1185,7 +1125,7 @@ contract Come2Top {
     function _checkMTPW(uint8 value) private pure {
         _revertOnZeroUint(value);
 
-        if (value > FOUR) revert VALUE_CANT_BE_GREATER_THAN(FOUR);
+        // if (value > FOUR) revert VALUE_CANT_BE_GREATER_THAN(FOUR);
     }
 
     /**
