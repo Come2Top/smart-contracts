@@ -58,17 +58,6 @@
 		"type": "error"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "remainingTickets",
-				"type": "uint256"
-			}
-		],
-		"name": "FEWER_TICKETS_LEFT",
-		"type": "error"
-	},
-	{
 		"inputs": [],
 		"name": "NO_AMOUNT_TO_REFUND",
 		"type": "error"
