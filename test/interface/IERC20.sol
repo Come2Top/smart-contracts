@@ -1,5 +1,5 @@
 //  SPDX-License-Identifier: -- Come2Top --
-pragma solidity 0.8.18;
+pragma solidity 0.8.20;
 
 interface IERC20 {
     function approve(address spender, uint256 amount) external returns(bool);
