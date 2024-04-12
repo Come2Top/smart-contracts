@@ -1,4 +1,4 @@
-//  SPDX-License-Identifier: UNLICENSED
+//  SPDX-License-Identifier: -- Come2Top --
 pragma solidity 0.8.18;
 
 interface IERC20 {
