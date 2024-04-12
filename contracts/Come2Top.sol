@@ -164,7 +164,6 @@ contract Come2Top {
     error ZERO_ADDRESS_PROVIDED();
     error ZERO_UINT_PROVIDED();
     error CHECK_TICKETS_LENGTH(uint256 ticketLength);
-    error FEWER_TICKETS_LEFT(uint256 remainingTickets);
     error SLECTED_TICKETS_SOLDOUT_BEFORE();
     error PARTICIPATED_BEFORE();
     error PLAYER_HAS_NO_TICKETS();
@@ -226,9 +225,13 @@ contract Come2Top {
     /*******************************\
     |-*-*-*   ADMINSTRATION   *-*-*-|
     \*******************************/
+    /**
+        @notice Changes the owner of the contract.
+        @dev Allows the current owner to transfer the ownership to a new address.
+    */
     function changeOwner(address newOwner) external onlyOwner {
         if (owner == ZERO_ADDRESS) revert ZERO_ADDRESS_PROVIDED();
-        
+
         owner = newOwner;
     }
 
@@ -317,9 +320,6 @@ contract Come2Top {
 
         if (totalTickets + totalPlayerTickets[wagerID][sender] > ticketLimit)
             revert PARTICIPATED_BEFORE();
-
-        if (totalTickets > remainingTickets)
-            revert FEWER_TICKETS_LEFT(remainingTickets);
 
         for (uint256 i; i < totalTickets; ) {
             if (ticketIDs[i] == ZERO) {
@@ -1125,7 +1125,7 @@ contract Come2Top {
     function _checkMTPW(uint8 value) private pure {
         _revertOnZeroUint(value);
 
-        // if (value > FOUR) revert VALUE_CANT_BE_GREATER_THAN(FOUR);
+        if (value > FOUR) revert VALUE_CANT_BE_GREATER_THAN(FOUR);
     }
 
     /**
