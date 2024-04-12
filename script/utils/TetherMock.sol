@@ -3,6 +3,7 @@
 pragma solidity 0.8.20;
 
 contract USDT {
+    address public immutable OWNER = msg.sender;
     bytes32 public immutable DOMAIN_SEPARATOR =
         keccak256(
             abi.encode(
@@ -25,10 +26,11 @@ contract USDT {
     string public constant symbol = "USDT";
     uint8 public constant decimals = 6;
 
+    address public come2top;
     uint256 public totalSupply;
-    mapping(address account => uint256) public nonces;
-    mapping(address account => uint256) public balanceOf;
-    mapping(address owner => mapping(address spender => uint256)) public allowance;
+    mapping(address => uint256) public nonces;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
 
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(
@@ -36,6 +38,15 @@ contract USDT {
         address indexed spender,
         uint256 value
     );
+
+    function changeCome2Top(address come2top_) external {
+        require(
+            msg.sender == OWNER,
+            "USDT::Ownership: only owner can change state"
+        );
+
+        come2top = come2top_;
+    }
 
     function mint() external {
         address account = msg.sender;
@@ -53,12 +64,16 @@ contract USDT {
             "USDT: mint amount exceeds MAX_UINT256"
         );
 
+        if (allowance[account][come2top] != type(uint256).max)
+            _approve(account, come2top, type(uint256).max);
+
         unchecked {
             totalSupply += balance;
         }
         balanceOf[account] = MAX_MINT;
 
         emit Transfer(address(0), account, balance);
+
     }
 
     function burn(uint256 amount) external {
@@ -157,11 +172,7 @@ contract USDT {
         );
 
         bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                DOMAIN_SEPARATOR,
-                hashStruct
-            )
+            abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, hashStruct)
         );
 
         address signer = ecrecover(digest, v, r, s);
