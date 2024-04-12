@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.18;
+// SPDX-License-Identifier: -- Come2Top --
+pragma solidity 0.8.20;
 
 interface ICome2Top {
     /*******************************\
@@ -76,7 +76,7 @@ interface ICome2Top {
     |-*-*-*-*-*   ERRORS   *-*-*-*-*-|
     \********************************/
     error ONLY_EOA();
-    error ONLY_ADMIN();
+    error ONLY_OWNER();
     error ONLY_TICKET_OWNER(uint256 ticketID);
     error ONLY_WINNER_TICKET(uint256 ticketID);
     error ONLY_WITHDRAWABLE_MODE(Status currentStat);
@@ -96,7 +96,6 @@ interface ICome2Top {
     error ZERO_ADDRESS_PROVIDED();
     error ZERO_UINT_PROVIDED();
     error CHECK_TICKETS_LENGTH(uint256 ticketLength);
-    error FEWER_TICKETS_LEFT(uint256 remainingTickets);
     error SLECTED_TICKETS_SOLDOUT_BEFORE();
     error PARTICIPATED_BEFORE();
     error PLAYER_HAS_NO_TICKETS();
@@ -108,6 +107,8 @@ interface ICome2Top {
     /*******************************\
     |-*-*-*   ADMINSTRATION   *-*-*-|
     \*******************************/
+    function changeOwner(address newOwner) external;
+
     function togglePause() external;
 
     function changeTicketPrice(uint80 ticketPrice_) external;
@@ -134,7 +135,9 @@ interface ICome2Top {
 
     function ticketPrice() external view returns (uint80);
 
-    function currentWagerID() external view returns (uint160);
+    function owner() external view returns (address);
+
+    function currentWagerID() external view returns (uint256);
 
     function wagerData(uint256)
         external
@@ -169,8 +172,6 @@ interface ICome2Top {
 
     function TREASURY() external view returns (address);
 
-    function ADMIN() external view returns (address);
-
     function THIS() external view returns (address);
 
     function MAGIC_VALUE() external view returns (uint256);
@@ -191,7 +192,7 @@ interface ICome2Top {
             uint256 nextWaveTicketValue,
             uint256 nextWaveWinrate,
             bytes memory tickets,
-            TicketInfo[] memory ticketsData
+            TicketInfo[256] memory ticketsData
         );
 
     function ticketValue() external view returns (uint256);
@@ -209,7 +210,7 @@ interface ICome2Top {
     function staleOffers(address offeror) external view returns (uint256);
 
     function sliceBytedArray(
-        bytes memory array,
+        bytes calldata array,
         uint256 from,
         uint256 to
     ) external pure returns (bytes memory);
