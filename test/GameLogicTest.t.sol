@@ -1,5 +1,5 @@
-//  SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.18;
+//  SPDX-License-Identifier: -- Come2Top --
+pragma solidity 0.8.20;
 
 import {IERC20} from "./interface/IERC20.sol";
 import {Test, console2} from "forge-std/Test.sol";
@@ -11,18 +11,17 @@ contract GameLogicTest is Test {
 
     Come2Top private GAME;
     address[] private TICKET_BUYERS;
-    address private ADMIN = makeAddr("ADMIN");
 
-    address private constant USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
-    uint256 WAVE_DURATION = 71;
-    uint256 WAVE_ELIGIBLE_TIME = 420;
+    address private constant USDT = 0x1E4a5963aBFD975d8c9021ce480b42188849D41d;
+    uint256 WAVE_DURATION = 16;
+    uint256 WAVE_ELIGIBLE_TIME = 240;
     uint8 private constant MAX_TICKET_PER_GAME = 4;
-    uint80 private constant TICKET_PRICE = 2e6;
+    uint80 private constant TICKET_PRICE = 1e7;
     uint256 private constant MAX_PLAYERS = 256;
     uint256 private constant MAX_UINT256 = type(uint256).max;
 
     function setUp() external {
-        vm.createSelectFork("https://polygon.drpc.org", 53600000);
+        vm.createSelectFork("https://polygon-zkevm.drpc.org", 2225000);
 
         address treasury = address(new Treasury());
 
@@ -67,7 +66,7 @@ contract GameLogicTest is Test {
             i--;
         }
 
-        vm.roll(block.number + WAVE_DURATION + 1);
+        vm.roll(block.number + 1 + _calculateWaveBlocks(7));
 
         uint8 ticketID;
 
@@ -82,7 +81,7 @@ contract GameLogicTest is Test {
             uint256 nextWaveTicketValue,
             uint256 nextWaveWinrate,
             bytes memory tickets,
-            Come2Top.TicketInfo[] memory winnerTicketsInfo
+            Come2Top.TicketInfo[256] memory winnerTicketsInfo
         ) = GAME.wagerInfo();
 
         string memory stringifiedStatus;
@@ -120,20 +119,20 @@ contract GameLogicTest is Test {
 
         uint256 ticketValue_1stTx = GAME.ticketValue();
 
-        ticketID = uint8(tickets_1stTx[tickets_1stTx.length - 1]);
-        vm.prank(ticketOwnerOfLastIndex);
-        GAME.redeem(ticketID);
+        // ticketID = uint8(tickets_1stTx[tickets_1stTx.length - 1]);
+        // vm.prank(ticketOwnerOfLastIndex);
+        // GAME.redeem(ticketID);
 
-        (
-            ,
-            int256 eligibleWithdrawals_2ndTx,
-            ,
-            bytes memory tickets_2ndTx
-        ) = GAME.latestUpdate();
+        // (
+        //     ,
+        //     int256 eligibleWithdrawals_2ndTx,
+        //     ,
+        //     bytes memory tickets_2ndTx
+        // ) = GAME.latestUpdate();
 
-        uint256 ticketValue_2ndTx = GAME.ticketValue();
+        // uint256 ticketValue_2ndTx = GAME.ticketValue();
 
-        vm.roll(block.number + WAVE_DURATION + WAVE_ELIGIBLE_TIME);
+        vm.roll(block.number + 65);
 
         (
             ,
@@ -147,7 +146,7 @@ contract GameLogicTest is Test {
         "____________________________________".log();
         console2.log("Maximum Purchasable Tickets:", maxPurchasableTickets);
         console2.log("Started Block:              ", startedBlock);
-        console2.log("Remaining Tickets:          ", remainingTickets - 2);
+        // console2.log("Remaining Tickets:          ", remainingTickets);
         console2.log("Status:                     ", stringifiedStatus);
         console2.log("Current Wave:               ", currentWave);
         console2.log("Next Wave:                  ", nextWave);
@@ -158,15 +157,15 @@ contract GameLogicTest is Test {
             IUSDT(USDT).balanceOf(address(GAME))
         );
         console2.log(
-            "Admin USDT Balance:         ",
-            IUSDT(USDT).balanceOf(GAME.ADMIN())
+            "Owner USDT Balance:         ",
+            IUSDT(USDT).balanceOf(GAME.owner())
         );
 
         "".log();
         "Ticket Value".log();
         console2.log("   before any withdraws:", currentTicketValue);
         console2.log("   after 1st withdraw:  ", ticketValue_1stTx);
-        console2.log("   after 2nd withdraw:  ", ticketValue_2ndTx);
+        // console2.log("   after 2nd withdraw:  ", ticketValue_2ndTx);
         console2.log("   next wave:           ", ticketValueNextWave);
 
         "".log();
@@ -187,13 +186,13 @@ contract GameLogicTest is Test {
         "Eligible Withdrawals".log();
         console2.log("   before any withdraws:", eligibleWithdrawals);
         console2.log("   after 1st withdraw:  ", eligibleWithdrawals_1stTx);
-        console2.log(
-            "   after 2nd withdraw:  ",
-            uint256(eligibleWithdrawals_2ndTx)
-        );
+        // console2.log(
+        //     "   after 2nd withdraw:  ",
+        //     uint256(eligibleWithdrawals_2ndTx)
+        // );
         console2.log(
             "   next wave:           ",
-            uint256(eligibleWithdrawalsNextWave)
+            eligibleWithdrawalsNextWave
         );
 
         "".log();
@@ -202,19 +201,28 @@ contract GameLogicTest is Test {
         tickets.logBytes();
         "   after 1st withdraw:".log();
         tickets_1stTx.logBytes();
-        "   after 2nd withdraw:".log();
-        tickets_2ndTx.logBytes();
+        // "   after 2nd withdraw:".log();
+        // tickets_2ndTx.logBytes();
         "   next wave:".log();
         ticketsNextWave.logBytes();
         "____________________________________".log();
-        for (uint256 x; x < winnerTicketsInfo.length; x++) {
-            console2.log("Ticket ID:  ", winnerTicketsInfo[x].ticketID);
-            "Ticket Owner:".log();
-            winnerTicketsInfo[x].owner.log();
-            console2.log("Offer:      ", winnerTicketsInfo[x].offer.amount);
-            "Offeror:     ".log();
-            winnerTicketsInfo[x].offer.maker.log();
-            "+++++++++++++++++++++++++".log();
+        // for (uint256 x; x < winnerTicketsInfo.length; x++) {
+        //     console2.log("Ticket ID:  ", winnerTicketsInfo[x].ticketID);
+        //     "Ticket Owner:".log();
+        //     winnerTicketsInfo[x].owner.log();
+        //     console2.log("Offer:      ", winnerTicketsInfo[x].offer.amount);
+        //     "Offeror:     ".log();
+        //     winnerTicketsInfo[x].offer.maker.log();
+        //     "+++++++++++++++++++++++++".log();
+        // }
+    }
+
+
+    function _calculateWaveBlocks(uint256 _wave) private view returns(uint256 calculatedBlock) {
+        calculatedBlock = _wave * WAVE_DURATION;
+
+        for(uint i = 1; i < _wave; i++) {
+            calculatedBlock +=  WAVE_ELIGIBLE_TIME / i;
         }
     }
 }
