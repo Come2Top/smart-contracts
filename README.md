@@ -4,9 +4,9 @@
 ### Tether:  ``0x1e4a5963abfd975d8c9021ce480b42188849d41d``
 
 ## Polygon zkEVM (Cardona)
-### Come2Top: ``0x632DC86FF798a23bf3d31F93D6312921C9b7d5c8``
-### Treasury: ``0xCe01E761f9fCaBfF6Fc7bbDD4aD2Ee7d18432fcc``
-### Tether: ``0x35aC5d04dAcbf1759775e130b97327d7a0F62B0A``
+### Come2Top: ``0x1aE9AE2F4D188d378Ee9202d781f3BE2c22dF1db``
+### Treasury: ``0x8400DD361A7357AF60B7F67e6139916DA87119D2``
+### Tether: ``0x11d545B54F824966eE9b95EC68D15766Fa4F33F4``
 
 
 ## Test: ``forge test -vv``
