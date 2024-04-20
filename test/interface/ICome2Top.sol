@@ -92,7 +92,6 @@ interface ICome2Top {
     );
     error APROVE_OPERATION_FAILED();
     error VALUE_CANT_BE_LOWER_THAN(uint256 givenValue);
-    error VALUE_CANT_BE_GREATER_THAN(uint256 givenValue);
     error ZERO_ADDRESS_PROVIDED();
     error ZERO_UINT_PROVIDED();
     error CHECK_TICKETS_LENGTH(uint256 ticketLength);
@@ -175,8 +174,6 @@ interface ICome2Top {
     function THIS() external view returns (address);
 
     function MAGIC_VALUE() external view returns (uint256);
-
-    function TICKET() external view returns (bytes memory);
 
     function wagerInfo()
         external
