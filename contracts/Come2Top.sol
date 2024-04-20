@@ -159,6 +159,7 @@ contract Come2Top {
     );
     error APROVE_OPERATION_FAILED();
     error VALUE_CANT_BE_LOWER_THAN(uint256 givenValue);
+    error VALUE_CANT_BE_GREATER_THAN(uint256 givenValue);
     error ZERO_ADDRESS_PROVIDED();
     error ZERO_UINT_PROVIDED();
     error CHECK_TICKETS_LENGTH(uint256 ticketLength);
@@ -166,7 +167,6 @@ contract Come2Top {
     error PARTICIPATED_BEFORE();
     error PLAYER_HAS_NO_TICKETS();
     error NO_AMOUNT_TO_REFUND();
-    error COOLDOWN_NOT_YET_ENDED(uint256 cooldownBlock, uint256 currentBlock);
     error WAIT_FOR_NEXT_WAGER_MATCH();
     error WAIT_FOR_FIRST_WAVE();
 

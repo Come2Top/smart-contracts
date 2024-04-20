@@ -42,22 +42,6 @@
 		"type": "error"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "cooldownBlock",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "currentBlock",
-				"type": "uint256"
-			}
-		],
-		"name": "COOLDOWN_NOT_YET_ENDED",
-		"type": "error"
-	},
-	{
 		"inputs": [],
 		"name": "NO_AMOUNT_TO_REFUND",
 		"type": "error"
@@ -171,7 +155,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "SLECTED_TICKETS_SOLDOUT_BEFORE",
+		"name": "SELECTED_TICKETS_SOLDOUT_BEFORE",
 		"type": "error"
 	},
 	{
@@ -473,19 +457,6 @@
 				"internalType": "address",
 				"name": "",
 				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "TICKETS",
-		"outputs": [
-			{
-				"internalType": "bytes",
-				"name": "",
-				"type": "bytes"
 			}
 		],
 		"stateMutability": "view",
