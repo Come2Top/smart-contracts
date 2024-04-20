@@ -96,7 +96,7 @@ interface ICome2Top {
     error ZERO_ADDRESS_PROVIDED();
     error ZERO_UINT_PROVIDED();
     error CHECK_TICKETS_LENGTH(uint256 ticketLength);
-    error SLECTED_TICKETS_SOLDOUT_BEFORE();
+    error SELECTED_TICKETS_SOLDOUT_BEFORE();
     error PARTICIPATED_BEFORE();
     error PLAYER_HAS_NO_TICKETS();
     error NO_AMOUNT_TO_REFUND();
