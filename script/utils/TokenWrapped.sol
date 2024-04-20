@@ -2,8 +2,7 @@
 
 pragma solidity 0.8.20;
 
-contract USDT {
-    address public immutable OWNER = msg.sender;
+contract TokenWrapped {
     bytes32 public immutable DOMAIN_SEPARATOR =
         keccak256(
             abi.encode(
@@ -26,7 +25,6 @@ contract USDT {
     string public constant symbol = "USDT";
     uint8 public constant decimals = 6;
 
-    address public come2top;
     uint256 public totalSupply;
     mapping(address => uint256) public nonces;
     mapping(address => uint256) public balanceOf;
@@ -39,33 +37,21 @@ contract USDT {
         uint256 value
     );
 
-    function changeCome2Top(address come2top_) external {
-        require(
-            msg.sender == OWNER,
-            "USDT::Ownership: only owner can change state"
-        );
-
-        come2top = come2top_;
-    }
-
     function mint() external {
         address account = msg.sender;
         uint256 balance = balanceOf[account];
 
         require(
             balance < MAX_MINT,
-            "USDT: address reached maximum mintable amount or is over that"
+            "ERC20: address reached maximum mintable amount or is over that"
         );
 
         balance = MAX_MINT - balance;
 
         require(
             type(uint256).max - balance >= totalSupply,
-            "USDT: mint amount exceeds MAX_UINT256"
+            "ERC20: mint amount exceeds MAX_UINT256"
         );
-
-        if (allowance[account][come2top] != type(uint256).max)
-            _approve(account, come2top, type(uint256).max);
 
         unchecked {
             totalSupply += balance;
@@ -80,7 +66,7 @@ contract USDT {
         address account = msg.sender;
         uint256 accountBalance = balanceOf[account];
 
-        require(accountBalance >= amount, "USDT: burn amount exceeds balance");
+        require(accountBalance >= amount, "ERC20: burn amount exceeds balance");
 
         unchecked {
             balanceOf[account] -= amount;
@@ -139,7 +125,7 @@ contract USDT {
 
         require(
             currentAllowance >= subtractedValue,
-            "USDT: decreased allowance below zero"
+            "ERC20: decreased allowance below zero"
         );
 
         unchecked {
@@ -158,7 +144,7 @@ contract USDT {
         bytes32 r,
         bytes32 s
     ) external {
-        require(block.timestamp <= deadline, "USDT::Permit: expired permit");
+        require(block.timestamp <= deadline, "TokenWrapped::permit: Expired permit");
 
         bytes32 hashStruct = keccak256(
             abi.encode(
@@ -178,7 +164,7 @@ contract USDT {
         address signer = ecrecover(digest, v, r, s);
         require(
             signer != address(0) && signer == owner,
-            "USDT::Permit: invalid signature"
+            "TokenWrapped::permit: Invalid signature"
         );
 
         _approve(owner, spender, value);
@@ -191,9 +177,9 @@ contract USDT {
     ) private {
         uint256 fromBalance = balanceOf[from];
 
-        require(from != address(0), "USDT: transfer from the zero address");
-        require(to != address(0), "USDT: transfer to the zero address");
-        require(fromBalance >= amount, "USDT: transfer amount exceeds balance");
+        require(from != address(0), "ERC20: transfer from the zero address");
+        require(to != address(0), "ERC20: transfer to the zero address");
+        require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
 
         unchecked {
             balanceOf[from] = fromBalance - amount;
