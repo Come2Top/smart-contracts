@@ -66,10 +66,9 @@ contract Come2Top {
     address public immutable TREASURY;
     address public immutable THIS = address(this);
     uint256 public immutable MAGIC_VALUE;
-    bytes public constant TICKETS =
+    bytes private constant BYTE_TICKETS =
         hex"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
     address private constant ZERO_ADDRESS = address(0x0);
-    uint256 private constant MAX_TICKET_PRICE = 1e9;
     uint256 private constant MIN_TICKET_PRICE = 1e6;
     uint256 private constant MAX_PARTIES = 256;
     uint256 private constant WAVE_ELIGIBLES_TIME = 240;
@@ -160,7 +159,6 @@ contract Come2Top {
     );
     error APROVE_OPERATION_FAILED();
     error VALUE_CANT_BE_LOWER_THAN(uint256 givenValue);
-    error VALUE_CANT_BE_GREATER_THAN(uint256 givenValue);
     error ZERO_ADDRESS_PROVIDED();
     error ZERO_UINT_PROVIDED();
     error CHECK_TICKETS_LENGTH(uint256 ticketLength);
@@ -215,7 +213,7 @@ contract Come2Top {
         USDT = IUSDT(usdt);
         TREASURY = treasury;
         MAGIC_VALUE = uint160(address(this));
-        wagerData[ZERO].tickets = TICKETS;
+        wagerData[ZERO].tickets = BYTE_TICKETS;
 
         (bool ok, ) = treasury.call(abi.encode(usdt));
 
@@ -304,7 +302,7 @@ contract Come2Top {
             }
 
             BD = wagerData[wagerID];
-            BD.tickets = TICKETS;
+            BD.tickets = BYTE_TICKETS;
         } else BD = wagerData[wagerID];
 
         uint256 remainingTickets = MAX_PARTIES - BD.soldTickets;
@@ -359,7 +357,7 @@ contract Come2Top {
         if (totalTickets == remainingTickets) {
             uint256 currentBlock = block.number;
             BD.startedBlock = uint216(currentBlock);
-            BD.tickets = TICKETS;
+            BD.tickets = BYTE_TICKETS;
 
             emit WagerStarted(wagerID, currentBlock, MAX_PARTIES * neededUSDT);
         } else BD.soldTickets += uint8(totalTickets);
@@ -680,7 +678,7 @@ contract Come2Top {
         }
 
         bytes memory chosenTickets = stat == Status.ticketSale
-            ? TICKETS
+            ? BYTE_TICKETS
             : tickets;
 
         if (chosenTickets.length != ONE) {
@@ -1138,8 +1136,7 @@ contract Come2Top {
 
     /**
         @dev Checks if the provided ticket price value is within the valid range.
-            It verifies that the ticket price value is not lower than the {MIN_TICKET_PRICE} 
-            and not higher than the {MAX_TICKET_PRICE}.
+            It verifies that the ticket price value is not lower than the {MIN_TICKET_PRICE}.
             If the value is outside the valid range
             it reverts the transaction with an appropriate error message.
         @param value The ticket price value to be checked
@@ -1147,9 +1144,6 @@ contract Come2Top {
     function _checkTP(uint80 value) private pure {
         if (value < MIN_TICKET_PRICE)
             revert VALUE_CANT_BE_LOWER_THAN(MIN_TICKET_PRICE);
-
-        if (value > MAX_TICKET_PRICE)
-            revert VALUE_CANT_BE_GREATER_THAN(MAX_TICKET_PRICE);
     }
 
     /**
