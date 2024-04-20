@@ -62,20 +62,6 @@ contract TokenWrapped {
 
     }
 
-    function burn(uint256 amount) external {
-        address account = msg.sender;
-        uint256 accountBalance = balanceOf[account];
-
-        require(accountBalance >= amount, "ERC20: burn amount exceeds balance");
-
-        unchecked {
-            balanceOf[account] -= amount;
-            totalSupply -= amount;
-        }
-
-        emit Transfer(account, address(0), amount);
-    }
-
     function transfer(address to, uint256 amount) external returns (bool) {
         address owner = msg.sender;
 
