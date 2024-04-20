@@ -194,8 +194,8 @@ contract TokenWrapped {
         address spender,
         uint256 amount
     ) private {
-        require(owner != address(0), "USDT: approve from the zero address");
-        require(spender != address(0), "USDT: approve to the zero address");
+        require(owner != address(0), "ERC20: approve from the zero address");
+        require(spender != address(0), "ERC20: approve to the zero address");
 
         allowance[owner][spender] = amount;
 
@@ -210,7 +210,7 @@ contract TokenWrapped {
         uint256 currentAllowance = allowance[owner][spender];
 
         if (currentAllowance != type(uint256).max) {
-            require(currentAllowance >= amount, "USDT: insufficient allowance");
+            require(currentAllowance >= amount, "ERC20: insufficient allowance");
 
             unchecked {
                 _approve(owner, spender, currentAllowance - amount);
