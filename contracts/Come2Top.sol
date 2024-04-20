@@ -164,7 +164,7 @@ contract Come2Top {
     error ZERO_ADDRESS_PROVIDED();
     error ZERO_UINT_PROVIDED();
     error CHECK_TICKETS_LENGTH(uint256 ticketLength);
-    error SLECTED_TICKETS_SOLDOUT_BEFORE();
+    error SELECTED_TICKETS_SOLDOUT_BEFORE();
     error PARTICIPATED_BEFORE();
     error PLAYER_HAS_NO_TICKETS();
     error NO_AMOUNT_TO_REFUND();
@@ -346,7 +346,7 @@ contract Come2Top {
 
         totalTickets = realTickets.length;
 
-        if (totalTickets == ZERO) revert SLECTED_TICKETS_SOLDOUT_BEFORE();
+        if (totalTickets == ZERO) revert SELECTED_TICKETS_SOLDOUT_BEFORE();
 
         totalPlayerTickets[wagerID][sender] += uint8(totalTickets);
 
@@ -679,33 +679,41 @@ contract Come2Top {
             }
         }
 
-        uint256 plus5pTV = currentTicketValue +
-            (currentTicketValue * FIVE) /
-            BASIS;
-
-        uint256 index;
         bytes memory chosenTickets = stat == Status.ticketSale
             ? TICKETS
             : tickets;
 
-        while (index != chosenTickets.length) {
-            uint256 loadedOffer = offer[wagerID][uint8(chosenTickets[index])]
-                .amount;
-            ticketsData[uint8(chosenTickets[index])] = TicketInfo(
-                Offer(
-                    loadedOffer >= plus5pTV ? uint96(loadedOffer) : ZERO,
-                    loadedOffer >= plus5pTV
-                        ? offer[wagerID][uint8(chosenTickets[index])].maker
-                        : ZERO_ADDRESS
-                ),
-                uint8(chosenTickets[index]),
-                ticketOwnership[wagerID][uint8(chosenTickets[index])]
-            );
+        if (chosenTickets.length != ONE) {
+            uint256 index;
+            uint256 plus5pTV = currentTicketValue +
+                (currentTicketValue * FIVE) /
+                BASIS;
 
-            unchecked {
-                index++;
+            while (index != chosenTickets.length) {
+                uint256 loadedOffer = offer[wagerID][
+                    uint8(chosenTickets[index])
+                ].amount;
+                ticketsData[uint8(chosenTickets[index])] = TicketInfo(
+                    Offer(
+                        loadedOffer >= plus5pTV ? uint96(loadedOffer) : ZERO,
+                        loadedOffer >= plus5pTV
+                            ? offer[wagerID][uint8(chosenTickets[index])].maker
+                            : ZERO_ADDRESS
+                    ),
+                    uint8(chosenTickets[index]),
+                    ticketOwnership[wagerID][uint8(chosenTickets[index])]
+                );
+
+                unchecked {
+                    index++;
+                }
             }
-        }
+        } else
+            ticketsData[uint8(chosenTickets[ZERO])] = TicketInfo(
+                Offer(ZERO, ZERO_ADDRESS),
+                uint8(chosenTickets[ZERO]),
+                ticketOwnership[wagerID][uint8(chosenTickets[ZERO])]
+            );
     }
 
     /// @custom:see {_ticketValue()}
