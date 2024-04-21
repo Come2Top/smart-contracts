@@ -10,20 +10,14 @@ pragma solidity 0.8.20;
 contract Treasury {
     bool public LOCKED;
     address public USDT;
-    address public SPENDER;
-    bytes4 public constant USDT_APPROVE_SELECTOR = 0x095ea7b3;
-    uint256 public constant MAX_APPROVE_AMOUNT = type(uint256).max;
+    address public COME2TOP;
 
     fallback() external {
-        SPENDER = msg.sender;
+        COME2TOP = msg.sender;
         USDT = abi.decode(msg.data, (address));
 
         (bool OK, ) = USDT.call(
-            abi.encodeWithSelector(
-                USDT_APPROVE_SELECTOR,
-                SPENDER,
-                MAX_APPROVE_AMOUNT
-            )
+            abi.encodeWithSelector(0x095ea7b3, COME2TOP, type(uint256).max)
         );
 
         require(OK && !LOCKED);
