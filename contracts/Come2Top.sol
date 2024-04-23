@@ -23,7 +23,8 @@ contract Come2Top {
         int8 eligibleWithdrawals;
         uint8 soldTickets;
         uint8 updatedWave;
-        uint216 startedBlock;
+        uint96 balance;
+        uint120 startedBlock;
         bytes tickets;
     }
 
@@ -121,16 +122,14 @@ contract Come2Top {
         address indexed maker,
         uint256 indexed ticketID,
         uint256 indexed amount,
-        address lastOfferor,
-        uint256 ticketValue
+        address lastOfferor
     );
 
     event OfferAccepted(
         address indexed newOwner,
         uint256 indexed ticketID,
         uint256 indexed amount,
-        address lastOwner,
-        uint256 ticketValue
+        address lastOwner
     );
 
     event StaleOffersTookBack(
@@ -169,6 +168,7 @@ contract Come2Top {
     error NO_AMOUNT_TO_REFUND();
     error WAIT_FOR_NEXT_WAGER_MATCH();
     error WAIT_FOR_FIRST_WAVE();
+    error WAGER_FINISHED();
 
     /*******************************\
     |-*-*-*-*   MODIFIERS   *-*-*-*-|
@@ -186,8 +186,17 @@ contract Come2Top {
     }
 
     modifier onlyPausedAndFinishedWager() {
-        if (!pause || wagerData[currentWagerID].eligibleWithdrawals != N_ONE)
-            revert ONLY_PAUSED_AND_FINISHED_MODE(pause);
+        (
+            ,
+            int256 eligibleWithdrawals,
+            ,
+            bytes memory winnerTickets
+        ) = _wagerUpdate(currentWagerID);
+
+        if (
+            !pause ||
+            (eligibleWithdrawals != N_ONE && winnerTickets.length != ONE)
+        ) revert ONLY_PAUSED_AND_FINISHED_MODE(pause);
 
         _;
     }
@@ -295,7 +304,11 @@ contract Come2Top {
         bytes memory realTickets;
         WagerData storage BD;
 
-        if (wagerData[wagerID].eligibleWithdrawals == N_ONE) {
+        (, , , bytes memory winnerTickets) = _wagerUpdate(wagerID);
+        if (
+            wagerData[wagerID].eligibleWithdrawals == N_ONE ||
+            winnerTickets.length == ONE
+        ) {
             unchecked {
                 wagerID++;
                 currentWagerID++;
@@ -351,12 +364,13 @@ contract Come2Top {
         _transferFromHelper(sender, THIS, (totalTickets * neededUSDT));
 
         BD.tickets = tickets;
+        BD.balance += uint96(totalTickets * neededUSDT);
 
         emit TicketsSold(sender, realTickets);
 
         if (totalTickets == remainingTickets) {
             uint256 currentBlock = block.number;
-            BD.startedBlock = uint216(currentBlock);
+            BD.startedBlock = uint120(currentBlock);
             BD.tickets = BYTE_TICKETS;
 
             emit WagerStarted(wagerID, currentBlock, MAX_PARTIES * neededUSDT);
@@ -387,29 +401,25 @@ contract Come2Top {
     function redeem(uint8 ticketID) external {
         address sender = msg.sender;
         uint256 wagerID = currentWagerID;
-        uint256 balance = USDT.balanceOf(THIS);
-        uint256 fee;
-
         (
             Status stat,
             int256 eligibleWithdrawals,
             uint256 currentWave,
             bytes memory tickets
-        ) = latestUpdate();
+        ) = _wagerUpdate(wagerID);
 
         _onlyWithrawable(currentWave, stat);
 
         uint8 index = _onlyWinnerTicket(tickets, ticketID);
-        uint256 plus5TV = _ticketValue(tickets.length);
-        plus5TV += (plus5TV / BASIS) * FIVE;
+        uint256 plus5PCT = _ticketValue(tickets.length, wagerID);
+        plus5PCT += (plus5PCT * FIVE) / BASIS;
 
         if (
-            offer[wagerID][ticketID].amount >= plus5TV &&
-            offer[wagerID][ticketID].maker != ZERO_ADDRESS &&
-            tickets.length != ONE
+            offer[wagerID][ticketID].amount >= plus5PCT &&
+            offer[wagerID][ticketID].maker != ZERO_ADDRESS
         ) {
             Offer memory O = offer[wagerID][ticketID];
-            if (sender != ticketOwnership[currentWagerID][ticketID])
+            if (sender != ticketOwnership[wagerID][ticketID])
                 revert ONLY_TICKET_OWNER(ticketID);
 
             delete offer[wagerID][ticketID].maker;
@@ -423,73 +433,56 @@ contract Come2Top {
 
             ticketOwnership[wagerID][ticketID] = O.maker;
 
-            _transferFromHelper(TREASURY, THIS, O.amount);
-            _transferHelper(sender, (O.amount * OFFEREE_BENEFICIARY) / BASIS);
-
-            emit OfferAccepted(
-                O.maker,
-                ticketID,
-                (O.amount * OFFEREE_BENEFICIARY) / BASIS,
-                sender,
-                _ticketValue(tickets.length)
+            uint96 offereeBeneficiary = uint96(
+                (O.amount * OFFEREE_BENEFICIARY) / BASIS
             );
+
+            wagerData[wagerID].balance += O.amount - offereeBeneficiary;
+
+            _transferFromHelper(TREASURY, THIS, O.amount);
+            _transferHelper(sender, offereeBeneficiary);
+
+            emit OfferAccepted(O.maker, ticketID, offereeBeneficiary, sender);
 
             return;
         }
 
-        if (tickets.length < THREE) {
-            fee = (balance / BASIS) * TWO;
+        uint256 fee;
+        uint256 balance = wagerData[wagerID].balance;
+
+        if (tickets.length == TWO) {
+            fee = (balance * TWO) / BASIS;
             wagerData[wagerID].tickets = tickets;
             wagerData[wagerID].eligibleWithdrawals = N_ONE;
 
             _transferHelper(owner, fee);
 
-            if (tickets.length == ONE) {
-                address ticketOwner = ticketOwnership[wagerID][ticketID];
+            if (sender != ticketOwnership[wagerID][ticketID])
+                revert ONLY_TICKET_OWNER(ticketID);
 
-                delete ticketOwnership[wagerID][ticketID];
-                delete totalPlayerTickets[wagerID][ticketOwner];
+            address winner1 = ticketOwnership[wagerID][uint8(tickets[ZERO])];
+            address winner2 = ticketOwnership[wagerID][uint8(tickets[ONE])];
+            uint256 winner1Amount = (balance - fee) / TWO;
+            uint256 winner2Amount = balance - fee - winner1Amount;
 
-                _transferHelper(ticketOwner, balance - fee);
+            // delete ticketOwnership[wagerID][uint8(tickets[ZERO])];
+            // delete ticketOwnership[wagerID][uint8(tickets[ONE])];
 
-                emit WagerFinished(
-                    wagerID,
-                    ticketOwner,
-                    balance - fee,
-                    ticketID
-                );
-            } else {
-                if (sender != ticketOwnership[currentWagerID][ticketID])
-                    revert ONLY_TICKET_OWNER(ticketID);
+            delete wagerData[wagerID].balance;
+            delete totalPlayerTickets[wagerID][winner1];
+            delete totalPlayerTickets[wagerID][winner2];
 
-                address winner1 = ticketOwnership[wagerID][
-                    uint8(tickets[ZERO])
-                ];
-                address winner2 = ticketOwnership[wagerID][uint8(tickets[ONE])];
-                uint256 winner1Amount = (balance - fee) / TWO;
-                uint256 winner2Amount = balance - fee - winner1Amount;
+            _transferHelper(winner1, winner1Amount);
+            _transferHelper(winner2, winner2Amount);
 
-                delete ticketOwnership[wagerID][uint8(tickets[ZERO])];
-                delete ticketOwnership[wagerID][uint8(tickets[ONE])];
-
-                delete totalPlayerTickets[wagerID][winner1];
-                delete totalPlayerTickets[wagerID][winner2];
-
-                _transferHelper(winner1, winner1Amount);
-                _transferHelper(winner2, winner2Amount);
-
-                emit WagerFinished(
-                    wagerID,
-                    [winner1, winner2],
-                    [winner1Amount, winner2Amount],
-                    [
-                        uint256(uint8(tickets[ZERO])),
-                        uint256(uint8(tickets[ONE]))
-                    ]
-                );
-            }
+            emit WagerFinished(
+                wagerID,
+                [winner1, winner2],
+                [winner1Amount, winner2Amount],
+                [uint256(uint8(tickets[ZERO])), uint256(uint8(tickets[ONE]))]
+            );
         } else {
-            if (sender != ticketOwnership[currentWagerID][ticketID])
+            if (sender != ticketOwnership[wagerID][ticketID])
                 revert ONLY_TICKET_OWNER(ticketID);
 
             delete ticketOwnership[wagerID][ticketID];
@@ -505,7 +498,10 @@ contract Come2Top {
                 wagerData[wagerID].updatedWave = uint8(currentWave);
 
             uint256 idealWinnerPrize = balance / tickets.length;
-            fee = (idealWinnerPrize / BASIS) * TWO;
+
+            wagerData[wagerID].balance -= uint96(idealWinnerPrize);
+
+            fee = (idealWinnerPrize * TWO) / BASIS;
 
             _transferHelper(owner, fee);
             _transferHelper(sender, idealWinnerPrize - fee);
@@ -517,6 +513,42 @@ contract Come2Top {
                 ticketID
             );
         }
+    }
+
+    function claim(uint256 wagerID_) external {
+        (
+            uint256 wagerID,
+            ,
+            int256 eligibleWithdrawals,
+            ,
+            bytes memory winnerTicket
+        ) = wagerStatus(wagerID_);
+
+        if (eligibleWithdrawals == N_ONE || winnerTicket.length != ONE)
+            revert WAGER_FINISHED();
+
+        uint256 balance = wagerData[wagerID].balance;
+        uint256 fee = (balance * TWO) / BASIS;
+        wagerData[wagerID].tickets = winnerTicket;
+        wagerData[wagerID].eligibleWithdrawals = N_ONE;
+
+        _transferHelper(owner, fee);
+
+        address ticketOwner = ticketOwnership[wagerID][
+            uint8(bytes1(winnerTicket))
+        ];
+
+        delete totalPlayerTickets[wagerID][ticketOwner];
+        delete wagerData[wagerID].balance;
+
+        _transferHelper(ticketOwner, balance - fee);
+
+        emit WagerFinished(
+            wagerID,
+            ticketOwner,
+            balance - fee,
+            uint8(bytes1(winnerTicket))
+        );
     }
 
     /**
@@ -540,18 +572,18 @@ contract Come2Top {
             ,
             uint256 currentWave,
             bytes memory tickets
-        ) = latestUpdate();
+        ) = _wagerUpdate(currentWagerID);
 
-        uint256 TV = _ticketValue(tickets.length);
-        TV += (TV * FIVE) / BASIS;
+        uint256 plus5PCT = _ticketValue(tickets.length, wagerID);
+        plus5PCT += (plus5PCT * FIVE) / BASIS;
         Offer memory O = offer[wagerID][ticketID];
         uint256 offerorStaleAmount = _staleOffers(sender);
 
         _onlyWithrawable(currentWave, stat);
         _onlyWinnerTicket(tickets, ticketID);
 
-        if (amount < TV)
-            revert ONLY_HIGHER_THAN_CURRENT_TICKET_VALUE(amount, TV);
+        if (amount < plus5PCT)
+            revert ONLY_HIGHER_THAN_CURRENT_TICKET_VALUE(amount, plus5PCT);
 
         if (amount <= O.amount)
             revert ONLY_HIGHER_THAN_CURRENT_OFFER_VALUE(amount, O.amount);
@@ -583,13 +615,7 @@ contract Come2Top {
 
         offer[wagerID][ticketID] = Offer(amount, sender);
 
-        emit OfferMade(
-            sender,
-            ticketID,
-            amount,
-            O.maker,
-            _ticketValue(tickets.length)
-        );
+        emit OfferMade(sender, ticketID, amount, O.maker);
     }
 
     /**
@@ -655,10 +681,12 @@ contract Come2Top {
         uint256 wagerID = currentWagerID;
         startedBlock = wagerData[wagerID].startedBlock;
         maxPurchasableTickets = maxTicketsPerWager;
-        (stat, eligibleWithdrawals, currentWave, tickets) = latestUpdate();
+        (stat, eligibleWithdrawals, currentWave, tickets) = _wagerUpdate(
+            currentWagerID
+        );
 
         if (stat == Status.ticketSale) currentTicketValue = ticketPrice;
-        else currentTicketValue = _ticketValue(tickets.length);
+        else currentTicketValue = _ticketValue(tickets.length, wagerID);
 
         remainingTickets = tickets.length;
 
@@ -669,10 +697,10 @@ contract Come2Top {
                 nextWaveWinrate = (BASIS**TWO) / TWO;
             } else {
                 nextWaveTicketValue =
-                    USDT.balanceOf(THIS) /
+                    wagerData[wagerID].balance /
                     (tickets.length / TWO);
                 nextWaveWinrate =
-                    ((tickets.length / TWO) * (BASIS**TWO)) /
+                    ((tickets.length * (BASIS**TWO)) / TWO) /
                     tickets.length;
             }
         }
@@ -716,11 +744,11 @@ contract Come2Top {
 
     /// @custom:see {_ticketValue()}
     function ticketValue() external view returns (uint256) {
-        (Status stat, , , bytes memory tickets) = latestUpdate();
+        (Status stat, , , bytes memory tickets) = _wagerUpdate(currentWagerID);
 
         if (stat == Status.ticketSale) return ticketPrice;
 
-        return _ticketValue(tickets.length);
+        return _ticketValue(tickets.length, currentWagerID);
     }
 
     /**
@@ -745,7 +773,7 @@ contract Come2Top {
             int256 _eligibleWithdrawals,
             uint256 currentWave,
             bytes memory winnerTickets
-        ) = latestUpdate();
+        ) = _wagerUpdate(currentWagerID);
 
         _onlyWithrawable(currentWave, stat);
 
@@ -754,9 +782,9 @@ contract Come2Top {
 
         uint256 currentTicketValue;
         if (stat == Status.ticketSale) currentTicketValue = ticketPrice;
-        else currentTicketValue = _ticketValue(winnerTickets.length);
+        else currentTicketValue = _ticketValue(winnerTickets.length, wagerID);
 
-        uint256 plus5TV = currentTicketValue +
+        uint256 plus5PCT = currentTicketValue +
             (currentTicketValue / BASIS) *
             FIVE;
 
@@ -765,8 +793,8 @@ contract Come2Top {
                 .amount;
             allTicketsData[index] = TicketInfo(
                 Offer(
-                    loadOffer >= plus5TV ? uint96(loadOffer) : ZERO,
-                    loadOffer >= plus5TV
+                    loadOffer >= plus5PCT ? uint96(loadOffer) : ZERO,
+                    loadOffer >= plus5PCT
                         ? offer[wagerID][uint8(winnerTickets[index])].maker
                         : ZERO_ADDRESS
                 ),
@@ -808,7 +836,7 @@ contract Come2Top {
             ,
             uint256 currentWave,
             bytes memory tickets
-        ) = latestUpdate();
+        ) = _wagerUpdate(currentWagerID);
 
         uint8 latestIndex = uint8(tickets.length - ONE);
 
@@ -838,7 +866,7 @@ contract Come2Top {
             }
         }
 
-        totalTicketsValue *= _ticketValue(tickets.length);
+        totalTicketsValue *= _ticketValue(tickets.length, wagerID);
     }
 
     /// @custom:see {_staleOffers()}
@@ -871,7 +899,7 @@ contract Come2Top {
         @return winnerTickets The byte array containing the winning ticket IDs for the current wager.
     */
     function latestUpdate()
-        public
+        external
         view
         returns (
             Status stat,
@@ -880,7 +908,212 @@ contract Come2Top {
             bytes memory winnerTickets
         )
     {
-        uint256 wagerID = currentWagerID;
+        return _wagerUpdate(currentWagerID);
+    }
+
+    function wagerStatus(uint256 wagerID_)
+        public
+        view
+        returns (
+            uint256 wagerID,
+            Status stat,
+            int256 eligibleWithdrawals,
+            uint256 currentWave,
+            bytes memory winnerTickets
+        )
+    {
+        if (wagerID_ > currentWagerID) wagerID = currentWagerID;
+        else wagerID = wagerID_;
+
+        (stat, eligibleWithdrawals, currentWave, winnerTickets) = _wagerUpdate(
+            wagerID
+        );
+    }
+
+    /*****************************\
+    |-*-*-*-*   PRIVATE   *-*-*-*-|
+    \*****************************/
+    /**
+        @dev Allows the contract to transfer USDT tokens to a specified address.
+        @param to The address to which the USDT tokens will be transferred.
+        @param amount The amount of USDT tokens to be transferred.
+    */
+    function _transferHelper(address to, uint256 amount) private {
+        USDT.transfer(to, amount);
+    }
+
+    /**
+        @dev Allows the contract to transfer USDT tokens from one address to another.
+        @param from The address from which the USDT tokens will be transferred.
+        @param to The address to which the USDT tokens will be transferred.
+        @param amount The amount of USDT tokens to be transferred.
+    */
+    function _transferFromHelper(
+        address from,
+        address to,
+        uint256 amount
+    ) private {
+        USDT.transferFrom(from, to, amount);
+    }
+
+    /**
+        @notice Retrieves the total stale offer amount for a specific offeror.
+        @param offeror The address of the offeror for whom the stale offer amount is being retrieved.
+        @return uint256 The total stale offer amount for the specified offeror.
+    */
+    function _staleOffers(address offeror) private view returns (uint256) {
+        if (offerorData[offeror].latestWagerID == currentWagerID) {
+            (
+                ,
+                int256 eligibleWithdrawals,
+                ,
+                bytes memory tickets
+            ) = _wagerUpdate(currentWagerID);
+
+            if (eligibleWithdrawals == N_ONE || tickets.length == ONE)
+                return (offerorData[offeror].totalOffersValue);
+
+            return (offerorData[offeror].totalOffersValue -
+                offerorData[offeror].latestWagerIDoffersValue);
+        }
+
+        return (offerorData[offeror].totalOffersValue);
+    }
+
+    /**
+        @dev Shuffles a byte array by swapping elements based on a random seed value. 
+            It iterates through the array and generates a random index to swap elements
+            ensuring that the seed value influences the shuffling process.
+            ( Modified version of Fisher-Yates Algo )
+        @param array The byte array to be shuffled.
+        @param randomSeed The random seed value used for shuffling.
+        @param to The index until which shuffling should be performed.
+        @return The shuffled byte array.
+    */
+    function _shuffleBytedArray(
+        bytes memory array,
+        uint256 randomSeed,
+        uint256 to
+    ) private view returns (bytes memory) {
+        uint256 i;
+        uint256 j;
+        uint256 n = array.length;
+        while (i != n) {
+            unchecked {
+                j =
+                    uint256(keccak256(abi.encodePacked(randomSeed, i))) %
+                    (i + ONE);
+                (array[i], array[j]) = (array[j], array[i]);
+                i++;
+            }
+        }
+
+        return this.sliceBytedArray(array, ZERO, to);
+    }
+
+    /**
+        @dev Deletes a specific index from a byte array.
+            It returns a new byte array excluding the element at the specified index.
+        @param index The index to be deleted from the byte array.
+        @param bytesArray The byte array from which the index will be deleted.
+        @return bytes The new byte array after deleting the specified index.
+    */
+    function _deleteIndex(uint8 index, bytes memory bytesArray)
+        private
+        view
+        returns (bytes memory)
+    {
+        return
+            index != (bytesArray.length - ONE)
+                ? abi.encodePacked(
+                    this.sliceBytedArray(bytesArray, ZERO, index),
+                    this.sliceBytedArray(
+                        bytesArray,
+                        index + ONE,
+                        bytesArray.length
+                    )
+                )
+                : this.sliceBytedArray(bytesArray, ZERO, index);
+    }
+
+    /**
+        @notice Returns the current value of a winning ticket in USDT tokens.
+        @dev Calculates and returns the current value of a ticket
+            by dividing the balance of USDT tokens in the contract
+            by the total number of winning tickets.
+        @return uint256 The current value of a winning ticket in USDT tokens.
+    */
+    function _ticketValue(uint256 totalTickets, uint256 wagerID)
+        private
+        view
+        returns (uint256)
+    {
+        if (totalTickets == ZERO) return ZERO;
+
+        return wagerData[wagerID].balance / totalTickets;
+    }
+
+    /**
+        @dev Calculates a random seed value based on a series of block hashes.
+            It selects various block hashes retrieved from previous block numbers and performs
+            mathematical operations to calculate a random seed.
+        @param startBlock The block number from where the calculation of the random seed starts.
+        @return uint256 The random seed value generated based on block hashes.
+    */
+    function _calculateRandomSeed(uint256 startBlock)
+        private
+        view
+        returns (uint256)
+    {
+        unchecked {
+            return
+                uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            uint256(blockhash(startBlock - SEVEN)) +
+                                uint256(blockhash(startBlock - EIGHT))
+                        )
+                    )
+                ) * MAGIC_VALUE;
+        }
+    }
+
+    /**
+        @dev Performs a linear search on the provided list of tickets
+            to find a specific ticket ID.
+        @param tickets The list of tickets to search within.
+        @param ticketID The ticket ID to search for.
+        @return bool True if the ticket ID is found in the list, false otherwise.
+        @return uint8 The index of the found ticket ID in the list.
+    */
+    function _findTicket(bytes memory tickets, uint8 ticketID)
+        private
+        pure
+        returns (bool, uint8)
+    {
+        for (uint256 i = tickets.length - ONE; i >= ZERO; ) {
+            if (uint8(tickets[i]) == ticketID) {
+                return (true, uint8(i));
+            }
+
+            unchecked {
+                i--;
+            }
+        }
+
+        return (false, ZERO);
+    }
+
+    function _wagerUpdate(uint256 wagerID)
+        private
+        view
+        returns (
+            Status stat,
+            int256 eligibleWithdrawals,
+            uint256 currentWave,
+            bytes memory winnerTickets
+        )
+    {
         WagerData memory BD = wagerData[wagerID];
         winnerTickets = BD.tickets;
         currentWave = BD.updatedWave;
@@ -964,165 +1197,6 @@ contract Come2Top {
         }
     }
 
-    /*****************************\
-    |-*-*-*-*   PRIVATE   *-*-*-*-|
-    \*****************************/
-    /**
-        @dev Allows the contract to transfer USDT tokens to a specified address.
-        @param to The address to which the USDT tokens will be transferred.
-        @param amount The amount of USDT tokens to be transferred.
-    */
-    function _transferHelper(address to, uint256 amount) private {
-        USDT.transfer(to, amount);
-    }
-
-    /**
-        @dev Allows the contract to transfer USDT tokens from one address to another.
-        @param from The address from which the USDT tokens will be transferred.
-        @param to The address to which the USDT tokens will be transferred.
-        @param amount The amount of USDT tokens to be transferred.
-    */
-    function _transferFromHelper(
-        address from,
-        address to,
-        uint256 amount
-    ) private {
-        USDT.transferFrom(from, to, amount);
-    }
-
-    /**
-        @notice Retrieves the total stale offer amount for a specific offeror.
-        @param offeror The address of the offeror for whom the stale offer amount is being retrieved.
-        @return uint256 The total stale offer amount for the specified offeror.
-    */
-    function _staleOffers(address offeror) private view returns (uint256) {
-        if (offerorData[offeror].latestWagerID == currentWagerID)
-            return (offerorData[offeror].totalOffersValue -
-                offerorData[offeror].latestWagerIDoffersValue);
-
-        return (offerorData[offeror].totalOffersValue);
-    }
-
-    /**
-        @dev Shuffles a byte array by swapping elements based on a random seed value. 
-            It iterates through the array and generates a random index to swap elements
-            ensuring that the seed value influences the shuffling process.
-            ( Modified version of Fisher-Yates Algo )
-        @param array The byte array to be shuffled.
-        @param randomSeed The random seed value used for shuffling.
-        @param to The index until which shuffling should be performed.
-        @return The shuffled byte array.
-    */
-    function _shuffleBytedArray(
-        bytes memory array,
-        uint256 randomSeed,
-        uint256 to
-    ) private view returns (bytes memory) {
-        uint256 i;
-        uint256 j;
-        uint256 n = array.length;
-        while (i != n) {
-            unchecked {
-                j =
-                    uint256(keccak256(abi.encodePacked(randomSeed, i))) %
-                    (i + ONE);
-                (array[i], array[j]) = (array[j], array[i]);
-                i++;
-            }
-        }
-
-        return this.sliceBytedArray(array, ZERO, to);
-    }
-
-    /**
-        @dev Deletes a specific index from a byte array.
-            It returns a new byte array excluding the element at the specified index.
-        @param index The index to be deleted from the byte array.
-        @param bytesArray The byte array from which the index will be deleted.
-        @return bytes The new byte array after deleting the specified index.
-    */
-    function _deleteIndex(uint8 index, bytes memory bytesArray)
-        private
-        view
-        returns (bytes memory)
-    {
-        return
-            index != (bytesArray.length - ONE)
-                ? abi.encodePacked(
-                    this.sliceBytedArray(bytesArray, ZERO, index),
-                    this.sliceBytedArray(
-                        bytesArray,
-                        index + ONE,
-                        bytesArray.length
-                    )
-                )
-                : this.sliceBytedArray(bytesArray, ZERO, index);
-    }
-
-    /**
-        @notice Returns the current value of a winning ticket in USDT tokens.
-        @dev Calculates and returns the current value of a ticket
-            by dividing the balance of USDT tokens in the contract
-            by the total number of winning tickets.
-        @return uint256 The current value of a winning ticket in USDT tokens.
-    */
-    function _ticketValue(uint256 totalTickets) private view returns (uint256) {
-        if (totalTickets == ZERO) return ZERO;
-
-        return USDT.balanceOf(THIS) / totalTickets;
-    }
-
-    /**
-        @dev Calculates a random seed value based on a series of block hashes.
-            It selects various block hashes retrieved from previous block numbers and performs
-            mathematical operations to calculate a random seed.
-        @param startBlock The block number from where the calculation of the random seed starts.
-        @return uint256 The random seed value generated based on block hashes.
-    */
-    function _calculateRandomSeed(uint256 startBlock)
-        private
-        view
-        returns (uint256)
-    {
-        unchecked {
-            return
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            uint256(blockhash(startBlock - SEVEN)) +
-                                uint256(blockhash(startBlock - EIGHT))
-                        )
-                    )
-                ) * MAGIC_VALUE;
-        }
-    }
-
-    /**
-        @dev Performs a linear search on the provided list of tickets
-            to find a specific ticket ID.
-        @param tickets The list of tickets to search within.
-        @param ticketID The ticket ID to search for.
-        @return bool True if the ticket ID is found in the list, false otherwise.
-        @return uint8 The index of the found ticket ID in the list.
-    */
-    function _findTicket(bytes memory tickets, uint8 ticketID)
-        private
-        pure
-        returns (bool, uint8)
-    {
-        for (uint256 i = tickets.length - ONE; i >= ZERO; ) {
-            if (uint8(tickets[i]) == ticketID) {
-                return (true, uint8(i));
-            }
-
-            unchecked {
-                i--;
-            }
-        }
-
-        return (false, ZERO);
-    }
-
     /**
         @dev It verifies that the value is not zero
             and not greater than the maximum limit predefined as {FOUR}.
@@ -1180,6 +1254,7 @@ contract Come2Top {
         (bool found, uint8 index) = _findTicket(tickets, ticketID);
 
         if (!found) revert ONLY_WINNER_TICKET(ticketID);
+        if (tickets.length == ONE) revert WAGER_FINISHED();
 
         return index;
     }
@@ -1208,13 +1283,4 @@ interface IUSDT {
         address to,
         uint256 amount
     ) external returns (bool);
-
-    /**
-        @notice Retrieves the balance of USDT tokens for a specific account.
-        @dev Allows anyone to retrieve the balance of USDT tokens 
-            for a specific account by calling the balanceOf function of the IUSDT interface.
-        @param account The address of the account for which the balance is being retrieved.
-        @return uint256 The balance of USDT tokens for the specified account.
-    */
-    function balanceOf(address account) external view returns (uint256);
 }
