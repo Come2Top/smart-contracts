@@ -40,16 +40,14 @@ interface ICome2Top {
         uint256 indexed wagerID,
         address indexed winner,
         uint256 indexed amount,
-        uint256 ticketID,
-        uint256 cooldown
+        uint256 ticketID
     );
 
     event WagerFinished(
         uint256 indexed wagerID,
         address[2] winners,
         uint256[2] amounts,
-        uint256[2] ticketIDs,
-        uint256 cooldown
+        uint256[2] ticketIDs
     );
 
     event OfferMade(
@@ -91,8 +89,8 @@ interface ICome2Top {
         uint256 lastOfferValue
     );
     error APROVE_OPERATION_FAILED();
-    error VALUE_CANT_BE_GREATER_THAN(uint256 givenValue);
     error VALUE_CANT_BE_LOWER_THAN(uint256 givenValue);
+    error VALUE_CANT_BE_GREATER_THAN(uint256 givenValue);
     error ZERO_ADDRESS_PROVIDED();
     error ZERO_UINT_PROVIDED();
     error CHECK_TICKETS_LENGTH(uint256 ticketLength);
@@ -102,6 +100,8 @@ interface ICome2Top {
     error NO_AMOUNT_TO_REFUND();
     error WAIT_FOR_NEXT_WAGER_MATCH();
     error WAIT_FOR_FIRST_WAVE();
+    error WAIT_FOR_NEXT_WAVE();
+    error WAGER_FINISHED();
 
     /*******************************\
     |-*-*-*   ADMINSTRATION   *-*-*-|
@@ -120,6 +120,8 @@ interface ICome2Top {
     function join(uint8[] memory ticketIDs) external;
 
     function redeem(uint8 ticketID) external;
+
+    function claim(uint256 wagerID) external;
 
     function makeOffer(uint8 ticketID, uint96 amount) external;
 
@@ -197,7 +199,10 @@ interface ICome2Top {
     function winnersWithTickets()
         external
         view
-        returns (int256 eligibleWithdrawals, TicketInfo[] memory allTicketsData);
+        returns (
+            int256 eligibleWithdrawals,
+            TicketInfo[] memory allTicketsData
+        );
 
     function playerWithWinningTickets(address player)
         external
@@ -219,6 +224,18 @@ interface ICome2Top {
             Status stat,
             int256 eligibleWithdrawals,
             uint256 currentWave,
+            bytes memory winnerTickets
+        );
+
+    function wagerStatus(uint256 wagerID_)
+        external
+        view
+        returns (
+            uint256 wagerID,
+            Status stat,
+            int256 eligibleWithdrawals,
+            uint256 currentWave,
+            uint256 wagerBalance,
             bytes memory winnerTickets
         );
 }

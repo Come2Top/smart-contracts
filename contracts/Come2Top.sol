@@ -80,7 +80,6 @@ contract Come2Top {
     uint8 private constant ZERO = 0;
     uint8 private constant ONE = 1;
     uint8 private constant TWO = 2;
-    uint8 private constant THREE = 3;
     uint8 private constant FOUR = 4;
     uint8 private constant FIVE = 5;
     uint8 private constant SEVEN = 7;
@@ -168,6 +167,7 @@ contract Come2Top {
     error NO_AMOUNT_TO_REFUND();
     error WAIT_FOR_NEXT_WAGER_MATCH();
     error WAIT_FOR_FIRST_WAVE();
+    error WAIT_FOR_NEXT_WAVE();
     error WAGER_FINISHED();
 
     /*******************************\
@@ -447,6 +447,8 @@ contract Come2Top {
             return;
         }
 
+        if (eligibleWithdrawals == int8(ZERO)) revert WAIT_FOR_NEXT_WAVE();
+
         uint256 fee;
         uint256 balance = wagerData[wagerID].balance;
 
@@ -464,9 +466,6 @@ contract Come2Top {
             address winner2 = ticketOwnership[wagerID][uint8(tickets[ONE])];
             uint256 winner1Amount = (balance - fee) / TWO;
             uint256 winner2Amount = balance - fee - winner1Amount;
-
-            // delete ticketOwnership[wagerID][uint8(tickets[ZERO])];
-            // delete ticketOwnership[wagerID][uint8(tickets[ONE])];
 
             delete wagerData[wagerID].balance;
             delete totalPlayerTickets[wagerID][winner1];
@@ -521,14 +520,14 @@ contract Come2Top {
             ,
             int256 eligibleWithdrawals,
             ,
+            uint256 wagerBalance,
             bytes memory winnerTicket
         ) = wagerStatus(wagerID_);
 
         if (eligibleWithdrawals == N_ONE || winnerTicket.length != ONE)
             revert WAGER_FINISHED();
 
-        uint256 balance = wagerData[wagerID].balance;
-        uint256 fee = (balance * TWO) / BASIS;
+        uint256 fee = (wagerBalance * TWO) / BASIS;
         wagerData[wagerID].tickets = winnerTicket;
         wagerData[wagerID].eligibleWithdrawals = N_ONE;
 
@@ -541,12 +540,12 @@ contract Come2Top {
         delete totalPlayerTickets[wagerID][ticketOwner];
         delete wagerData[wagerID].balance;
 
-        _transferHelper(ticketOwner, balance - fee);
+        _transferHelper(ticketOwner, wagerBalance - fee);
 
         emit WagerFinished(
             wagerID,
             ticketOwner,
-            balance - fee,
+            wagerBalance - fee,
             uint8(bytes1(winnerTicket))
         );
     }
@@ -679,18 +678,23 @@ contract Come2Top {
         )
     {
         uint256 wagerID = currentWagerID;
-        startedBlock = wagerData[wagerID].startedBlock;
         maxPurchasableTickets = maxTicketsPerWager;
         (stat, eligibleWithdrawals, currentWave, tickets) = _wagerUpdate(
-            currentWagerID
+            wagerID
         );
-
-        if (stat == Status.ticketSale) currentTicketValue = ticketPrice;
-        else currentTicketValue = _ticketValue(tickets.length, wagerID);
-
         remainingTickets = tickets.length;
 
-        if (tickets.length != ONE && stat != Status.finished) {
+        if (
+            stat == Status.ticketSale ||
+            stat == Status.finished ||
+            remainingTickets == ONE
+        ) currentTicketValue = ticketPrice;
+        else {
+            startedBlock = wagerData[wagerID].startedBlock;
+            currentTicketValue = _ticketValue(tickets.length, wagerID);
+        }
+
+        if (remainingTickets != ONE && stat != Status.finished) {
             if (stat == Status.ticketSale) {
                 remainingTickets = MAX_PARTIES - wagerData[wagerID].soldTickets;
                 nextWaveTicketValue = ticketPrice * TWO;
@@ -705,41 +709,60 @@ contract Come2Top {
             }
         }
 
-        bytes memory chosenTickets = stat == Status.ticketSale
-            ? BYTE_TICKETS
-            : tickets;
+        uint256 index;
+        uint256 plus5pTV = currentTicketValue +
+            (currentTicketValue * FIVE) /
+            BASIS;
 
-        if (chosenTickets.length != ONE) {
-            uint256 index;
-            uint256 plus5pTV = currentTicketValue +
-                (currentTicketValue * FIVE) /
-                BASIS;
-
-            while (index != chosenTickets.length) {
-                uint256 loadedOffer = offer[wagerID][
-                    uint8(chosenTickets[index])
-                ].amount;
-                ticketsData[uint8(chosenTickets[index])] = TicketInfo(
+        if (stat == Status.ticketSale) {
+            while (index != MAX_PARTIES) {
+                uint256 loadedOffer = offer[wagerID][uint8(index)].amount;
+                ticketsData[index] = TicketInfo(
                     Offer(
                         loadedOffer >= plus5pTV ? uint96(loadedOffer) : ZERO,
                         loadedOffer >= plus5pTV
-                            ? offer[wagerID][uint8(chosenTickets[index])].maker
+                            ? offer[wagerID][uint8(index)].maker
                             : ZERO_ADDRESS
                     ),
-                    uint8(chosenTickets[index]),
-                    ticketOwnership[wagerID][uint8(chosenTickets[index])]
+                    index,
+                    ticketOwnership[wagerID][uint8(index)]
                 );
 
                 unchecked {
                     index++;
                 }
             }
-        } else
-            ticketsData[uint8(chosenTickets[ZERO])] = TicketInfo(
-                Offer(ZERO, ZERO_ADDRESS),
-                uint8(chosenTickets[ZERO]),
-                ticketOwnership[wagerID][uint8(chosenTickets[ZERO])]
-            );
+        } else {
+            while (index != tickets.length) {
+                uint256 loadedOffer = offer[wagerID][uint8(tickets[index])]
+                    .amount;
+                ticketsData[uint8(tickets[index])] = TicketInfo(
+                    Offer(
+                        loadedOffer >= plus5pTV ? uint96(loadedOffer) : ZERO,
+                        loadedOffer >= plus5pTV
+                            ? offer[wagerID][uint8(tickets[index])].maker
+                            : ZERO_ADDRESS
+                    ),
+                    uint8(tickets[index]),
+                    ticketOwnership[wagerID][uint8(tickets[index])]
+                );
+
+                unchecked {
+                    index++;
+                }
+            }
+
+            index = ZERO;
+
+            while (index != MAX_PARTIES) {
+                if (ticketsData[index].owner == ZERO_ADDRESS)
+                    ticketsData[index].ticketID = index;
+
+                unchecked {
+                    index++;
+                }
+            }
+        }
     }
 
     /// @custom:see {_ticketValue()}
@@ -919,6 +942,7 @@ contract Come2Top {
             Status stat,
             int256 eligibleWithdrawals,
             uint256 currentWave,
+            uint256 wagerBalance,
             bytes memory winnerTickets
         )
     {
@@ -928,6 +952,8 @@ contract Come2Top {
         (stat, eligibleWithdrawals, currentWave, winnerTickets) = _wagerUpdate(
             wagerID
         );
+
+        wagerBalance = wagerData[wagerID].balance;
     }
 
     /*****************************\
@@ -1111,17 +1137,17 @@ contract Come2Top {
             Status stat,
             int256 eligibleWithdrawals,
             uint256 currentWave,
-            bytes memory winnerTickets
+            bytes memory remainingTickets
         )
     {
         WagerData memory BD = wagerData[wagerID];
-        winnerTickets = BD.tickets;
-        currentWave = BD.updatedWave;
+        remainingTickets = BD.tickets;
         eligibleWithdrawals = BD.eligibleWithdrawals;
 
         if (BD.startedBlock == ZERO) stat = Status.ticketSale;
         else if (BD.eligibleWithdrawals == N_ONE) stat = Status.finished;
         else {
+            currentWave = BD.updatedWave;
             uint256 lastUpdatedWave;
             uint256 accumulatedBlocks;
             uint256 currentBlock = block.number;
@@ -1141,7 +1167,7 @@ contract Come2Top {
                         Status.waitForCommingWave,
                         eligibleWithdrawals,
                         currentWave,
-                        winnerTickets
+                        remainingTickets
                     );
 
                 lastUpdatedWave = ONE;
@@ -1156,14 +1182,14 @@ contract Come2Top {
                         accumulatedBlocks <
                     currentBlock
                 ) {
-                    winnerTickets = _shuffleBytedArray(
-                        winnerTickets,
+                    remainingTickets = _shuffleBytedArray(
+                        remainingTickets,
                         _calculateRandomSeed(
                             BD.startedBlock +
                                 (lastUpdatedWave * WAVE_DURATION) +
                                 accumulatedBlocks
                         ),
-                        winnerTickets.length / TWO
+                        remainingTickets.length / TWO
                     );
 
                     unchecked {
@@ -1173,11 +1199,11 @@ contract Come2Top {
                         currentWave++;
                         lastUpdatedWave++;
                         eligibleWithdrawals = int256(
-                            winnerTickets.length / TWO
+                            remainingTickets.length / TWO
                         );
                     }
 
-                    if (winnerTickets.length == ONE) {
+                    if (remainingTickets.length == ONE) {
                         eligibleWithdrawals = int8(ONE);
 
                         break;
@@ -1187,8 +1213,7 @@ contract Come2Top {
                         BD.startedBlock +
                             (currentWave * WAVE_DURATION) +
                             accumulatedBlocks <
-                        currentBlock ||
-                        uint256(eligibleWithdrawals) == ZERO
+                        currentBlock
                     ) stat = Status.waitForCommingWave;
 
                     break;
@@ -1205,7 +1230,7 @@ contract Come2Top {
     function _checkMTPW(uint8 value) private pure {
         _revertOnZeroUint(value);
 
-        if (value > FOUR) revert VALUE_CANT_BE_GREATER_THAN(FOUR);
+        // if (value > FOUR) revert VALUE_CANT_BE_GREATER_THAN(FOUR);
     }
 
     /**

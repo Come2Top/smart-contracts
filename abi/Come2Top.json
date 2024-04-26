@@ -182,12 +182,22 @@
 	},
 	{
 		"inputs": [],
+		"name": "WAGER_FINISHED",
+		"type": "error"
+	},
+	{
+		"inputs": [],
 		"name": "WAIT_FOR_FIRST_WAVE",
 		"type": "error"
 	},
 	{
 		"inputs": [],
 		"name": "WAIT_FOR_NEXT_WAGER_MATCH",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "WAIT_FOR_NEXT_WAVE",
 		"type": "error"
 	},
 	{
@@ -226,12 +236,6 @@
 				"internalType": "address",
 				"name": "lastOwner",
 				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "ticketValue",
-				"type": "uint256"
 			}
 		],
 		"name": "OfferAccepted",
@@ -263,12 +267,6 @@
 				"internalType": "address",
 				"name": "lastOfferor",
 				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "ticketValue",
-				"type": "uint256"
 			}
 		],
 		"name": "OfferMade",
@@ -523,6 +521,19 @@
 			}
 		],
 		"name": "changeTicketPrice",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "wagerID_",
+				"type": "uint256"
+			}
+		],
+		"name": "claim",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -901,9 +912,14 @@
 				"type": "uint8"
 			},
 			{
-				"internalType": "uint216",
+				"internalType": "uint96",
+				"name": "balance",
+				"type": "uint96"
+			},
+			{
+				"internalType": "uint120",
 				"name": "startedBlock",
-				"type": "uint216"
+				"type": "uint120"
 			},
 			{
 				"internalType": "bytes",
@@ -1001,6 +1017,50 @@
 				"internalType": "struct Come2Top.TicketInfo[256]",
 				"name": "ticketsData",
 				"type": "tuple[256]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "wagerID_",
+				"type": "uint256"
+			}
+		],
+		"name": "wagerStatus",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "wagerID",
+				"type": "uint256"
+			},
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "stat",
+				"type": "uint8"
+			},
+			{
+				"internalType": "int256",
+				"name": "eligibleWithdrawals",
+				"type": "int256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "currentWave",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "wagerBalance",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes",
+				"name": "winnerTickets",
+				"type": "bytes"
 			}
 		],
 		"stateMutability": "view",
