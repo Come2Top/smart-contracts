@@ -704,7 +704,7 @@ contract Come2Top {
                     wagerData[wagerID].balance /
                     (tickets.length / TWO);
                 nextWaveWinrate =
-                    ((tickets.length * (BASIS**TWO)) / TWO) /
+                    ((tickets.length / TWO) * BASIS**TWO) /
                     tickets.length;
             }
         }
