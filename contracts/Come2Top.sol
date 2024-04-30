@@ -646,7 +646,7 @@ contract Come2Top {
     \******************************/
     /**
         @notice Returns all informations about the current wager.
-        @dev This function will be used by Back-End side.
+        @dev This function will be used in Web-2.
         @return stat The current status of the wager (ticketSale, waitForCommingWave, Withdrawable, finished).
         @return maxPurchasableTickets Maximum purchasable tickets for each address, based on {maxTicketsPerWager}.
         @return startedBlock Started block number of game, in which all tickets sold out.
