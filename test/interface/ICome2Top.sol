@@ -64,11 +64,7 @@ interface ICome2Top {
         address lastOwner
     );
 
-    event StaleOffersTookBack(
-        address indexed maker,
-        address indexed to,
-        uint256 indexed amount
-    );
+    event StaleOffersTookBack(address indexed maker, uint256 indexed amount);
 
     /********************************\
     |-*-*-*-*-*   ERRORS   *-*-*-*-*-|
@@ -117,7 +113,7 @@ interface ICome2Top {
     /*********************************\
     |-*-*-*-*   WAGER-LOGIC   *-*-*-*-|
     \*********************************/
-    function join(uint8[] memory ticketIDs) external;
+    function join(uint8[] calldata ticketIDs) external;
 
     function redeem(uint8 ticketID) external;
 
@@ -125,7 +121,7 @@ interface ICome2Top {
 
     function makeOffer(uint8 ticketID, uint96 amount) external;
 
-    function takeBackStaleOffers(address to) external;
+    function takeBackStaleOffers() external;
 
     /******************************\
     |-*-*-*-*-*   VIEW   *-*-*-*-*-|
@@ -147,7 +143,8 @@ interface ICome2Top {
             int8 eligibleWithdrawals,
             uint8 soldTickets,
             uint8 updatedWave,
-            uint216 startedBlock,
+            uint96 balance,
+            uint120 startedBlock,
             bytes memory tickets
         );
 
