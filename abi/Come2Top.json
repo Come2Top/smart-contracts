@@ -257,12 +257,6 @@
 			},
 			{
 				"indexed": true,
-				"internalType": "address",
-				"name": "to",
-				"type": "address"
-			},
-			{
-				"indexed": true,
 				"internalType": "uint256",
 				"name": "amount",
 				"type": "uint256"
@@ -505,13 +499,7 @@
 		"type": "function"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "to",
-				"type": "address"
-			}
-		],
+		"inputs": [],
 		"name": "takeBackStaleOffers",
 		"outputs": [],
 		"stateMutability": "nonpayable",
