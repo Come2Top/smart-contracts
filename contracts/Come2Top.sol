@@ -133,7 +133,6 @@ contract Come2Top {
 
     event StaleOffersTookBack(
         address indexed maker,
-        address indexed to,
         uint256 indexed amount
     );
 
@@ -622,13 +621,9 @@ contract Come2Top {
         @dev Enables the player to withdraw their offers that have not been accepted
             and receive a refund in return.
             Only the player who made the offers can call this function.
-        @param to The address to which the refund amount will be transferred.
-            If not provided, the refund will be sent to the caller.
     */
-    function takeBackStaleOffers(address to) external {
+    function takeBackStaleOffers() external {
         address sender = msg.sender;
-
-        if (to == ZERO_ADDRESS) to = sender;
 
         uint256 refundableAmount = _staleOffers(sender);
 
@@ -636,9 +631,9 @@ contract Come2Top {
 
         offerorData[sender].totalOffersValue -= refundableAmount;
 
-        _transferFromHelper(TREASURY, to, refundableAmount);
+        _transferFromHelper(TREASURY, sender, refundableAmount);
 
-        emit StaleOffersTookBack(sender, to, refundableAmount);
+        emit StaleOffersTookBack(sender, refundableAmount);
     }
 
     /******************************\
