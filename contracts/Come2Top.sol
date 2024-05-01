@@ -131,10 +131,7 @@ contract Come2Top {
         address lastOwner
     );
 
-    event StaleOffersTookBack(
-        address indexed maker,
-        uint256 indexed amount
-    );
+    event StaleOffersTookBack(address indexed maker, uint256 indexed amount);
 
     /********************************\
     |-*-*-*-*-*   ERRORS   *-*-*-*-*-|
@@ -513,6 +510,10 @@ contract Come2Top {
         }
     }
 
+    /**
+        @notice Allows anyone to have the prize sent to the winning ticket holder.
+        @param wagerID_ The ID of the wager for which the owner of the winning ticket will get the prize.
+    */
     function claim(uint256 wagerID_) external {
         (
             uint256 wagerID,
@@ -929,6 +930,18 @@ contract Come2Top {
         return _wagerUpdate(currentWagerID);
     }
 
+    /**
+        @notice Retrieves the current status and details of a specific wager.
+        @dev This function provides detailed information about a specific wager
+            including its status, eligible withdrawals, current wave, winner tickets, and wager balance.
+        @param wagerID_ The ID of the wager for which the status and details are being retrieved.
+        @return wagerID The ID of the retrieved wager.
+        @return stat The current status of the wager (ticketSale, waitForCommingWave, Withdrawable, finished).
+        @return eligibleWithdrawals The number of eligible withdrawals for the current wager.
+        @return currentWave The current wave of the wager.
+        @return wagerBalance The balance of the wager in USDT tokens.
+        @return winnerTickets The byte array containing the winning ticket IDs for the current wager.
+    */
     function wagerStatus(uint256 wagerID_)
         public
         view
@@ -1125,6 +1138,15 @@ contract Come2Top {
         return (false, ZERO);
     }
 
+    /**
+        @notice Retrieves the current status and details of a specific wager.
+        @dev This function provides detailed information about a specific wager
+            including its status, eligible withdrawals, current wave, winner tickets, and wager balance.
+        @param wagerID The ID of the wager for which the status and details are being retrieved.
+        @return stat The current status of the wager (ticketSale, waitForCommingWave, Withdrawable, finished).
+        @return eligibleWithdrawals The number of eligible withdrawals for the current wager.
+        @return currentWave The current wave of the wager.
+    */
     function _wagerUpdate(uint256 wagerID)
         private
         view
@@ -1225,7 +1247,7 @@ contract Come2Top {
     function _checkMTPW(uint8 value) private pure {
         _revertOnZeroUint(value);
 
-        // if (value > FOUR) revert VALUE_CANT_BE_GREATER_THAN(FOUR);
+        if (value > FOUR) revert VALUE_CANT_BE_GREATER_THAN(FOUR);
     }
 
     /**
