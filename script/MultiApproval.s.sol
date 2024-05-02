@@ -11,6 +11,10 @@ contract MultiApproval is Script, Storage {
             vmSafe.startBroadcast(_privateKeys_[i]);
             _usdt_.approve(address(_come2top_), type(uint256).max);
             vmSafe.stopBroadcast();
+
+            unchecked {
+                i++;
+            }
         }
     }
 }
