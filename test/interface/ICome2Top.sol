@@ -5,7 +5,12 @@ interface ICome2Top {
     /*******************************\
     |-*-*-*-*-*   TYPES   *-*-*-*-*-|
     \*******************************/
-    type Status is uint8;
+    enum Status {
+        ticketSale,
+        waitForCommingWave,
+        Withdrawable,
+        finished
+    }
 
     struct Offer {
         uint96 amount;
