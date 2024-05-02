@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import {ICome2Top, Storage} from "./Storage.sol";
 import {Script, console2, stdJson} from "forge-std/Script.sol";
-import {Storage} from "./Storage.sol";
 
 contract MultiJoin is Script, Storage {
     function run() external {
         (
+            ICome2Top.Status stat,
             ,
             ,
             ,
-            uint256 currentWave,
             ,
             uint256 remainingTickets,
             ,
@@ -20,14 +20,14 @@ contract MultiJoin is Script, Storage {
 
         ) = _come2top_.wagerInfo();
         uint256 currentWagerID = _come2top_.currentWagerID();
-        bool canJoinEasily = (currentWave == 2 && remainingTickets == 1) ||
-            currentWave == 3;
+        bool canJoinEasily = (stat == ICome2Top.Status.Withdrawable && remainingTickets == 1) ||
+            stat == ICome2Top.Status.finished;
 
         uint256 ticketID;
         uint256 totalPlayers;
         uint8[] memory tickets = new uint8[](4);
 
-        if (currentWave != 1)
+        if (stat != ICome2Top.Status.waitForCommingWave)
             while (totalPlayers < 64) {
                 tickets[0] = uint8(ticketID);
                 tickets[1] = uint8(ticketID + 1);
