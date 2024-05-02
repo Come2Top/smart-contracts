@@ -761,11 +761,22 @@ contract Come2Top {
         }
     }
 
-    /// @custom:see {_ticketValue()}
+    /**
+        @notice Retrieves the current value of a ticket in USDT tokens.
+        @dev Calculates and returns the current value of a ticket:
+            If it was in ticket sale mode, then the ticket value is equal to {ticketPrice}
+            Else by dividing the balance of USDT tokens in the contract
+                by the total number of winning tickets.
+        @return The current value of a ticket in USDT tokens, based on status.
+    */
     function ticketValue() external view returns (uint256) {
         (Status stat, , , bytes memory tickets) = _wagerUpdate(currentWagerID);
 
-        if (stat == Status.ticketSale) return ticketPrice;
+        if (
+            stat == Status.ticketSale ||
+            stat == Status.finished ||
+            (stat == Status.Withdrawable && tickets.length == ONE)
+        ) return ticketPrice;
 
         return _ticketValue(tickets.length, currentWagerID);
     }
