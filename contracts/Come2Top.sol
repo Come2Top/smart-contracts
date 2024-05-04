@@ -899,9 +899,19 @@ contract Come2Top {
         totalTicketsValue *= _ticketValue(tickets.length, wagerID);
     }
 
-    /// @custom:see {_staleOffers()}
-    function staleOffers(address offeror) external view returns (uint256) {
-        return _staleOffers(offeror);
+    /**
+        @notice Retrieves the total stale offer amount for a specific offeror.
+        @param offeror The address of the offeror for whom the stale offer amount is being retrieved.
+        @return totalStaleOffers The total stale offer amount for the specified offeror.
+        @return claimableOffers The total claimable stale amount for the specified offeror.
+    */
+    function staleOffers(address offeror)
+        external
+        view
+        returns (uint256 totalStaleOffers, uint256 claimableOffers)
+    {
+        totalStaleOffers = offerorData[offeror].totalOffersValue;
+        claimableOffers = _staleOffers(offeror);
     }
 
     /**
