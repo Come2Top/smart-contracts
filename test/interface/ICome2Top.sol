@@ -338,9 +338,12 @@ interface ICome2Top {
     /**
         @notice Retrieves the total stale offer amount for a specific offeror.
         @param offeror The address of the offeror for whom the stale offer amount is being retrieved.
-        @return uint256 The total stale offer amount for the specified offeror.
+        @return totalStaleOffers The total stale offer amount for the specified offeror.
+        @return claimableOffers The total claimable stale amount for the specified offeror.
     */
-    function staleOffers(address offeror) external view returns (uint256);
+    function staleOffers(
+        address offeror
+    ) external view returns (uint256 totalStaleOffers, uint256 claimableOffers);
 
     /**
         @notice Retrieves a portion of a byte array.
