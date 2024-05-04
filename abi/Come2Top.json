@@ -754,7 +754,12 @@
 		"outputs": [
 			{
 				"internalType": "uint256",
-				"name": "",
+				"name": "totalStaleOffers",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "claimableOffers",
 				"type": "uint256"
 			}
 		],
