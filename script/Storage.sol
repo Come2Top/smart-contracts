@@ -6,7 +6,7 @@ import {ICome2Top} from "../test/interface/ICome2Top.sol";
 
 abstract contract Storage {
     IUSDT constant internal _usdt_ = IUSDT(0x5c44535db05EfF9c84E89278Ee32BAbDC7EfB6cA);
-    ICome2Top constant internal _come2top_ = ICome2Top(0x47208e6645dF4E1b3B2aC6CF1C1847C0a0C0aFf5);
+    ICome2Top constant internal _come2top_ = ICome2Top(0x87be7A58D8a32dC69f32349D7342a94A0453952c);
     uint256[] internal _privateKeys_ = [
         0x7fc66c1f98a1cc8355601f5620e44328d3c7a4eff2cbf37d3705832e697c79a4,
         0x249b1b58b770c5a26cbedbd78f15d2c2784bccaf4833b7e895603a4397567297,
