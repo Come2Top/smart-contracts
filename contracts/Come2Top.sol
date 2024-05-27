@@ -1,6 +1,9 @@
 //  SPDX-License-Identifier: -- Come2Top --
 pragma solidity 0.8.20;
 
+import {IFRAX} from "./interfaces/IFRAX.sol";
+import {IL1Randao} from "./interfaces/IL1Randao.sol";
+
 /**
     @author @Risk-Labs
     @title Come2Top Main Contract.
@@ -63,8 +66,9 @@ contract Come2Top {
     /*******************************\
     |-*-*-*-*   CONSTANTS   *-*-*-*-|
     \*******************************/
-    IUSDT public immutable USDT;
+    IFRAX public immutable FRAX;
     address public immutable TREASURY;
+    IL1Randao public immutable L1RANDAO;
     address public immutable THIS = address(this);
     uint256 public immutable MAGIC_VALUE;
     bytes private constant BYTE_TICKETS =
@@ -75,7 +79,8 @@ contract Come2Top {
     uint256 private constant WAVE_ELIGIBLES_TIME = 240;
     uint256 private constant BASIS = 100;
     uint256 private constant OFFEREE_BENEFICIARY = 95;
-    uint256 private constant WAVE_DURATION = 16;
+    uint256 private constant SAFTY_DURATION = 64;
+    uint256 private constant WAVE_DURATION = 120 + SAFTY_DURATION;
     int8 private constant N_ONE = -1;
     uint8 private constant ZERO = 0;
     uint8 private constant ONE = 1;
@@ -203,24 +208,29 @@ contract Come2Top {
     constructor(
         uint8 mtpw,
         uint80 tp,
-        address usdt,
-        address treasury
+        address frax,
+        address treasury,
+        address l1Radndao
     ) {
         _checkMTPW(mtpw);
         _checkTP(tp);
 
-        if (usdt == ZERO_ADDRESS || treasury == ZERO_ADDRESS)
-            revert ZERO_ADDRESS_PROVIDED();
+        if (
+            frax == ZERO_ADDRESS ||
+            treasury == ZERO_ADDRESS ||
+            l1Radndao == ZERO_ADDRESS
+        ) revert ZERO_ADDRESS_PROVIDED();
 
         owner = msg.sender;
         maxTicketsPerWager = mtpw;
         ticketPrice = tp;
-        USDT = IUSDT(usdt);
+        FRAX = IFRAX(frax);
         TREASURY = treasury;
+        L1RANDAO = IL1Randao(l1Radndao);
         MAGIC_VALUE = uint160(address(this));
         wagerData[ZERO].tickets = BYTE_TICKETS;
 
-        (bool ok, ) = treasury.call(abi.encode(usdt));
+        (bool ok, ) = treasury.call(abi.encode(frax));
 
         if (!ok) revert APROVE_OPERATION_FAILED();
     }
@@ -294,7 +304,7 @@ contract Come2Top {
     function join(uint8[] calldata ticketIDs) external onlyEOA {
         address sender = msg.sender;
         uint256 wagerID = currentWagerID;
-        uint256 neededUSDT = ticketPrice;
+        uint256 neededFRAX = ticketPrice;
         uint256 totalTickets = ticketIDs.length;
         uint256 ticketLimit = maxTicketsPerWager;
         bytes memory realTickets;
@@ -357,19 +367,19 @@ contract Come2Top {
 
         totalPlayerTickets[wagerID][sender] += uint8(totalTickets);
 
-        _transferFromHelper(sender, THIS, (totalTickets * neededUSDT));
+        _transferFromHelper(sender, THIS, (totalTickets * neededFRAX));
 
         BD.tickets = tickets;
-        BD.balance += uint96(totalTickets * neededUSDT);
+        BD.balance += uint96(totalTickets * neededFRAX);
 
         emit TicketsSold(sender, realTickets);
 
         if (totalTickets == remainingTickets) {
-            uint256 currentBlock = block.number;
-            BD.startedBlock = uint120(currentBlock);
+            uint64 currentL1Block = L1RANDAO.number();
+            BD.startedBlock = currentL1Block;
             BD.tickets = BYTE_TICKETS;
 
-            emit WagerStarted(wagerID, currentBlock, MAX_PARTIES * neededUSDT);
+            emit WagerStarted(wagerID, currentL1Block, MAX_PARTIES * neededFRAX);
         } else BD.soldTickets += uint8(totalTickets);
     }
 
@@ -521,20 +531,21 @@ contract Come2Top {
             int256 eligibleWithdrawals,
             ,
             uint256 wagerBalance,
-            bytes memory winnerTicket
+            ,
+            uint256[] memory winnerTickets
         ) = wagerStatus(wagerID_);
 
-        if (eligibleWithdrawals == N_ONE || winnerTicket.length != ONE)
+        if (eligibleWithdrawals == N_ONE || winnerTickets.length != ONE)
             revert WAGER_FINISHED();
 
         uint256 fee = (wagerBalance * TWO) / BASIS;
-        wagerData[wagerID].tickets = winnerTicket;
+        wagerData[wagerID].tickets = bytes(abi.encodePacked(winnerTickets[0]));
         wagerData[wagerID].eligibleWithdrawals = N_ONE;
 
         _transferHelper(owner, fee);
 
         address ticketOwner = ticketOwnership[wagerID][
-            uint8(bytes1(winnerTicket))
+            uint8(winnerTickets[0])
         ];
 
         delete totalPlayerTickets[wagerID][ticketOwner];
@@ -546,7 +557,7 @@ contract Come2Top {
             wagerID,
             ticketOwner,
             wagerBalance - fee,
-            uint8(bytes1(winnerTicket))
+            winnerTickets[0]
         );
     }
 
@@ -560,7 +571,7 @@ contract Come2Top {
             the previous offer is refunded to the maker.
             The player making the offer, must be an externally owned account (EOA).
         @param ticketID The ID of the ticket for which the offer is being made.
-        @param amount The amount of the offer in USDT tokens.
+        @param amount The amount of the offer in FRAX tokens.
     */
     function makeOffer(uint8 ticketID, uint96 amount) external onlyEOA {
         address sender = msg.sender;
@@ -647,10 +658,10 @@ contract Come2Top {
         @return maxPurchasableTickets Maximum purchasable tickets for each address, based on {maxTicketsPerWager}.
         @return startedBlock Started block number of game, in which all tickets sold out.
         @return currentWave The current wave of the wager.
-        @return currentTicketValue The current value of a winning ticket in USDT tokens.
+        @return currentTicketValue The current value of a winning ticket in FRAX tokens.
         @return remainingTickets Total number of current wave winner tickets.
         @return eligibleWithdrawals The number of eligible withdrawals for the current wave of the wager.
-        @return nextWaveTicketValue The value of a winning ticket in USDT tokens for the coming wave.
+        @return nextWaveTicketValue The value of a winning ticket in FRAX tokens for the coming wave.
         @return nextWaveWinrate The chance of winning each ticket for the coming wave.
         @return tickets The byte array containing the winning ticket IDs for the current wager.
         @return ticketsData An array of TicketInfo structures containing the ticket ID
@@ -762,12 +773,12 @@ contract Come2Top {
     }
 
     /**
-        @notice Retrieves the current value of a ticket in USDT tokens.
+        @notice Retrieves the current value of a ticket in FRAX tokens.
         @dev Calculates and returns the current value of a ticket:
             If it was in ticket sale mode, then the ticket value is equal to {ticketPrice}
-            Else by dividing the balance of USDT tokens in the contract
+            Else by dividing the balance of FRAX tokens in the contract
                 by the total number of winning tickets.
-        @return The current value of a ticket in USDT tokens, based on status.
+        @return The current value of a ticket in FRAX tokens, based on status.
     */
     function ticketValue() external view returns (uint256) {
         (Status stat, , , bytes memory tickets) = _wagerUpdate(currentWagerID);
@@ -848,7 +859,7 @@ contract Come2Top {
             It calculates the total value of winning tickets owned by the player
             based on the current ticket value and the number of tickets owned.
         @param player The address of the player for whom the information is being retrieved.
-        @return totalTicketsValue The total value of winning tickets owned by the player in USDT tokens.
+        @return totalTicketsValue The total value of winning tickets owned by the player in FRAX tokens.
         @return playerTickets A byte array containing the IDs of the winning tickets owned by the player.
     */
     function playerWithWinningTickets(address player)
@@ -960,8 +971,9 @@ contract Come2Top {
         @return stat The current status of the wager (ticketSale, waitForCommingWave, Withdrawable, finished).
         @return eligibleWithdrawals The number of eligible withdrawals for the current wager.
         @return currentWave The current wave of the wager.
-        @return wagerBalance The balance of the wager in USDT tokens.
-        @return winnerTickets The byte array containing the winning ticket IDs for the current wager.
+        @return wagerBalance The balance of the wager in FRAX tokens.
+        @return winners The array containing the winner addresses for the given wager ID.
+        @return winnerTickets The array containing the winning ticket IDs for the given wager ID.
     */
     function wagerStatus(uint256 wagerID_)
         public
@@ -972,15 +984,28 @@ contract Come2Top {
             int256 eligibleWithdrawals,
             uint256 currentWave,
             uint256 wagerBalance,
-            bytes memory winnerTickets
+            address[] memory winners,
+            uint256[] memory winnerTickets
         )
     {
         if (wagerID_ > currentWagerID) wagerID = currentWagerID;
         else wagerID = wagerID_;
 
-        (stat, eligibleWithdrawals, currentWave, winnerTickets) = _wagerUpdate(
+        bytes memory tickets;
+        (stat, eligibleWithdrawals, currentWave, tickets) = _wagerUpdate(
             wagerID
         );
+
+        winners = new address[](tickets.length);
+        winnerTickets = new uint256[](tickets.length);
+
+        winners[0] = ticketOwnership[wagerID][uint8(bytes1(tickets[0]))];
+        winnerTickets[0] = uint8(bytes1(tickets[0]));
+
+        if (tickets.length != 1) {
+            winners[1] = ticketOwnership[wagerID][uint8(bytes1(tickets[1]))];
+            winnerTickets[0] = uint8(bytes1(tickets[1]));
+        }
 
         wagerBalance = wagerData[wagerID].balance;
     }
@@ -989,26 +1014,26 @@ contract Come2Top {
     |-*-*-*-*   PRIVATE   *-*-*-*-|
     \*****************************/
     /**
-        @dev Allows the contract to transfer USDT tokens to a specified address.
-        @param to The address to which the USDT tokens will be transferred.
-        @param amount The amount of USDT tokens to be transferred.
+        @dev Allows the contract to transfer FRAX tokens to a specified address.
+        @param to The address to which the FRAX tokens will be transferred.
+        @param amount The amount of FRAX tokens to be transferred.
     */
     function _transferHelper(address to, uint256 amount) private {
-        USDT.transfer(to, amount);
+        FRAX.transfer(to, amount);
     }
 
     /**
-        @dev Allows the contract to transfer USDT tokens from one address to another.
-        @param from The address from which the USDT tokens will be transferred.
-        @param to The address to which the USDT tokens will be transferred.
-        @param amount The amount of USDT tokens to be transferred.
+        @dev Allows the contract to transfer FRAX tokens from one address to another.
+        @param from The address from which the FRAX tokens will be transferred.
+        @param to The address to which the FRAX tokens will be transferred.
+        @param amount The amount of FRAX tokens to be transferred.
     */
     function _transferFromHelper(
         address from,
         address to,
         uint256 amount
     ) private {
-        USDT.transferFrom(from, to, amount);
+        FRAX.transferFrom(from, to, amount);
     }
 
     /**
@@ -1092,11 +1117,11 @@ contract Come2Top {
     }
 
     /**
-        @notice Returns the current value of a winning ticket in USDT tokens.
+        @notice Returns the current value of a winning ticket in FRAX tokens.
         @dev Calculates and returns the current value of a ticket
-            by dividing the balance of USDT tokens in the contract
+            by dividing the balance of FRAX tokens in the contract
             by the total number of winning tickets.
-        @return uint256 The current value of a winning ticket in USDT tokens.
+        @return uint256 The current value of a winning ticket in FRAX tokens.
     */
     function _ticketValue(uint256 totalTickets, uint256 wagerID)
         private
@@ -1109,11 +1134,10 @@ contract Come2Top {
     }
 
     /**
-        @dev Calculates a random seed value based on a series of block hashes.
-            It selects various block hashes retrieved from previous block numbers and performs
-            mathematical operations to calculate a random seed.
+        @dev Calculates a random seed value based on a series of l1 block prevrandao.
+            It selects various block prevrandaos and performs mathematical operations to calculate a random seed.
         @param startBlock The block number from where the calculation of the random seed starts.
-        @return uint256 The random seed value generated based on block hashes.
+        @return uint256 The random seed value generated based on l1 block prevrandaos.
     */
     function _calculateRandomSeed(uint256 startBlock)
         private
@@ -1125,8 +1149,12 @@ contract Come2Top {
                 uint256(
                     keccak256(
                         abi.encodePacked(
-                            uint256(blockhash(startBlock - SEVEN)) +
-                                uint256(blockhash(startBlock - EIGHT))
+                            L1RANDAO.numberToRandao(
+                                uint64(startBlock - SAFTY_DURATION - SEVEN)
+                            ) +
+                                L1RANDAO.numberToRandao(
+                                    uint64(startBlock - SAFTY_DURATION - EIGHT)
+                                )
                         )
                     )
                 ) * MAGIC_VALUE;
@@ -1188,7 +1216,7 @@ contract Come2Top {
             currentWave = BD.updatedWave;
             uint256 lastUpdatedWave;
             uint256 accumulatedBlocks;
-            uint256 currentBlock = block.number;
+            uint256 currentL1Block = L1RANDAO.number();
 
             if (BD.updatedWave != ZERO) {
                 lastUpdatedWave = BD.updatedWave + ONE;
@@ -1200,7 +1228,7 @@ contract Come2Top {
                     }
                 }
             } else {
-                if (!(BD.startedBlock + WAVE_DURATION < currentBlock))
+                if (!(BD.startedBlock + WAVE_DURATION < currentL1Block))
                     return (
                         Status.waitForCommingWave,
                         eligibleWithdrawals,
@@ -1218,7 +1246,7 @@ contract Come2Top {
                     BD.startedBlock +
                         (lastUpdatedWave * WAVE_DURATION) +
                         accumulatedBlocks <
-                    currentBlock
+                    currentL1Block
                 ) {
                     remainingTickets = _shuffleBytedArray(
                         remainingTickets,
@@ -1251,7 +1279,7 @@ contract Come2Top {
                         BD.startedBlock +
                             (currentWave * WAVE_DURATION) +
                             accumulatedBlocks <
-                        currentBlock
+                        currentL1Block
                     ) stat = Status.waitForCommingWave;
 
                     break;
@@ -1321,29 +1349,4 @@ contract Come2Top {
 
         return index;
     }
-}
-
-/// @notice IUSDT interface, which is used for easier interactions with USDT contracts.
-interface IUSDT {
-    /**
-        @notice Allows the contract to transfer USDT tokens to a specified address.
-        @dev Allows the contract to transfer USDT tokens to a specified address.
-        @param to The address to which the USDT tokens will be transferred.
-        @param amount The amount of USDT tokens to be transferred.
-    */
-    function transfer(address to, uint256 amount) external returns (bool);
-
-    /**
-        @notice Allows the contract to transfer USDT tokens from one address to another.
-        @dev Allows the contract to transfer USDT tokens from one address to another.
-        @param from The address from which the USDT tokens will be transferred.
-        @param to The address to which the USDT tokens will be transferred.
-        @param amount The amount of USDT tokens to be transferred.
-        @return bool indicating if the transfer was successful or not.
-    */
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool);
 }
