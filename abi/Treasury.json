@@ -18,12 +18,12 @@
 	},
 	{
 		"inputs": [],
-		"name": "LOCKED",
+		"name": "FRAX",
 		"outputs": [
 			{
-				"internalType": "bool",
+				"internalType": "address",
 				"name": "",
-				"type": "bool"
+				"type": "address"
 			}
 		],
 		"stateMutability": "view",
@@ -31,12 +31,12 @@
 	},
 	{
 		"inputs": [],
-		"name": "USDT",
+		"name": "LOCKED",
 		"outputs": [
 			{
-				"internalType": "address",
+				"internalType": "bool",
 				"name": "",
-				"type": "address"
+				"type": "bool"
 			}
 		],
 		"stateMutability": "view",
