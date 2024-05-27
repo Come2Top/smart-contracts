@@ -11,7 +11,7 @@ contract GameLogicTest is Test {
     // using console2 for *;
     // Come2Top private GAME;
     // address[] private TICKET_BUYERS;
-    // address private constant USDT = 0x1E4a5963aBFD975d8c9021ce480b42188849D41d;
+    // address private constant FRAX = 0x1E4a5963aBFD975d8c9021ce480b42188849D41d;
     // uint256 WAVE_DURATION = 16;
     // uint256 WAVE_ELIGIBLE_TIME = 240;
     // uint8 private constant MAX_TICKET_PER_GAME = 4;
@@ -21,7 +21,7 @@ contract GameLogicTest is Test {
     // function setUp() external {
     //     vm.createSelectFork("https://polygon-zkevm.drpc.org", 2225000);
     //     address treasury = address(new Treasury());
-    //     GAME = new Come2Top(MAX_TICKET_PER_GAME, TICKET_PRICE, USDT, treasury);
+    //     GAME = new Come2Top(MAX_TICKET_PER_GAME, TICKET_PRICE, FRAX, treasury);
     //     while (TICKET_BUYERS.length != MAX_PLAYERS) {
     //         TICKET_BUYERS.push(
     //             makeAddr(
@@ -33,15 +33,15 @@ contract GameLogicTest is Test {
     //                 )
     //             )
     //         );
-    //         deal(USDT, TICKET_BUYERS[TICKET_BUYERS.length - 1], TICKET_PRICE);
+    //         deal(FRAX, TICKET_BUYERS[TICKET_BUYERS.length - 1], TICKET_PRICE);
     //         vm.prank(TICKET_BUYERS[TICKET_BUYERS.length - 1]);
-    //         IERC20(USDT).approve(address(GAME), MAX_UINT256);
+    //         IERC20(FRAX).approve(address(GAME), MAX_UINT256);
     //     }
     //     console2.log("Treasury Deployed at:             ", treasury);
     //     console2.log("Game deployed at:                 ", address(GAME));
     //     console2.log(
     //         "Full allowance (Treasury => Game):",
-    //         IERC20(USDT).allowance(treasury, address(GAME)) == MAX_UINT256
+    //         IERC20(FRAX).allowance(treasury, address(GAME)) == MAX_UINT256
     //     );
     //     console2.log("***********************************");
     //     console2.log("*         Setup completed         *");
@@ -87,8 +87,8 @@ contract GameLogicTest is Test {
     //         0,
     //         uint8(tickets[tickets.length - 1])
     //     );
-    //     uint256 balanceOfTOI1 = IUSDT(USDT).balanceOf(ticketOwnerOfIndex1);
-    //     uint256 balanceOfTOLI = IUSDT(USDT).balanceOf(ticketOwnerOfLastIndex);
+    //     uint256 balanceOfTOI1 = IFRAX(FRAX).balanceOf(ticketOwnerOfIndex1);
+    //     uint256 balanceOfTOLI = IFRAX(FRAX).balanceOf(ticketOwnerOfLastIndex);
     //     ticketID = uint8(tickets[0]);
     //     vm.prank(ticketOwnerOfIndex1);
     //     GAME.redeem(ticketID);
@@ -127,12 +127,12 @@ contract GameLogicTest is Test {
     //     console2.log("Next Wave Ticket Value:     ", nextWaveTicketValue);
     //     console2.log("Next Wave Ticket Winrate:   ", nextWaveWinrate);
     //     console2.log(
-    //         "Game USDT Balance:          ",
-    //         IUSDT(USDT).balanceOf(address(GAME))
+    //         "Game FRAX Balance:          ",
+    //         IFRAX(FRAX).balanceOf(address(GAME))
     //     );
     //     console2.log(
-    //         "Owner USDT Balance:         ",
-    //         IUSDT(USDT).balanceOf(GAME.owner())
+    //         "Owner FRAX Balance:         ",
+    //         IFRAX(FRAX).balanceOf(GAME.owner())
     //     );
     //     "".log();
     //     "Ticket Value".log();
@@ -145,13 +145,13 @@ contract GameLogicTest is Test {
     //     console2.log("   before withdraw:", balanceOfTOI1);
     //     console2.log(
     //         "   after withdraw: ",
-    //         IUSDT(USDT).balanceOf(ticketOwnerOfIndex1)
+    //         IFRAX(FRAX).balanceOf(ticketOwnerOfIndex1)
     //     );
     //     "Second Withdrawer Balance".log();
     //     console2.log("   before withdraw:", balanceOfTOLI);
     //     console2.log(
     //         "   after withdraw: ",
-    //         IUSDT(USDT).balanceOf(ticketOwnerOfLastIndex)
+    //         IFRAX(FRAX).balanceOf(ticketOwnerOfLastIndex)
     //     );
     //     "".log();
     //     "Eligible Withdrawals".log();
