@@ -25,11 +25,6 @@
 				"internalType": "address",
 				"name": "treasury",
 				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "l1Radndao",
-				"type": "address"
 			}
 		],
 		"stateMutability": "nonpayable",
@@ -444,19 +439,6 @@
 		"outputs": [
 			{
 				"internalType": "contract IFRAX",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "L1RANDAO",
-		"outputs": [
-			{
-				"internalType": "contract IL1Randao",
 				"name": "",
 				"type": "address"
 			}
