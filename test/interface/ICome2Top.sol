@@ -189,7 +189,7 @@ interface ICome2Top {
             the previous offer is refunded to the maker.
             The player making the offer, must be an externally owned account (EOA).
         @param ticketID The ID of the ticket for which the offer is being made.
-        @param amount The amount of the offer in USDT tokens.
+        @param amount The amount of the offer in FRAX tokens.
     */
     function makeOffer(uint8 ticketID, uint96 amount) external;
 
@@ -248,7 +248,7 @@ interface ICome2Top {
         uint8
     ) external view returns (uint96 amount, address maker);
 
-    function USDT() external view returns (address);
+    function FRAX() external view returns (address);
 
     function TREASURY() external view returns (address);
 
@@ -263,10 +263,10 @@ interface ICome2Top {
         @return maxPurchasableTickets Maximum purchasable tickets for each address, based on {maxTicketsPerWager}.
         @return startedBlock Started block number of game, in which all tickets sold out.
         @return currentWave The current wave of the wager.
-        @return currentTicketValue The current value of a winning ticket in USDT tokens.
+        @return currentTicketValue The current value of a winning ticket in FRAX tokens.
         @return remainingTickets Total number of current wave winner tickets.
         @return eligibleWithdrawals The number of eligible withdrawals for the current wave of the wager.
-        @return nextWaveTicketValue The value of a winning ticket in USDT tokens for the coming wave.
+        @return nextWaveTicketValue The value of a winning ticket in FRAX tokens for the coming wave.
         @return nextWaveWinrate The chance of winning each ticket for the coming wave.
         @return tickets The byte array containing the winning ticket IDs for the current wager.
         @return ticketsData An array of TicketInfo structures containing the ticket ID
@@ -290,12 +290,12 @@ interface ICome2Top {
         );
 
     /**
-        @notice Retrieves the current value of a ticket in USDT tokens.
+        @notice Retrieves the current value of a ticket in FRAX tokens.
         @dev Calculates and returns the current value of a ticket:
             If it was in ticket sale mode, then the ticket value is equal to {ticketPrice}
-            Else by dividing the balance of USDT tokens in the contract
+            Else by dividing the balance of FRAX tokens in the contract
                 by the total number of winning tickets.
-        @return The current value of a ticket in USDT tokens, based on status.
+        @return The current value of a ticket in FRAX tokens, based on status.
     */
     function ticketValue() external view returns (uint256);
 
@@ -325,7 +325,7 @@ interface ICome2Top {
             It calculates the total value of winning tickets owned by the player
             based on the current ticket value and the number of tickets owned.
         @param player The address of the player for whom the information is being retrieved.
-        @return totalTicketsValue The total value of winning tickets owned by the player in USDT tokens.
+        @return totalTicketsValue The total value of winning tickets owned by the player in FRAX tokens.
         @return playerTickets A byte array containing the IDs of the winning tickets owned by the player.
     */
     function playerWithWinningTickets(
@@ -386,8 +386,9 @@ interface ICome2Top {
         @return stat The current status of the wager (ticketSale, waitForCommingWave, Withdrawable, finished).
         @return eligibleWithdrawals The number of eligible withdrawals for the current wager.
         @return currentWave The current wave of the wager.
-        @return wagerBalance The balance of the wager in USDT tokens.
-        @return winnerTickets The byte array containing the winning ticket IDs for the current wager.
+        @return wagerBalance The balance of the wager in FRAX tokens.
+        @return winners The array containing the winner addresses for the given wager ID.
+        @return winnerTickets The array containing the winning ticket IDs for the given wager ID.
     */
     function wagerStatus(
         uint256 wagerID_
@@ -400,6 +401,7 @@ interface ICome2Top {
             int256 eligibleWithdrawals,
             uint256 currentWave,
             uint256 wagerBalance,
-            bytes memory winnerTickets
+            address[] memory winners,
+            uint256[] memory winnerTickets
         );
 }
