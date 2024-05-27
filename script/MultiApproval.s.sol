@@ -9,7 +9,7 @@ contract MultiApproval is Script, Storage {
         uint256 i;
         while (i < 64) {
             vmSafe.startBroadcast(_privateKeys_[i]);
-            _usdt_.approve(address(_come2top_), type(uint256).max);
+            _frax_.approve(address(_come2top_), type(uint256).max);
             vmSafe.stopBroadcast();
 
             unchecked {

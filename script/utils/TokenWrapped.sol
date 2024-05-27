@@ -21,9 +21,9 @@ contract TokenWrapped {
         );
     string public constant VERSION = "1";
     uint256 public constant MAX_MINT = 1e10;
-    string public constant name = "Tether USD";
-    string public constant symbol = "USDT";
-    uint8 public constant decimals = 6;
+    string public constant name = "Frax";
+    string public constant symbol = "FRAX";
+    uint8 public constant decimals = 18;
 
     uint256 public totalSupply;
     mapping(address => uint256) public nonces;

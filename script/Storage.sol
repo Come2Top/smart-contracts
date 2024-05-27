@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {IUSDT} from "../test/interface/IUSDT.sol";
+import {IFRAX} from "../test/interface/IFRAX.sol";
 import {ICome2Top} from "../test/interface/ICome2Top.sol";
 
 abstract contract Storage {
-    IUSDT constant internal _usdt_ = IUSDT(0x5c44535db05EfF9c84E89278Ee32BAbDC7EfB6cA);
+    IFRAX constant internal _frax_ = IFRAX(0x5c44535db05EfF9c84E89278Ee32BAbDC7EfB6cA);
     ICome2Top constant internal _come2top_ = ICome2Top(0x87be7A58D8a32dC69f32349D7342a94A0453952c);
     uint256[] internal _privateKeys_ = [
         0x7fc66c1f98a1cc8355601f5620e44328d3c7a4eff2cbf37d3705832e697c79a4,
