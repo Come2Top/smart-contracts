@@ -262,8 +262,6 @@ interface ICome2Top {
 
     function TREASURY() external view returns (address);
 
-    function L1RANDAO() external view returns (address);
-
     function THIS() external view returns (address);
 
     function MAGIC_VALUE() external view returns (uint256);
