@@ -125,17 +125,25 @@ interface ICome2Top {
         @notice Changes the ticket price for joining the wager.
         @dev Allows the owner to change the ticket price for joining the wager. 
             Only the owner can call this function. 
-        @param ticketPrice_ The new ticket price to be set.
+        @param newTP The new ticket price to be set.
     */
-    function changeTicketPrice(uint80 ticketPrice_) external;
+    function changeTicketPrice(uint80 newTP) external;
 
     /**
         @notice Changes the maximum number of tickets allowed per wager.
         @dev Allows the owner to change the maximum number of tickets allowed per wager. 
             Only the owner can call this function.
-        @param maxTicketsPerWager_ The new maximum number of tickets allowed per wager.
+        @param newMTPW The new maximum number of tickets allowed per wager.
     */
-    function changeMaxTicketsPerWager(uint8 maxTicketsPerWager_) external;
+    function changeMaxTicketsPerWager(uint8 newMTPW) external;
+
+    /**
+        @notice Changes the pseudorandom number generator period time.
+        @dev Allows the owner to change the pseudorandom number generator period time. 
+            Only the owner can call this function.
+        @param newPRNGP The new the pseudorandom number generator period.
+    */
+    function changePRNGperiod(uint256 newPRNGP) external;
 
     /*********************************\
     |-*-*-*-*   WAGER-LOGIC   *-*-*-*-|
@@ -214,6 +222,8 @@ interface ICome2Top {
 
     function currentWagerID() external view returns (uint256);
 
+    function prngPeriod() external view returns (uint256);
+
     function wagerData(
         uint256
     )
@@ -251,6 +261,8 @@ interface ICome2Top {
     function FRAX() external view returns (address);
 
     function TREASURY() external view returns (address);
+
+    function L1RANDAO() external view returns (address);
 
     function THIS() external view returns (address);
 
