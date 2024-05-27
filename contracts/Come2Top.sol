@@ -56,6 +56,7 @@ contract Come2Top {
     uint80 public ticketPrice;
     address public owner;
     uint256 public currentWagerID;
+    uint256 public prngPeriod;
 
     mapping(uint256 => WagerData) public wagerData;
     mapping(address => OfferorData) public offerorData;
@@ -74,20 +75,17 @@ contract Come2Top {
     bytes private constant BYTE_TICKETS =
         hex"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
     address private constant ZERO_ADDRESS = address(0x0);
-    uint256 private constant MIN_TICKET_PRICE = 1e6;
+    uint256 private constant MIN_TICKET_PRICE = 2e18;
     uint256 private constant MAX_PARTIES = 256;
     uint256 private constant WAVE_ELIGIBLES_TIME = 240;
     uint256 private constant BASIS = 100;
     uint256 private constant OFFEREE_BENEFICIARY = 95;
-    uint256 private constant SAFTY_DURATION = 64;
-    uint256 private constant WAVE_DURATION = 120 + SAFTY_DURATION;
+    uint256 private constant SAFTY_DURATION = 100;
     int8 private constant N_ONE = -1;
     uint8 private constant ZERO = 0;
     uint8 private constant ONE = 1;
     uint8 private constant TWO = 2;
-    uint8 private constant FOUR = 4;
     uint8 private constant FIVE = 5;
-    uint8 private constant SEVEN = 7;
     uint8 private constant EIGHT = 8;
 
     /********************************\
@@ -208,12 +206,14 @@ contract Come2Top {
     constructor(
         uint8 mtpw,
         uint80 tp,
+        uint256 prngp,
         address frax,
         address treasury,
         address l1Radndao
     ) {
         _checkMTPW(mtpw);
         _checkTP(tp);
+        _checkPRNGP(prngp);
 
         if (
             frax == ZERO_ADDRESS ||
@@ -224,6 +224,7 @@ contract Come2Top {
         owner = msg.sender;
         maxTicketsPerWager = mtpw;
         ticketPrice = tp;
+        prngPeriod = prngp;
         FRAX = IFRAX(frax);
         TREASURY = treasury;
         L1RANDAO = IL1Randao(l1Radndao);
@@ -262,32 +263,48 @@ contract Come2Top {
         @notice Changes the ticket price for joining the wager.
         @dev Allows the owner to change the ticket price for joining the wager. 
             Only the owner can call this function. 
-        @param ticketPrice_ The new ticket price to be set.
+        @param newTP The new ticket price to be set.
     */
-    function changeTicketPrice(uint80 ticketPrice_)
+    function changeTicketPrice(uint80 newTP)
         external
         onlyOwner
         onlyPausedAndFinishedWager
     {
-        _checkTP(ticketPrice_);
+        _checkTP(newTP);
 
-        ticketPrice = ticketPrice_;
+        ticketPrice = newTP;
     }
 
     /**
         @notice Changes the maximum number of tickets allowed per wager.
         @dev Allows the owner to change the maximum number of tickets allowed per wager. 
             Only the owner can call this function.
-        @param maxTicketsPerWager_ The new maximum number of tickets allowed per wager.
+        @param newMTPW The new maximum number of tickets allowed per wager.
     */
-    function changeMaxTicketsPerWager(uint8 maxTicketsPerWager_)
+    function changeMaxTicketsPerWager(uint8 newMTPW)
         external
         onlyOwner
         onlyPausedAndFinishedWager
     {
-        _checkMTPW(maxTicketsPerWager_);
+        _checkMTPW(newMTPW);
 
-        maxTicketsPerWager = maxTicketsPerWager_;
+        maxTicketsPerWager = newMTPW;
+    }
+
+    /**
+        @notice Changes the pseudorandom number generator period time.
+        @dev Allows the owner to change the pseudorandom number generator period time. 
+            Only the owner can call this function.
+        @param newPRNGP The new the pseudorandom number generator period.
+    */
+    function changePRNGperiod(uint256 newPRNGP)
+        external
+        onlyOwner
+        onlyPausedAndFinishedWager
+    {
+        _checkPRNGP(newPRNGP);
+
+        prngPeriod = newPRNGP;
     }
 
     /*********************************\
@@ -379,7 +396,11 @@ contract Come2Top {
             BD.startedBlock = currentL1Block;
             BD.tickets = BYTE_TICKETS;
 
-            emit WagerStarted(wagerID, currentL1Block, MAX_PARTIES * neededFRAX);
+            emit WagerStarted(
+                wagerID,
+                currentL1Block,
+                MAX_PARTIES * neededFRAX
+            );
         } else BD.soldTickets += uint8(totalTickets);
     }
 
@@ -544,9 +565,7 @@ contract Come2Top {
 
         _transferHelper(owner, fee);
 
-        address ticketOwner = ticketOwnership[wagerID][
-            uint8(winnerTickets[0])
-        ];
+        address ticketOwner = ticketOwnership[wagerID][uint8(winnerTickets[0])];
 
         delete totalPlayerTickets[wagerID][ticketOwner];
         delete wagerData[wagerID].balance;
@@ -1134,12 +1153,12 @@ contract Come2Top {
     }
 
     /**
-        @dev Calculates a random seed value based on a series of l1 block prevrandao.
+        @dev Creates a random seed value based on a series of l1 block prevrandaos.
             It selects various block prevrandaos and performs mathematical operations to calculate a random seed.
         @param startBlock The block number from where the calculation of the random seed starts.
         @return uint256 The random seed value generated based on l1 block prevrandaos.
     */
-    function _calculateRandomSeed(uint256 startBlock)
+    function _createRandomSeed(uint256 startBlock)
         private
         view
         returns (uint256)
@@ -1150,10 +1169,13 @@ contract Come2Top {
                     keccak256(
                         abi.encodePacked(
                             L1RANDAO.numberToRandao(
-                                uint64(startBlock - SAFTY_DURATION - SEVEN)
+                                uint64(startBlock - SAFTY_DURATION)
                             ) +
                                 L1RANDAO.numberToRandao(
-                                    uint64(startBlock - SAFTY_DURATION - EIGHT)
+                                    uint64(startBlock - SAFTY_DURATION / 2)
+                                ) +
+                                L1RANDAO.numberToRandao(
+                                    uint64(startBlock - SAFTY_DURATION / 3)
                                 )
                         )
                     )
@@ -1217,6 +1239,7 @@ contract Come2Top {
             uint256 lastUpdatedWave;
             uint256 accumulatedBlocks;
             uint256 currentL1Block = L1RANDAO.number();
+            uint256 waitingDuration = _wave_duration();
 
             if (BD.updatedWave != ZERO) {
                 lastUpdatedWave = BD.updatedWave + ONE;
@@ -1228,7 +1251,7 @@ contract Come2Top {
                     }
                 }
             } else {
-                if (!(BD.startedBlock + WAVE_DURATION < currentL1Block))
+                if (!(BD.startedBlock + waitingDuration < currentL1Block))
                     return (
                         Status.waitForCommingWave,
                         eligibleWithdrawals,
@@ -1244,15 +1267,15 @@ contract Come2Top {
             while (true) {
                 if (
                     BD.startedBlock +
-                        (lastUpdatedWave * WAVE_DURATION) +
+                        (lastUpdatedWave * waitingDuration) +
                         accumulatedBlocks <
                     currentL1Block
                 ) {
                     remainingTickets = _shuffleBytedArray(
                         remainingTickets,
-                        _calculateRandomSeed(
+                        _createRandomSeed(
                             BD.startedBlock +
-                                (lastUpdatedWave * WAVE_DURATION) +
+                                (lastUpdatedWave * waitingDuration) +
                                 accumulatedBlocks
                         ),
                         remainingTickets.length / TWO
@@ -1277,7 +1300,7 @@ contract Come2Top {
                 } else {
                     if (
                         BD.startedBlock +
-                            (currentWave * WAVE_DURATION) +
+                            (currentWave * waitingDuration) +
                             accumulatedBlocks <
                         currentL1Block
                     ) stat = Status.waitForCommingWave;
@@ -1288,25 +1311,41 @@ contract Come2Top {
         }
     }
 
+    function _wave_duration() private view returns (uint256) {
+        return SAFTY_DURATION + prngPeriod;
+    }
+
     /**
         @dev It verifies that the value is not zero
-            and not greater than the maximum limit predefined as {FOUR}.
+            and not greater than the maximum limit predefined as {EIGHT}.
         @param value The value to be checked for maximum tickets per wager.
     */
     function _checkMTPW(uint8 value) private pure {
         _revertOnZeroUint(value);
 
-        if (value > FOUR) revert VALUE_CANT_BE_GREATER_THAN(FOUR);
+        if (value > EIGHT) revert VALUE_CANT_BE_GREATER_THAN(EIGHT);
     }
 
     /**
-        @dev Checks if the provided ticket price value is within the valid range.
-            It verifies that the ticket price value is not lower than the {MIN_TICKET_PRICE}.
-            If the value is outside the valid range
-            it reverts the transaction with an appropriate error message.
+        @dev It verifies that the value is not zero
+            and not lower than the minimum limit predefined as {EIGHT}.
+        @param value The value to be checked for maximum tickets per wager.
+    */
+    function _checkPRNGP(uint256 value) private pure {
+        _revertOnZeroUint(value);
+
+        if (value < SAFTY_DURATION)
+            revert VALUE_CANT_BE_LOWER_THAN(SAFTY_DURATION);
+    }
+
+    /**
+        @dev It verifies that the value is not zero
+            and not lower than the minimum limit predefined as {MIN_TICKET_PRICE}.
         @param value The ticket price value to be checked
     */
     function _checkTP(uint80 value) private pure {
+        _revertOnZeroUint(value);
+
         if (value < MIN_TICKET_PRICE)
             revert VALUE_CANT_BE_LOWER_THAN(MIN_TICKET_PRICE);
     }
