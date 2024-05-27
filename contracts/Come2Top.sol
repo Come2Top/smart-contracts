@@ -5,7 +5,7 @@ import {IFRAX} from "./interfaces/IFRAX.sol";
 import {IL1Randao} from "./interfaces/IL1Randao.sol";
 
 /**
-    @author @Risk-Labs
+    @author @4bit-lab
     @title Come2Top Main Contract.
     @notice Come2Top is a secure, automated, and fully decentralized wagering platform
         built on the Polygon Mainnet, that works without the involvement of third parties.

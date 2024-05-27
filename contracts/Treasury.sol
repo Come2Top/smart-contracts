@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 /**
-    @author @Risk-Labs
+    @author @4bit-lab
     @title Come2Top Offerors Treasury.
     @dev Contract will be used by Come2Top contract
         as a seperate Treasury for Offerors.
