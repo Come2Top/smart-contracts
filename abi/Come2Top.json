@@ -12,6 +12,11 @@
 				"type": "uint80"
 			},
 			{
+				"internalType": "uint256",
+				"name": "prngp",
+				"type": "uint256"
+			},
+			{
 				"internalType": "address",
 				"name": "frax",
 				"type": "address"
@@ -502,7 +507,7 @@
 		"inputs": [
 			{
 				"internalType": "uint8",
-				"name": "maxTicketsPerWager_",
+				"name": "newMTPW",
 				"type": "uint8"
 			}
 		],
@@ -527,8 +532,21 @@
 	{
 		"inputs": [
 			{
+				"internalType": "uint256",
+				"name": "newPRNGP",
+				"type": "uint256"
+			}
+		],
+		"name": "changePRNGperiod",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
 				"internalType": "uint80",
-				"name": "ticketPrice_",
+				"name": "newTP",
 				"type": "uint80"
 			}
 		],
@@ -738,6 +756,19 @@
 				"internalType": "bytes",
 				"name": "playerTickets",
 				"type": "bytes"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "prngPeriod",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",
