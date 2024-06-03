@@ -1,30 +1,18 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.20;
 
-contract TokenWrapped {
-    bytes32 public immutable DOMAIN_SEPARATOR =
-        keccak256(
-            abi.encode(
-                keccak256(
-                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                ),
-                keccak256(bytes(name)),
-                keccak256(bytes(VERSION)),
-                block.chainid,
-                address(this)
-            )
-        );
+contract TestToken {
     bytes32 public constant PERMIT_TYPEHASH =
         keccak256(
             "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
         );
-    string public constant VERSION = "1";
-    uint256 public constant MAX_MINT = 1e10;
-    string public constant name = "Frax";
-    string public constant symbol = "FRAX";
-    uint8 public constant decimals = 18;
-
+    uint256 private constant _MAX_UINT256 = type(uint256).max;
+    bytes32 public immutable DOMAIN_SEPARATOR;
+    uint256 public immutable MINT_CAP;
+    uint256 public immutable MAX_SUPPLY;
+    uint8 public immutable decimals;
+    string public name;
+    string public symbol;
     uint256 public totalSupply;
     mapping(address => uint256) public nonces;
     mapping(address => uint256) public balanceOf;
@@ -37,29 +25,65 @@ contract TokenWrapped {
         uint256 value
     );
 
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        uint8 decimals_,
+        uint256 mintCap,
+        uint256 maxSupply
+    ) {
+        require(
+            bytes(name_).length != 0 &&
+                bytes(symbol_).length != 0 &&
+                decimals_ != 0 &&
+                mintCap != 0
+        );
+
+        if(maxSupply == 0) maxSupply = _MAX_UINT256;
+        else require(maxSupply > mintCap);
+
+        name = name_;
+        symbol = symbol_;
+        decimals = decimals_;
+        MINT_CAP = mintCap * (10**decimals_);
+        MAX_SUPPLY = maxSupply;
+        DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                keccak256(
+                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                ),
+                keccak256(bytes(name_)),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(this)
+            )
+        );
+    }
+
     function mint() external {
         address account = msg.sender;
         uint256 balance = balanceOf[account];
 
         require(
-            balance < MAX_MINT,
-            "ERC20: address reached maximum mintable amount or is over that"
+            balance < MINT_CAP,
+            "ERC20: address balance reached to {MINT_CAP} or is over that"
         );
 
-        balance = MAX_MINT - balance;
+        balance = MINT_CAP - balance;
 
         require(
-            type(uint256).max - balance >= totalSupply,
-            "ERC20: mint amount exceeds MAX_UINT256"
+            _MAX_UINT256 - balance >= totalSupply,
+            "ERC20: mint amount exceeds {_MAX_UINT256}"
         );
 
+        balanceOf[account] = MINT_CAP;
         unchecked {
             totalSupply += balance;
         }
-        balanceOf[account] = MAX_MINT;
+
+        require(totalSupply <= MAX_SUPPLY, "ERC20: mint amount exceeds {MAX_SUPPLY}");
 
         emit Transfer(address(0), account, balance);
-
     }
 
     function transfer(address to, uint256 amount) external returns (bool) {
@@ -130,7 +154,10 @@ contract TokenWrapped {
         bytes32 r,
         bytes32 s
     ) external {
-        require(block.timestamp <= deadline, "TokenWrapped::permit: Expired permit");
+        require(
+            block.timestamp <= deadline,
+            "TokenWrapped::permit: Expired permit"
+        );
 
         bytes32 hashStruct = keccak256(
             abi.encode(
@@ -165,7 +192,10 @@ contract TokenWrapped {
 
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
-        require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
+        require(
+            fromBalance >= amount,
+            "ERC20: transfer amount exceeds balance"
+        );
 
         unchecked {
             balanceOf[from] = fromBalance - amount;
@@ -195,8 +225,11 @@ contract TokenWrapped {
     ) private {
         uint256 currentAllowance = allowance[owner][spender];
 
-        if (currentAllowance != type(uint256).max) {
-            require(currentAllowance >= amount, "ERC20: insufficient allowance");
+        if (currentAllowance != _MAX_UINT256) {
+            require(
+                currentAllowance >= amount,
+                "ERC20: insufficient allowance"
+            );
 
             unchecked {
                 _approve(owner, spender, currentAllowance - amount);
