@@ -18,7 +18,7 @@
 			},
 			{
 				"internalType": "address",
-				"name": "frax",
+				"name": "deft",
 				"type": "address"
 			},
 			{
@@ -140,7 +140,7 @@
 	{
 		"inputs": [
 			{
-				"internalType": "enum Come2Top.Status",
+				"internalType": "enum DeftGame.Status",
 				"name": "currentStat",
 				"type": "uint8"
 			}
@@ -435,10 +435,10 @@
 	},
 	{
 		"inputs": [],
-		"name": "FRAX",
+		"name": "DEFT",
 		"outputs": [
 			{
-				"internalType": "contract IFRAX",
+				"internalType": "contract IDeft",
 				"name": "",
 				"type": "address"
 			}
@@ -581,7 +581,7 @@
 		"name": "latestUpdate",
 		"outputs": [
 			{
-				"internalType": "enum Come2Top.Status",
+				"internalType": "enum DeftGame.Status",
 				"name": "stat",
 				"type": "uint8"
 			},
@@ -959,7 +959,7 @@
 		"name": "wagerInfo",
 		"outputs": [
 			{
-				"internalType": "enum Come2Top.Status",
+				"internalType": "enum DeftGame.Status",
 				"name": "stat",
 				"type": "uint8"
 			},
@@ -1023,7 +1023,7 @@
 								"type": "address"
 							}
 						],
-						"internalType": "struct Come2Top.Offer",
+						"internalType": "struct DeftGame.Offer",
 						"name": "offer",
 						"type": "tuple"
 					},
@@ -1038,7 +1038,7 @@
 						"type": "address"
 					}
 				],
-				"internalType": "struct Come2Top.TicketInfo[256]",
+				"internalType": "struct DeftGame.TicketInfo[256]",
 				"name": "ticketsData",
 				"type": "tuple[256]"
 			}
@@ -1062,7 +1062,7 @@
 				"type": "uint256"
 			},
 			{
-				"internalType": "enum Come2Top.Status",
+				"internalType": "enum DeftGame.Status",
 				"name": "stat",
 				"type": "uint8"
 			},
@@ -1119,7 +1119,7 @@
 								"type": "address"
 							}
 						],
-						"internalType": "struct Come2Top.Offer",
+						"internalType": "struct DeftGame.Offer",
 						"name": "offer",
 						"type": "tuple"
 					},
@@ -1134,7 +1134,7 @@
 						"type": "address"
 					}
 				],
-				"internalType": "struct Come2Top.TicketInfo[]",
+				"internalType": "struct DeftGame.TicketInfo[]",
 				"name": "allTicketsData",
 				"type": "tuple[]"
 			}

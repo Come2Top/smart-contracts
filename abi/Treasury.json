@@ -5,7 +5,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "COME2TOP",
+		"name": "DEFT_GAME",
 		"outputs": [
 			{
 				"internalType": "address",
@@ -18,7 +18,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "FRAX",
+		"name": "DEFT",
 		"outputs": [
 			{
 				"internalType": "address",

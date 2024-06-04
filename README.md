@@ -1,12 +1,12 @@
 ## Fraxtal (Main-net)
-### Come2Top: ``After Mannual Tests``
+### DeftGame: ``After Mannual Tests``
 ### Treasury: ``After Mannual Tests``
-### Frax:  ``0xfc00000000000000000000000000000000000001``
+### DeftToken:  ``After Mannual Tests``
 
 ## Fraxtal (Test-net)
-### Come2Top: ````
+### DeftGame: ````
 ### Treasury: ````
-### Frax: ````
+### DeftToken: ````
 
 
 ## Test: ``forge test -vv``

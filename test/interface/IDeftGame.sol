@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: -- Come2Top --
+// SPDX-License-Identifier: -- DeftGame --
 pragma solidity 0.8.20;
 
-interface ICome2Top {
+interface IDeftGame {
     /*******************************\
     |-*-*-*-*-*   TYPES   *-*-*-*-*-|
     \*******************************/

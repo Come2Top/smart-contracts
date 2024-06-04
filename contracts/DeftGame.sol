@@ -1,17 +1,17 @@
-//  SPDX-License-Identifier: -- Come2Top --
+//  SPDX-License-Identifier: -- DeftGame --
 pragma solidity 0.8.20;
 
-import {IFRAX} from "./interfaces/IFRAX.sol";
+import {IDeft} from "./interfaces/IDeft.sol";
 import {IL1Randao} from "./interfaces/IL1Randao.sol";
 
 /**
     @author @4bit-lab
-    @title Come2Top Main Contract.
-    @notice Come2Top is a secure, automated, and fully decentralized wagering platform
+    @title DeftGame Main Contract.
+    @notice DeftGame is a secure, automated, and fully decentralized wagering platform
         built on the Polygon Mainnet, that works without the involvement of third parties.
-        For more information & further questions, visit: https://www.come2.top
+        For more information & further questions, visit: https://www.game.deft.finance
 */
-contract Come2Top {
+contract DeftGame {
     /*******************************\
     |-*-*-*-*-*   TYPES   *-*-*-*-*-|
     \*******************************/
@@ -67,7 +67,7 @@ contract Come2Top {
     /*******************************\
     |-*-*-*-*   CONSTANTS   *-*-*-*-|
     \*******************************/
-    IFRAX public immutable FRAX;
+    IDeft public immutable DEFT;
     address public immutable TREASURY;
     address public immutable THIS = address(this);
     uint256 public immutable MAGIC_VALUE;
@@ -207,7 +207,7 @@ contract Come2Top {
         uint8 mtpw,
         uint80 tp,
         uint256 prngp,
-        address frax,
+        address deft,
         address treasury
     ) {
         _checkMTPW(mtpw);
@@ -215,7 +215,7 @@ contract Come2Top {
         _checkPRNGP(prngp);
 
         if (
-            frax == ZERO_ADDRESS ||
+            deft == ZERO_ADDRESS ||
             treasury == ZERO_ADDRESS
         ) revert ZERO_ADDRESS_PROVIDED();
 
@@ -223,12 +223,12 @@ contract Come2Top {
         maxTicketsPerWager = mtpw;
         ticketPrice = tp;
         prngPeriod = prngp;
-        FRAX = IFRAX(frax);
+        DEFT = IDeft(deft);
         TREASURY = treasury;
         MAGIC_VALUE = uint160(address(this));
         wagerData[ZERO].tickets = BYTE_TICKETS;
 
-        (bool ok, ) = treasury.call(abi.encode(frax));
+        (bool ok, ) = treasury.call(abi.encode(deft));
 
         if (!ok) revert APROVE_OPERATION_FAILED();
     }
@@ -587,7 +587,7 @@ contract Come2Top {
             the previous offer is refunded to the maker.
             The player making the offer, must be an externally owned account (EOA).
         @param ticketID The ID of the ticket for which the offer is being made.
-        @param amount The amount of the offer in FRAX tokens.
+        @param amount The amount of the offer in DEFT tokens.
     */
     function makeOffer(uint8 ticketID, uint96 amount) external onlyEOA {
         address sender = msg.sender;
@@ -674,10 +674,10 @@ contract Come2Top {
         @return maxPurchasableTickets Maximum purchasable tickets for each address, based on {maxTicketsPerWager}.
         @return startedBlock Started block number of game, in which all tickets sold out.
         @return currentWave The current wave of the wager.
-        @return currentTicketValue The current value of a winning ticket in FRAX tokens.
+        @return currentTicketValue The current value of a winning ticket in DEFT tokens.
         @return remainingTickets Total number of current wave winner tickets.
         @return eligibleWithdrawals The number of eligible withdrawals for the current wave of the wager.
-        @return nextWaveTicketValue The value of a winning ticket in FRAX tokens for the coming wave.
+        @return nextWaveTicketValue The value of a winning ticket in DEFT tokens for the coming wave.
         @return nextWaveWinrate The chance of winning each ticket for the coming wave.
         @return tickets The byte array containing the winning ticket IDs for the current wager.
         @return ticketsData An array of TicketInfo structures containing the ticket ID
@@ -789,12 +789,12 @@ contract Come2Top {
     }
 
     /**
-        @notice Retrieves the current value of a ticket in FRAX tokens.
+        @notice Retrieves the current value of a ticket in DEFT tokens.
         @dev Calculates and returns the current value of a ticket:
             If it was in ticket sale mode, then the ticket value is equal to {ticketPrice}
-            Else by dividing the balance of FRAX tokens in the contract
+            Else by dividing the balance of DEFT tokens in the contract
                 by the total number of winning tickets.
-        @return The current value of a ticket in FRAX tokens, based on status.
+        @return The current value of a ticket in DEFT tokens, based on status.
     */
     function ticketValue() external view returns (uint256) {
         (Status stat, , , bytes memory tickets) = _wagerUpdate(currentWagerID);
@@ -875,7 +875,7 @@ contract Come2Top {
             It calculates the total value of winning tickets owned by the player
             based on the current ticket value and the number of tickets owned.
         @param player The address of the player for whom the information is being retrieved.
-        @return totalTicketsValue The total value of winning tickets owned by the player in FRAX tokens.
+        @return totalTicketsValue The total value of winning tickets owned by the player in DEFT tokens.
         @return playerTickets A byte array containing the IDs of the winning tickets owned by the player.
     */
     function playerWithWinningTickets(address player)
@@ -987,7 +987,7 @@ contract Come2Top {
         @return stat The current status of the wager (ticketSale, waitForCommingWave, Withdrawable, finished).
         @return eligibleWithdrawals The number of eligible withdrawals for the current wager.
         @return currentWave The current wave of the wager.
-        @return wagerBalance The balance of the wager in FRAX tokens.
+        @return wagerBalance The balance of the wager in DEFT tokens.
         @return winners The array containing the winner addresses for the given wager ID.
         @return winnerTickets The array containing the winning ticket IDs for the given wager ID.
     */
@@ -1030,26 +1030,26 @@ contract Come2Top {
     |-*-*-*-*   PRIVATE   *-*-*-*-|
     \*****************************/
     /**
-        @dev Allows the contract to transfer FRAX tokens to a specified address.
-        @param to The address to which the FRAX tokens will be transferred.
-        @param amount The amount of FRAX tokens to be transferred.
+        @dev Allows the contract to transfer DEFT tokens to a specified address.
+        @param to The address to which the DEFT tokens will be transferred.
+        @param amount The amount of DEFT tokens to be transferred.
     */
     function _transferHelper(address to, uint256 amount) private {
-        FRAX.transfer(to, amount);
+        DEFT.transfer(to, amount);
     }
 
     /**
-        @dev Allows the contract to transfer FRAX tokens from one address to another.
-        @param from The address from which the FRAX tokens will be transferred.
-        @param to The address to which the FRAX tokens will be transferred.
-        @param amount The amount of FRAX tokens to be transferred.
+        @dev Allows the contract to transfer DEFT tokens from one address to another.
+        @param from The address from which the DEFT tokens will be transferred.
+        @param to The address to which the DEFT tokens will be transferred.
+        @param amount The amount of DEFT tokens to be transferred.
     */
     function _transferFromHelper(
         address from,
         address to,
         uint256 amount
     ) private {
-        FRAX.transferFrom(from, to, amount);
+        DEFT.transferFrom(from, to, amount);
     }
 
     /**
@@ -1133,11 +1133,11 @@ contract Come2Top {
     }
 
     /**
-        @notice Returns the current value of a winning ticket in FRAX tokens.
+        @notice Returns the current value of a winning ticket in DEFT tokens.
         @dev Calculates and returns the current value of a ticket
-            by dividing the balance of FRAX tokens in the contract
+            by dividing the balance of DEFT tokens in the contract
             by the total number of winning tickets.
-        @return uint256 The current value of a winning ticket in FRAX tokens.
+        @return uint256 The current value of a winning ticket in DEFT tokens.
     */
     function _ticketValue(uint256 totalTickets, uint256 wagerID)
         private

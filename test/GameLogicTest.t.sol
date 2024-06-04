@@ -1,15 +1,15 @@
-//  SPDX-License-Identifier: -- Come2Top --
+//  SPDX-License-Identifier: -- DeftGame --
 pragma solidity 0.8.20;
 
 import {IERC20} from "./interface/IERC20.sol";
 import {Test, console2} from "forge-std/Test.sol";
 import {Treasury} from "../contracts/Treasury.sol";
-import {Come2Top} from "../contracts/Come2Top.sol";
+import {DeftGame} from "../contracts/DeftGame.sol";
 
 // Testing logic needs to be migrated!
 contract GameLogicTest is Test {
     // using console2 for *;
-    // Come2Top private GAME;
+    // DeftGame private GAME;
     // address[] private TICKET_BUYERS;
     // address private constant FRAX = 0x1E4a5963aBFD975d8c9021ce480b42188849D41d;
     // uint256 WAVE_DURATION = 16;
@@ -21,7 +21,7 @@ contract GameLogicTest is Test {
     // function setUp() external {
     //     vm.createSelectFork("https://polygon-zkevm.drpc.org", 2225000);
     //     address treasury = address(new Treasury());
-    //     GAME = new Come2Top(MAX_TICKET_PER_GAME, TICKET_PRICE, FRAX, treasury);
+    //     GAME = new DeftGame(MAX_TICKET_PER_GAME, TICKET_PRICE, FRAX, treasury);
     //     while (TICKET_BUYERS.length != MAX_PLAYERS) {
     //         TICKET_BUYERS.push(
     //             makeAddr(
@@ -59,7 +59,7 @@ contract GameLogicTest is Test {
     //     vm.roll(block.number + 1 + _calculateWaveBlocks(7));
     //     uint8 ticketID;
     //     (
-    //         Come2Top.Status stat,
+    //         DeftGame.Status stat,
     //         uint256 maxPurchasableTickets,
     //         uint256 startedBlock,
     //         uint256 currentWave,
@@ -69,14 +69,14 @@ contract GameLogicTest is Test {
     //         uint256 nextWaveTicketValue,
     //         uint256 nextWaveWinrate,
     //         bytes memory tickets,
-    //         Come2Top.TicketInfo[256] memory winnerTicketsInfo
+    //         DeftGame.TicketInfo[256] memory winnerTicketsInfo
     //     ) = GAME.wagerInfo();
     //     string memory stringifiedStatus;
-    //     if (stat == Come2Top.Status.ticketSale)
+    //     if (stat == DeftGame.Status.ticketSale)
     //         stringifiedStatus = "Ticket Saling Mode";
-    //     else if (stat == Come2Top.Status.waitForCommingWave)
+    //     else if (stat == DeftGame.Status.waitForCommingWave)
     //         stringifiedStatus = "Wait For Next Wave";
-    //     else if (stat == Come2Top.Status.Withdrawable)
+    //     else if (stat == DeftGame.Status.Withdrawable)
     //         stringifiedStatus = "Withdrawable";
     //     else stringifiedStatus = "Finished";
     //     address ticketOwnerOfIndex1 = GAME.ticketOwnership(
