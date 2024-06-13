@@ -1,9 +1,8 @@
 //  SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-
-/// @notice Deft interface, which is used for easier interactions with Deft contracts.
-interface IDeft {
+/// @notice ERC20 interface, which is used for easier interactions with ERC20 contracts.
+interface IERC20 {
     /**
         @notice Allows the contract to transfer Deft tokens to a specified address.
         @dev Allows the contract to transfer Deft tokens to a specified address.
