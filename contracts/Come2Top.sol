@@ -96,6 +96,7 @@ contract Come2Top {
     uint256 private constant MAX_PARTIES = 256;
     uint256 private constant WAVE_ELIGIBLES_TIME = 144;
     uint256 private constant SAFTY_DURATION = 48;
+    uint256 private constant MIN_PRNG_PERIOD = 12;
     uint256 private constant REWARD_BASIS = 1e6;
     uint256 private constant BASIS = 100;
     uint256 private constant OFFEREE_BENEFICIARY = 94;
@@ -106,6 +107,7 @@ contract Come2Top {
     uint8 private constant ZERO = 0;
     uint8 private constant ONE = 1;
     uint8 private constant TWO = 2;
+    uint8 private constant THREE = 3;
     uint8 private constant FIVE = 5;
     uint8 private constant EIGHT = 8;
 
@@ -165,7 +167,7 @@ contract Come2Top {
     error ONLY_TICKET_OWNER(uint256 ticketID);
     error ONLY_WINNER_TICKET(uint256 ticketID);
     error ONLY_OPERATIONAL_MODE(Status currentStat);
-    error ONLY_PAUSED_AND_FINISHED_MODE(bool isPaused);
+    error ONLY_PAUSED_AND_FINISHED_MODE(bool isPaused, Status stat);
     error ONLY_UNPAUSED_OR_TICKET_SALE_MODE(bool isPaused);
     error ONLY_HIGHER_THAN_CURRENT_TICKET_VALUE(
         uint256 offer,
@@ -205,13 +207,11 @@ contract Come2Top {
         _;
     }
 
-    modifier onlyPausedAndFinishedWager() {
-        (, int256 eligibleToSell, , bytes memory winnerTickets) = _gameUpdate(
-            currentGameID
-        );
+    modifier onlyPausedAndFinishedGame() {
+        (Status stat, , , ) = _gameUpdate(currentGameID);
 
-        if (!pause || (eligibleToSell != N_ONE && winnerTickets.length != ONE))
-            revert ONLY_PAUSED_AND_FINISHED_MODE(pause);
+        if (!pause || stat != Status.finished)
+            revert ONLY_PAUSED_AND_FINISHED_MODE(pause, stat);
 
         _;
     }
@@ -281,7 +281,7 @@ contract Come2Top {
     function changeTicketPrice(uint80 newTP)
         external
         onlyOwner
-        onlyPausedAndFinishedWager
+        onlyPausedAndFinishedGame
     {
         _checkTP(newTP);
 
@@ -297,7 +297,7 @@ contract Come2Top {
     function changeMaxTicketsPerWager(uint8 newMTPW)
         external
         onlyOwner
-        onlyPausedAndFinishedWager
+        onlyPausedAndFinishedGame
     {
         _checkMTPW(newMTPW);
 
@@ -313,7 +313,7 @@ contract Come2Top {
     function changePRNGperiod(uint256 newPRNGP)
         external
         onlyOwner
-        onlyPausedAndFinishedWager
+        onlyPausedAndFinishedGame
     {
         _checkPRNGP(newPRNGP);
 
@@ -656,13 +656,13 @@ contract Come2Top {
             revert GAME_FINISHED(gameID);
 
         uint256 fee = (virtualBalance * TWO) / BASIS;
-        gameData[gameID].tickets = bytes(abi.encodePacked(winnerTickets[0]));
+        gameData[gameID].tickets = bytes(abi.encodePacked(winnerTickets[ZERO]));
         gameData[gameID].eligibleToSell = N_ONE;
 
         _transferHelper(owner, fee);
 
         address ticketOwner = tempTicketOwnership[gameID][
-            uint8(winnerTickets[0])
+            uint8(winnerTickets[ZERO])
         ];
 
         delete totalPlayerTickets[gameID][ticketOwner];
@@ -674,7 +674,7 @@ contract Come2Top {
             gameID,
             ticketOwner,
             virtualBalance - fee,
-            winnerTickets[0]
+            winnerTickets[ZERO]
         );
     }
 
@@ -739,41 +739,52 @@ contract Come2Top {
         uint256 gameID = currentGameID;
         maxPurchasableTickets = maxTicketsPerWager;
         (stat, eligibleToSell, currentWave, tickets) = _gameUpdate(gameID);
-        remainingTickets = tickets.length;
 
-        if (stat != Status.commingWave && stat != Status.operational)
+        uint256 index;
+
+        if (stat != Status.commingWave && stat != Status.operational) {
+            remainingTickets = MAX_PARTIES - gameData[gameID].soldTickets;
             currentTicketValue = ticketPrice;
-        else {
+            nextWaveTicketValue = currentTicketValue * TWO;
+            nextWaveWinrate = (BASIS**TWO) / TWO;
+
+            if (stat == Status.ticketSale) {
+                while (index != MAX_PARTIES) {
+                    ticketsData[index] = TicketInfo(
+                        Offer(ZERO, ZERO_ADDRESS),
+                        index,
+                        tempTicketOwnership[gameID][uint8(index)]
+                    );
+
+                    unchecked {
+                        index++;
+                    }
+                }
+            } else {
+                ticketsData[uint8(tickets[ZERO])] = TicketInfo(
+                    Offer(ZERO, ZERO_ADDRESS),
+                    uint8(tickets[ZERO]),
+                    tempTicketOwnership[gameID][uint8(tickets[ZERO])]
+                );
+
+                if (tickets.length == TWO)
+                    ticketsData[uint8(tickets[ONE])] = TicketInfo(
+                        Offer(ZERO, ZERO_ADDRESS),
+                        uint8(tickets[ONE]),
+                        tempTicketOwnership[gameID][uint8(tickets[ONE])]
+                    );
+            }
+        } else {
+            remainingTickets = tickets.length;
             startedL1Block = gameData[gameID].startedL1Block;
             currentTicketValue = _ticketValue(tickets.length, gameID);
-
             nextWaveTicketValue =
                 gameData[gameID].virtualBalance /
                 (tickets.length / TWO);
             nextWaveWinrate =
                 ((tickets.length / TWO) * BASIS**TWO) /
                 tickets.length;
-        }
 
-        uint256 index;
-
-        if (stat == Status.ticketSale) {
-            remainingTickets = MAX_PARTIES - gameData[gameID].soldTickets;
-            nextWaveTicketValue = ticketPrice * TWO;
-            nextWaveWinrate = (BASIS**TWO) / TWO;
-
-            while (index != MAX_PARTIES) {
-                ticketsData[index] = TicketInfo(
-                    Offer(ZERO, ZERO_ADDRESS),
-                    index,
-                    tempTicketOwnership[gameID][uint8(index)]
-                );
-
-                unchecked {
-                    index++;
-                }
-            }
-        } else {
             uint256 plus10pTV = currentTicketValue +
                 (currentTicketValue * MIN_TICKET_VALUE_OFFER) /
                 BASIS;
@@ -1063,14 +1074,14 @@ contract Come2Top {
                                     abi.encodePacked(
                                         SuperchainL1Block.numberToRandao(
                                             uint64(
-                                                startBlock - prngDuration / 3
+                                                startBlock - prngDuration / THREE
                                             )
                                         )
                                     )
                                 )
                             ) +
                                 SuperchainL1Block.numberToRandao(
-                                    uint64(startBlock - prngDuration / 2)
+                                    uint64(startBlock - prngDuration / TWO)
                                 ) +
                                 uint160(
                                     ripemd160(
@@ -1081,8 +1092,8 @@ contract Come2Top {
                                                         uint64(
                                                             startBlock -
                                                                 (prngDuration *
-                                                                    2) /
-                                                                3
+                                                                    TWO) /
+                                                                THREE
                                                         )
                                                     )
                                             )
@@ -1234,6 +1245,7 @@ contract Come2Top {
 
     function _wave_duration() private view returns (uint256) {
         return SAFTY_DURATION + prngPeriod;
+        
     }
 
     /**
@@ -1249,14 +1261,16 @@ contract Come2Top {
 
     /**
         @dev It verifies that the value is not zero
-            and not lower than the minimum limit predefined as {EIGHT}.
+            and not lower than the minimum limit predefined as {MIN_PRNG_PERIOD}.
         @param value The value to be checked for maximum tickets per wager.
     */
     function _checkPRNGP(uint256 value) private pure {
         _revertOnZeroUint(value);
 
-        if (value < SAFTY_DURATION)
-            revert VALUE_CANT_BE_LOWER_THAN(SAFTY_DURATION);
+        if (value < MIN_PRNG_PERIOD)
+        
+            revert VALUE_CANT_BE_LOWER_THAN(MIN_PRNG_PERIOD);
+            
     }
 
     /**
