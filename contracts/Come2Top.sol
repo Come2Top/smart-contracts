@@ -741,33 +741,27 @@ contract Come2Top {
         (stat, eligibleToSell, currentWave, tickets) = _gameUpdate(gameID);
         remainingTickets = tickets.length;
 
-        if (
-            stat != Status.commingWave &&
-            stat != Status.operational
-        ) currentTicketValue = ticketPrice;
+        if (stat != Status.commingWave && stat != Status.operational)
+            currentTicketValue = ticketPrice;
         else {
             startedL1Block = gameData[gameID].startedL1Block;
             currentTicketValue = _ticketValue(tickets.length, gameID);
-        }
 
-        if (stat != Status.finished) {
-            if (stat == Status.ticketSale) {
-                remainingTickets = MAX_PARTIES - gameData[gameID].soldTickets;
-                nextWaveTicketValue = ticketPrice * TWO;
-                nextWaveWinrate = (BASIS**TWO) / TWO;
-            } else if(stat == Status.) {
-                nextWaveTicketValue =
-                    gameData[gameID].baseBalance /
-                    (tickets.length / TWO);
-                nextWaveWinrate =
-                    ((tickets.length / TWO) * BASIS**TWO) /
-                    tickets.length;
-            }
+            nextWaveTicketValue =
+                gameData[gameID].virtualBalance /
+                (tickets.length / TWO);
+            nextWaveWinrate =
+                ((tickets.length / TWO) * BASIS**TWO) /
+                tickets.length;
         }
 
         uint256 index;
 
         if (stat == Status.ticketSale) {
+            remainingTickets = MAX_PARTIES - gameData[gameID].soldTickets;
+            nextWaveTicketValue = ticketPrice * TWO;
+            nextWaveWinrate = (BASIS**TWO) / TWO;
+
             while (index != MAX_PARTIES) {
                 ticketsData[index] = TicketInfo(
                     Offer(ZERO, ZERO_ADDRESS),
@@ -918,11 +912,11 @@ contract Come2Top {
 
         bytes memory tickets;
         (stat, eligibleToSell, currentWave, tickets) = _gameUpdate(gameID);
-        
+
         winners = new address[](tickets.length);
         winnerTickets = new uint256[](tickets.length);
 
-        for(uint256 i; i < tickets.length;) {
+        for (uint256 i; i < tickets.length; ) {
             winners[i] = tempTicketOwnership[gameID][uint8(bytes1(tickets[i]))];
             winnerTickets[i] = uint8(bytes1(tickets[i]));
 
