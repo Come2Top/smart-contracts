@@ -28,13 +28,15 @@ contract Come2Top {
         completed
     }
 
-    struct WagerData {
+    struct GameData {
         int8 eligibleToSell;
         uint8 soldTickets;
         uint8 updatedWave;
         uint96 baseBalance;
         uint120 startedL1Block;
+        uint256 virtualBalance;
         uint256 baseRewardedBalance;
+        uint256 lpMintedBalance;
         bytes tickets;
     }
 
@@ -70,11 +72,11 @@ contract Come2Top {
     uint256 public currentGameID;
     uint256 public prngPeriod;
 
-    mapping(uint256 => WagerData) public wagerData;
+    mapping(uint256 => GameData) public gameData;
     mapping(address => OfferorData) public offerorData;
     mapping(uint256 => mapping(uint8 => address)) public tempTicketOwnership;
     mapping(uint256 => mapping(address => uint8)) public totalPlayerTickets;
-    mapping(address => mapping(uint256 => PlayerBalance))
+    mapping(uint256 => mapping(address => PlayerBalance))
         public playerBalanceData;
     mapping(uint256 => mapping(uint8 => Offer)) public offer;
 
@@ -90,16 +92,16 @@ contract Come2Top {
         ISuperchainL1Block(0xB0B58f5e88957084Ea40CDf17D6E202016e47AfD);
     bytes private constant BYTE_TICKETS =
         hex"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
-    address private constant ZERO_ADDRESS = address(0x0);
     uint256 private constant MIN_TICKET_PRICE = 1e19;
     uint256 private constant MAX_PARTIES = 256;
-    uint256 private constant WAVE_ELIGIBLES_TIME = 240;
-    uint256 private constant SAFTY_DURATION = 100;
+    uint256 private constant WAVE_ELIGIBLES_TIME = 144;
+    uint256 private constant SAFTY_DURATION = 48;
     uint256 private constant REWARD_BASIS = 1e6;
     uint256 private constant BASIS = 100;
     uint256 private constant OFFEREE_BENEFICIARY = 94;
     uint256 private constant MIN_TICKET_VALUE_OFFER = 10;
     uint256 private constant L1_BLOCK_WAIT_TIME = 207692; // l1 avg block time ˜12.5
+    address private constant ZERO_ADDRESS = address(0x0);
     int8 private constant N_ONE = -1;
     uint8 private constant ZERO = 0;
     uint8 private constant ONE = 1;
@@ -115,7 +117,7 @@ contract Come2Top {
     event GameStarted(
         uint256 indexed gameID,
         uint256 indexed startedBlockNo,
-        uint256 indexed mintedFRAXcrvUSD
+        uint256 indexed amount
     );
 
     event GameUpdated(
@@ -186,7 +188,7 @@ contract Come2Top {
     error WAIT_FOR_NEXT_WAGER_MATCH();
     error WAIT_FOR_FIRST_WAVE();
     error WAIT_FOR_NEXT_WAVE();
-    error WAGER_FINISHED();
+    error GAME_FINISHED(uint256 gameID);
 
     /*******************************\
     |-*-*-*-*   MODIFIERS   *-*-*-*-|
@@ -237,7 +239,7 @@ contract Come2Top {
         prngPeriod = prngp;
         TOKEN = IERC20(token);
         TREASURY = treasury;
-        wagerData[ZERO].tickets = BYTE_TICKETS;
+        gameData[ZERO].tickets = BYTE_TICKETS;
         unchecked {
             MAGIC_VALUE = uint160(address(this)) * block.chainid;
         }
@@ -336,7 +338,7 @@ contract Come2Top {
         uint256 totalTickets = ticketIDs.length;
         uint256 ticketLimit = maxTicketsPerWager;
         bytes memory realTickets;
-        WagerData storage BD;
+        GameData storage GD;
 
         (Status stat, , , ) = _gameUpdate(gameID);
         if (uint256(stat) > TWO) {
@@ -345,20 +347,20 @@ contract Come2Top {
                 currentGameID++;
             }
 
-            BD = wagerData[gameID];
-            BD.tickets = BYTE_TICKETS;
-        } else BD = wagerData[gameID];
+            GD = gameData[gameID];
+            GD.tickets = BYTE_TICKETS;
+        } else GD = gameData[gameID];
 
-        uint256 remainingTickets = MAX_PARTIES - BD.soldTickets;
-        bytes memory tickets = BD.tickets;
+        uint256 remainingTickets = MAX_PARTIES - GD.soldTickets;
+        bytes memory tickets = GD.tickets;
 
-        if (pause && BD.soldTickets == ZERO)
+        if (pause && GD.soldTickets == ZERO)
             revert ONLY_UNPAUSED_OR_TICKET_SALE_MODE(pause);
 
         if (totalTickets == ZERO || totalTickets > ticketLimit)
             revert CHECK_TICKETS_LENGTH(totalTickets);
 
-        if (BD.startedL1Block != ZERO) revert WAIT_FOR_NEXT_WAGER_MATCH();
+        if (GD.startedL1Block != ZERO) revert WAIT_FOR_NEXT_WAGER_MATCH();
 
         if (totalTickets + totalPlayerTickets[gameID][sender] > ticketLimit)
             revert PARTICIPATED_BEFORE();
@@ -396,23 +398,24 @@ contract Come2Top {
 
         if (totalTickets == remainingTickets) {
             uint64 currentL1Block = SuperchainL1Block.number();
-            BD.startedL1Block = currentL1Block;
-            BD.tickets = BYTE_TICKETS;
-            BD.baseBalance = uint96(MAX_PARTIES * neededFRAX);
-            uint256 lpMintedBalance = (MAX_PARTIES * neededFRAX).mintLPT();
-            lpMintedBalance.depositLPT();
+            GD.startedL1Block = currentL1Block;
+            GD.tickets = BYTE_TICKETS;
+            GD.baseBalance = uint96(MAX_PARTIES * neededFRAX);
+            GD.virtualBalance = uint96(MAX_PARTIES * neededFRAX);
+            GD.lpMintedBalance = (MAX_PARTIES * neededFRAX).mintLPT();
+            (GD.lpMintedBalance).depositLPT();
 
-            emit GameStarted(gameID, currentL1Block, lpMintedBalance);
+            emit GameStarted(gameID, currentL1Block, MAX_PARTIES * neededFRAX);
         } else {
-            BD.tickets = tickets;
+            GD.tickets = tickets;
             unchecked {
-                BD.soldTickets += uint8(totalTickets);
+                GD.soldTickets += uint8(totalTickets);
             }
         }
 
         unchecked {
             totalPlayerTickets[gameID][sender] += uint8(totalTickets);
-            playerBalanceData[sender][gameID].baseBalance += uint120(
+            playerBalanceData[gameID][sender].baseBalance += uint120(
                 totalTickets * neededFRAX
             );
         }
@@ -450,8 +453,8 @@ contract Come2Top {
         ) = _gameUpdate(gameID);
 
         _onlyOperational(currentWave, stat);
-
         uint8 index = _onlyWinnerTicket(tickets, ticketID);
+
         uint256 plus10PCT = _ticketValue(tickets.length, gameID);
         plus10PCT += (plus10PCT * MIN_TICKET_VALUE_OFFER) / BASIS;
 
@@ -478,10 +481,28 @@ contract Come2Top {
                 (O.amount * OFFEREE_BENEFICIARY) / BASIS
             );
 
-            wagerData[gameID].baseBalance += O.amount - offereeBeneficiary;
+            unchecked {
+                gameData[gameID].baseBalance += O.amount;
+                gameData[gameID].virtualBalance +=
+                    O.amount -
+                    offereeBeneficiary;
+
+                playerBalanceData[gameID][O.maker].baseBalance += uint120(
+                    O.amount
+                );
+                playerBalanceData[gameID][sender].savedBalance += uint120(
+                    O.amount
+                );
+            }
 
             _transferFromHelper(TREASURY, THIS, O.amount);
-            _transferHelper(sender, offereeBeneficiary);
+
+            uint256 lpMintedAmount = uint256(O.amount).mintLPT();
+            lpMintedAmount.depositLPT();
+
+            unchecked {
+                gameData[gameID].lpMintedBalance += lpMintedAmount;
+            }
 
             emit OfferAccepted(O.maker, ticketID, offereeBeneficiary, sender);
 
@@ -490,35 +511,36 @@ contract Come2Top {
 
         if (eligibleToSell == int8(ZERO)) revert WAIT_FOR_NEXT_WAVE();
 
-        uint256 fee;
-        uint256 baseBalance = wagerData[gameID].baseBalance;
+        uint256 virtualBalance = gameData[gameID].virtualBalance;
 
         if (tickets.length == TWO) {
-            fee = (baseBalance * TWO) / BASIS;
-            wagerData[gameID].tickets = tickets;
-            wagerData[gameID].eligibleToSell = N_ONE;
-
-            _transferHelper(owner, fee);
+            gameData[gameID].tickets = tickets;
+            gameData[gameID].eligibleToSell = N_ONE;
 
             if (sender != tempTicketOwnership[gameID][ticketID])
                 revert ONLY_TICKET_OWNER(ticketID);
 
             address winner1 = tempTicketOwnership[gameID][uint8(tickets[ZERO])];
             address winner2 = tempTicketOwnership[gameID][uint8(tickets[ONE])];
-            uint256 winner1Amount = (baseBalance - fee) / TWO;
-            uint256 winner2Amount = baseBalance - fee - winner1Amount;
+            uint256 winner1Amount = virtualBalance / TWO;
 
-            delete wagerData[gameID].baseBalance;
+            delete gameData[gameID].virtualBalance;
             delete totalPlayerTickets[gameID][winner1];
             delete totalPlayerTickets[gameID][winner2];
 
-            _transferHelper(winner1, winner1Amount);
-            _transferHelper(winner2, winner2Amount);
+            unchecked {
+                playerBalanceData[gameID][winner1].savedBalance += uint120(
+                    winner1Amount
+                );
+                playerBalanceData[gameID][winner2].savedBalance += uint120(
+                    virtualBalance - winner1Amount
+                );
+            }
 
             emit GameFinished(
                 gameID,
                 [winner1, winner2],
-                [winner1Amount, winner2Amount],
+                [winner1Amount, virtualBalance - winner1Amount],
                 [uint256(uint8(tickets[ZERO])), uint256(uint8(tickets[ONE]))]
             );
         } else {
@@ -529,22 +551,22 @@ contract Come2Top {
 
             totalPlayerTickets[gameID][sender]--;
 
-            wagerData[gameID].tickets = _deleteIndex(index, tickets);
-            wagerData[gameID].eligibleToSell = int8(eligibleToSell) + N_ONE;
+            gameData[gameID].tickets = _deleteIndex(index, tickets);
+            gameData[gameID].eligibleToSell = int8(eligibleToSell) + N_ONE;
 
-            if (wagerData[gameID].updatedWave != currentWave)
-                wagerData[gameID].updatedWave = uint8(currentWave);
+            if (gameData[gameID].updatedWave != currentWave)
+                gameData[gameID].updatedWave = uint8(currentWave);
 
-            uint256 idealWinnerPrize = baseBalance / tickets.length;
+            uint256 idealWinnerPrize = virtualBalance / tickets.length;
 
-            wagerData[gameID].baseBalance -= uint96(idealWinnerPrize);
+            unchecked {
+                gameData[gameID].virtualBalance -= uint96(idealWinnerPrize);
+                playerBalanceData[gameID][sender].savedBalance += uint120(
+                    idealWinnerPrize
+                );
+            }
 
-            fee = (idealWinnerPrize * TWO) / BASIS;
-
-            _transferHelper(owner, fee);
-            _transferHelper(sender, idealWinnerPrize - fee);
-
-            emit GameUpdated(gameID, sender, idealWinnerPrize - fee, ticketID);
+            emit GameUpdated(gameID, sender, idealWinnerPrize, ticketID);
         }
     }
 
@@ -625,17 +647,17 @@ contract Come2Top {
             ,
             int256 eligibleToSell,
             ,
-            uint256 wagerBalance,
+            uint256 virtualBalance,
             ,
             uint256[] memory winnerTickets
-        ) = wagerStatus(wagerID_);
+        ) = gameStatus(wagerID_);
 
         if (eligibleToSell == N_ONE || winnerTickets.length != ONE)
-            revert WAGER_FINISHED();
+            revert GAME_FINISHED(gameID);
 
-        uint256 fee = (wagerBalance * TWO) / BASIS;
-        wagerData[gameID].tickets = bytes(abi.encodePacked(winnerTickets[0]));
-        wagerData[gameID].eligibleToSell = N_ONE;
+        uint256 fee = (virtualBalance * TWO) / BASIS;
+        gameData[gameID].tickets = bytes(abi.encodePacked(winnerTickets[0]));
+        gameData[gameID].eligibleToSell = N_ONE;
 
         _transferHelper(owner, fee);
 
@@ -644,14 +666,14 @@ contract Come2Top {
         ];
 
         delete totalPlayerTickets[gameID][ticketOwner];
-        delete wagerData[gameID].baseBalance;
+        delete gameData[gameID].baseBalance;
 
-        _transferHelper(ticketOwner, wagerBalance - fee);
+        _transferHelper(ticketOwner, virtualBalance - fee);
 
         emit GameFinished(
             gameID,
             ticketOwner,
-            wagerBalance - fee,
+            virtualBalance - fee,
             winnerTickets[0]
         );
     }
@@ -669,7 +691,9 @@ contract Come2Top {
 
         if (refundableAmount == ZERO) revert NO_AMOUNT_TO_REFUND();
 
-        offerorData[sender].totalOffersValue -= refundableAmount;
+        unchecked {
+            offerorData[sender].totalOffersValue -= refundableAmount;
+        }
 
         _transferFromHelper(TREASURY, sender, refundableAmount);
 
@@ -695,7 +719,7 @@ contract Come2Top {
         @return ticketsData An array of TicketInfo structures containing the ticket ID
             owner address and offer data for each winning ticket.
     */
-    function wagerInfo()
+    function continuesIntegration()
         external
         view
         returns (
@@ -718,23 +742,22 @@ contract Come2Top {
         remainingTickets = tickets.length;
 
         if (
-            stat == Status.ticketSale ||
-            stat == Status.finished ||
-            remainingTickets == ONE
+            stat != Status.commingWave &&
+            stat != Status.operational
         ) currentTicketValue = ticketPrice;
         else {
-            startedL1Block = wagerData[gameID].startedL1Block;
+            startedL1Block = gameData[gameID].startedL1Block;
             currentTicketValue = _ticketValue(tickets.length, gameID);
         }
 
-        if (remainingTickets != ONE && stat != Status.finished) {
+        if (stat != Status.finished) {
             if (stat == Status.ticketSale) {
-                remainingTickets = MAX_PARTIES - wagerData[gameID].soldTickets;
+                remainingTickets = MAX_PARTIES - gameData[gameID].soldTickets;
                 nextWaveTicketValue = ticketPrice * TWO;
                 nextWaveWinrate = (BASIS**TWO) / TWO;
-            } else {
+            } else if(stat == Status.) {
                 nextWaveTicketValue =
-                    wagerData[gameID].baseBalance /
+                    gameData[gameID].baseBalance /
                     (tickets.length / TWO);
                 nextWaveWinrate =
                     ((tickets.length / TWO) * BASIS**TWO) /
@@ -804,132 +827,11 @@ contract Come2Top {
     function ticketValue() external view returns (uint256) {
         (Status stat, , , bytes memory tickets) = _gameUpdate(currentGameID);
 
-        if (
-            stat == Status.ticketSale ||
-            stat == Status.finished ||
-            (stat == Status.operational && tickets.length == ONE)
-        ) return ticketPrice;
+        if (stat != Status.commingWave && stat != Status.operational)
+            return ticketPrice;
 
         return _ticketValue(tickets.length, currentGameID);
     }
-
-    /**
-        @notice Returns the current winners with their winning tickets.
-        @dev Allows anyone to retrieve information about the current winners
-            along with their winning tickets. It returns the number of eligible withdrawals
-            and an array of TicketInfo structures containing the ticket ID and owner address
-            for each winning ticket.
-        @return eligibleToSell The number of eligible withdrawals for the current wager.
-        @return allTicketsData An array of TicketInfo structures containing the ticket ID
-            owner address and offer data for each winning ticket.
-    */
-    // function winnersWithTickets()
-    //     external
-    //     view
-    //     returns (int256 eligibleToSell, TicketInfo[] memory allTicketsData)
-    // {
-    //     uint256 gameID = currentGameID;
-
-    //     (
-    //         Status stat,
-    //         int256 _eligibleForSale,
-    //         uint256 currentWave,
-    //         bytes memory winnerTickets
-    //     ) = _gameUpdate(currentGameID);
-
-    //     _onlyOperational(currentWave, stat);
-
-    //     allTicketsData = new TicketInfo[](winnerTickets.length);
-    //     uint256 index;
-
-    //     uint256 currentTicketValue;
-    //     if (stat == Status.ticketSale) currentTicketValue = ticketPrice;
-    //     else currentTicketValue = _ticketValue(winnerTickets.length, gameID);
-
-    //     uint256 plus5PCT = currentTicketValue +
-    //         (currentTicketValue / BASIS) *
-    //         FIVE;
-
-    //     while (index != winnerTickets.length) {
-    //         uint256 loadOffer = offer[gameID][uint8(winnerTickets[index])]
-    //             .amount;
-    //         allTicketsData[index] = TicketInfo(
-    //             Offer(
-    //                 loadOffer >= plus5PCT ? uint96(loadOffer) : ZERO,
-    //                 loadOffer >= plus5PCT
-    //                     ? offer[gameID][uint8(winnerTickets[index])].maker
-    //                     : ZERO_ADDRESS
-    //             ),
-    //             uint8(winnerTickets[index]),
-    //             tempTicketOwnership[gameID][uint8(winnerTickets[index])]
-    //         );
-
-    //         unchecked {
-    //             index++;
-    //         }
-    //     }
-
-    //     return (_eligibleForSale, allTicketsData);
-    // }
-
-    /**
-        @notice Retrieves the total value of winning tickets 
-            and the tickets owned by a specific player.
-        @dev Allows anyone to retrieve information about the total value of winning tickets
-            and the tickets owned by a specific player.
-            It calculates the total value of winning tickets owned by the player
-            based on the current ticket value and the number of tickets owned.
-        @param player The address of the player for whom the information is being retrieved.
-        @return totalTicketsValue The total value of winning tickets owned by the player in TOKEN tokens.
-        @return playerTickets A byte array containing the IDs of the winning tickets owned by the player.
-    */
-    // function playerWithWinningTickets(address player)
-    //     external
-    //     view
-    //     returns (uint256 totalTicketsValue, bytes memory playerTickets)
-    // {
-    //     if (player == ZERO_ADDRESS) player = msg.sender;
-
-    //     uint256 gameID = currentGameID;
-    //     uint256 totalTickets = totalPlayerTickets[gameID][player];
-
-    //     (
-    //         Status stat,
-    //         ,
-    //         uint256 currentWave,
-    //         bytes memory tickets
-    //     ) = _gameUpdate(currentGameID);
-
-    //     uint8 latestIndex = uint8(tickets.length - ONE);
-
-    //     _onlyOperational(currentWave, stat);
-
-    //     if (totalTickets == ZERO) revert PLAYER_HAS_NO_TICKETS();
-
-    //     while (totalTickets != ZERO) {
-    //         if (
-    //             tempTicketOwnership[gameID][uint8(tickets[latestIndex])] == player
-    //         ) {
-    //             playerTickets = abi.encodePacked(
-    //                 playerTickets,
-    //                 tickets[latestIndex]
-    //             );
-
-    //             unchecked {
-    //                 totalTicketsValue++;
-    //                 totalTickets--;
-    //             }
-    //         }
-
-    //         if (latestIndex == ZERO) break;
-
-    //         unchecked {
-    //             latestIndex--;
-    //         }
-    //     }
-
-    //     totalTicketsValue *= _ticketValue(tickets.length, gameID);
-    // }
 
     /**
         @notice Retrieves the total stale offer amount for a specific offeror.
@@ -992,11 +894,11 @@ contract Come2Top {
         @return stat The current status of the wager (ticketSale, commingWave, operational, finished).
         @return eligibleToSell The number of eligible withdrawals for the current wager.
         @return currentWave The current wave of the wager.
-        @return wagerBalance The baseBalance of the wager in TOKEN tokens.
+        @return virtualBalance The baseBalance of the wager in TOKEN tokens.
         @return winners The array containing the winner addresses for the given wager ID.
         @return winnerTickets The array containing the winning ticket IDs for the given wager ID.
     */
-    function wagerStatus(uint256 wagerID_)
+    function gameStatus(uint256 wagerID_)
         public
         view
         returns (
@@ -1004,7 +906,7 @@ contract Come2Top {
             Status stat,
             int256 eligibleToSell,
             uint256 currentWave,
-            uint256 wagerBalance,
+            uint256 virtualBalance,
             address[] memory winners,
             uint256[] memory winnerTickets
         )
@@ -1012,21 +914,22 @@ contract Come2Top {
         if (wagerID_ > currentGameID) gameID = currentGameID;
         else gameID = wagerID_;
 
+        virtualBalance = gameData[gameID].virtualBalance;
+
         bytes memory tickets;
         (stat, eligibleToSell, currentWave, tickets) = _gameUpdate(gameID);
-
+        
         winners = new address[](tickets.length);
         winnerTickets = new uint256[](tickets.length);
 
-        winners[0] = tempTicketOwnership[gameID][uint8(bytes1(tickets[0]))];
-        winnerTickets[0] = uint8(bytes1(tickets[0]));
+        for(uint256 i; i < tickets.length;) {
+            winners[i] = tempTicketOwnership[gameID][uint8(bytes1(tickets[i]))];
+            winnerTickets[i] = uint8(bytes1(tickets[i]));
 
-        if (tickets.length != 1) {
-            winners[1] = tempTicketOwnership[gameID][uint8(bytes1(tickets[1]))];
-            winnerTickets[0] = uint8(bytes1(tickets[1]));
+            unchecked {
+                i++;
+            }
         }
-
-        wagerBalance = wagerData[gameID].baseBalance;
     }
 
     /*****************************\
@@ -1062,11 +965,9 @@ contract Come2Top {
     */
     function _staleOffers(address offeror) private view returns (uint256) {
         if (offerorData[offeror].latestWagerID == currentGameID) {
-            (, int256 eligibleToSell, , bytes memory tickets) = _gameUpdate(
-                currentGameID
-            );
+            (Status stat, , , ) = _gameUpdate(currentGameID);
 
-            if (eligibleToSell == N_ONE || tickets.length == ONE)
+            if (stat != Status.commingWave && stat != Status.operational)
                 return (offerorData[offeror].totalOffersValue);
 
             return (offerorData[offeror].totalOffersValue -
@@ -1144,9 +1045,7 @@ contract Come2Top {
         view
         returns (uint256)
     {
-        if (totalTickets == ZERO) return ZERO;
-
-        return wagerData[gameID].baseBalance / totalTickets;
+        return gameData[gameID].virtualBalance / totalTickets;
     }
 
     /**
@@ -1155,7 +1054,7 @@ contract Come2Top {
         @param startBlock The block number from where the calculation of the random seed starts.
         @return uint256 The random seed value generated based on l1 block prevrandaos.
     */
-    function _createRandomSeed(uint256 startBlock)
+    function _createRandomSeed(uint256 startBlock, uint256 prngDuration)
         private
         view
         returns (uint256)
@@ -1165,14 +1064,36 @@ contract Come2Top {
                 uint256(
                     keccak256(
                         abi.encodePacked(
-                            SuperchainL1Block.numberToRandao(
-                                uint64(startBlock - SAFTY_DURATION)
+                            uint256(
+                                sha256(
+                                    abi.encodePacked(
+                                        SuperchainL1Block.numberToRandao(
+                                            uint64(
+                                                startBlock - prngDuration / 3
+                                            )
+                                        )
+                                    )
+                                )
                             ) +
                                 SuperchainL1Block.numberToRandao(
-                                    uint64(startBlock - SAFTY_DURATION / 2)
+                                    uint64(startBlock - prngDuration / 2)
                                 ) +
-                                SuperchainL1Block.numberToRandao(
-                                    uint64(startBlock - SAFTY_DURATION / 3)
+                                uint160(
+                                    ripemd160(
+                                        abi.encodePacked(
+                                            uint160(
+                                                SuperchainL1Block
+                                                    .numberToRandao(
+                                                        uint64(
+                                                            startBlock -
+                                                                (prngDuration *
+                                                                    2) /
+                                                                3
+                                                        )
+                                                    )
+                                            )
+                                        )
+                                    )
                                 )
                         )
                     )
@@ -1225,28 +1146,28 @@ contract Come2Top {
             bytes memory remainingTickets
         )
     {
-        WagerData memory BD = wagerData[gameID];
-        remainingTickets = BD.tickets;
-        eligibleToSell = BD.eligibleToSell;
+        GameData memory GD = gameData[gameID];
+        remainingTickets = GD.tickets;
+        eligibleToSell = GD.eligibleToSell;
 
         uint256 currentL1Block = SuperchainL1Block.number();
-        bool isClaimable = BD.startedL1Block + L1_BLOCK_WAIT_TIME >
+        bool isClaimable = GD.startedL1Block + L1_BLOCK_WAIT_TIME >
             currentL1Block;
 
-        if (BD.startedL1Block == ZERO) stat = Status.ticketSale;
-        else if (BD.baseBalance == ZERO) {
+        if (GD.startedL1Block == ZERO) stat = Status.ticketSale;
+        else if (GD.baseBalance == ZERO) {
             stat = Status.completed;
             eligibleToSell = N_ONE;
-        } else if (BD.eligibleToSell == N_ONE && !isClaimable)
+        } else if (GD.eligibleToSell == N_ONE && !isClaimable)
             stat = Status.finished;
         else {
-            currentWave = BD.updatedWave;
+            currentWave = GD.updatedWave;
             uint256 lastUpdatedWave;
             uint256 accumulatedBlocks;
             uint256 waitingDuration = _wave_duration();
 
-            if (BD.updatedWave != ZERO) {
-                lastUpdatedWave = BD.updatedWave + ONE;
+            if (GD.updatedWave != ZERO) {
+                lastUpdatedWave = GD.updatedWave + ONE;
 
                 for (uint256 i = ONE; i < lastUpdatedWave; ) {
                     unchecked {
@@ -1255,7 +1176,7 @@ contract Come2Top {
                     }
                 }
             } else {
-                if (!(BD.startedL1Block + waitingDuration < currentL1Block))
+                if (!(GD.startedL1Block + waitingDuration < currentL1Block))
                     return (
                         Status.commingWave,
                         eligibleToSell,
@@ -1267,10 +1188,11 @@ contract Come2Top {
             }
 
             stat = Status.operational;
+            uint256 prngDuration = prngPeriod;
 
             while (true) {
                 if (
-                    BD.startedL1Block +
+                    GD.startedL1Block +
                         (lastUpdatedWave * waitingDuration) +
                         accumulatedBlocks <
                     currentL1Block
@@ -1278,9 +1200,10 @@ contract Come2Top {
                     remainingTickets = _shuffleBytedArray(
                         remainingTickets,
                         _createRandomSeed(
-                            BD.startedL1Block +
+                            GD.startedL1Block +
                                 (lastUpdatedWave * waitingDuration) +
-                                accumulatedBlocks
+                                accumulatedBlocks,
+                            prngDuration
                         ),
                         remainingTickets.length / TWO
                     );
@@ -1303,7 +1226,7 @@ contract Come2Top {
                     }
                 } else {
                     if (
-                        BD.startedL1Block +
+                        GD.startedL1Block +
                             (currentWave * waitingDuration) +
                             accumulatedBlocks <
                         currentL1Block
@@ -1386,9 +1309,7 @@ contract Come2Top {
         returns (uint8)
     {
         (bool found, uint8 index) = _findTicket(tickets, ticketID);
-
         if (!found) revert ONLY_WINNER_TICKET(ticketID);
-        if (tickets.length == ONE) revert WAGER_FINISHED();
 
         return index;
     }
