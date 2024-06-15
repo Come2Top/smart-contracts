@@ -155,8 +155,6 @@ contract Come2Top {
         int256 profit
     );
 
-    event GameCompleted(uint256 indexed gameID);
-
     event StaleOffersTookBack(address indexed maker, uint256 amount);
 
     /********************************\
