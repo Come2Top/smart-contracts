@@ -908,18 +908,112 @@ contract Come2Top {
         }
     }
 
-    function claimableAmount(uint256 gameID, address player)
-        external
-        view
-        returns (
-            Status stat,
-            uint256 baseAmount,
-            uint256 savedAmount,
-            int256 profit,
-            bool claimed
-        )
-    {
+    error FETCHED_CLAIMABLE_AMOUNT(
+        Status stat,
+        uint256 baseAmount,
+        uint256 savedAmount,
+        uint256 claimableAmount,
+        int256 profit
+    );
 
+    // Strange, isn't it? << Error Prone Getter >>
+    function claimableAmount(uint256 gameID, address player) external {
+        if (gameID > currentGameID) gameID = currentGameID;
+        (Status stat, , , bytes memory tickets) = _gameUpdate(gameID);
+
+        if (stat != Status.finished || stat != Status.claimable)
+            revert FETCHED_CLAIMABLE_AMOUNT(
+                stat,
+                ZERO,
+                ZERO,
+                ZERO,
+                int256(uint256(ZERO))
+            );
+
+        uint256 playerBaseBalance = playerBalanceData[gameID][player]
+            .baseBalance;
+        uint256 playerSavedBalance = playerBalanceData[gameID][player]
+            .savedBalance;
+
+        if (
+            tickets.length == ONE &&
+            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == player
+        ) {
+            playerSavedBalance += gameData[gameID].virtualBalance;
+            delete totalPlayerTickets[gameID][player];
+        }
+
+        if (playerBaseBalance == ZERO && playerSavedBalance == ZERO)
+            revert FETCHED_CLAIMABLE_AMOUNT(
+                stat,
+                ZERO,
+                ZERO,
+                ZERO,
+                int256(uint256(ZERO))
+            );
+
+        uint256 mooShare = CurveMooLib.BeefyVaultV7.getPricePerFullShare();
+        uint256 gameMooBalance = gameData[gameID].mooBalance;
+        uint256 gameRewardedMoo = ((gameMooBalance * mooShare) / 1e18) -
+            gameMooBalance;
+        uint256 gameBaseMoo = gameMooBalance - gameRewardedMoo;
+
+        uint256 gameBaseBalance = gameData[gameID].baseBalance;
+        uint256 gameSavedBalance = gameData[gameID].savedBalance +
+            gameData[gameID].virtualBalance;
+
+        uint256 playerClaimableMooAmount;
+
+        if (gameBaseBalance == playerBaseBalance) {
+            playerClaimableMooAmount = gameMooBalance;
+
+            delete gameData[gameID].mooBalance;
+            delete gameData[gameID].baseBalance;
+            delete gameData[gameID].savedBalance;
+
+            gameData[gameID].tickets = tickets;
+        } else {
+            playerClaimableMooAmount =
+                ((
+                    ((playerBaseBalance * 1e18) / gameBaseBalance) *
+                        gameSavedBalance ==
+                        ZERO
+                        ? gameMooBalance
+                        : gameBaseMoo
+                ) / 1e18) +
+                (
+                    gameSavedBalance == ZERO
+                        ? ZERO
+                        : (((playerSavedBalance * 1e18) / gameSavedBalance) *
+                            gameRewardedMoo) / 1e18
+                );
+
+            gameData[gameID].mooBalance -= playerClaimableMooAmount;
+            gameData[gameID].baseBalance -= playerBaseBalance;
+            if (gameSavedBalance != ZERO)
+                gameData[gameID].savedBalance -= playerBalanceData[gameID][
+                    player
+                ].savedBalance;
+        }
+
+        delete playerBalanceData[gameID][player];
+        if (
+            tickets.length == ONE &&
+            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == player
+        ) delete gameData[gameID].virtualBalance;
+
+        uint256 beforeLPbalance = CurveMooLib.CurveStableSwapNG.balanceOf(THIS);
+        playerClaimableMooAmount.withdrawLPT();
+        uint256 claimedAmount = (CurveMooLib.CurveStableSwapNG.balanceOf(THIS) -
+            beforeLPbalance).burnLPT(player);
+
+        revert FETCHED_CLAIMABLE_AMOUNT(
+            stat,
+            playerBaseBalance,
+            playerSavedBalance,
+            claimedAmount,
+            int256(claimedAmount - playerBaseBalance)
+        );
     }
 
     /**
