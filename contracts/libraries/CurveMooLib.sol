@@ -4,12 +4,19 @@ pragma solidity 0.8.20;
 import {ICurveStableSwapNG} from "../interfaces/ICurveStableSwapNG.sol";
 import {IBeefyVaultV7} from "../interfaces/IBeefyVaultV7.sol";
 
+// ONLY USABLE for CURVE STABLESWAP NG
 library CurveMooLib {
     uint256 private constant $_I = 1;
     ICurveStableSwapNG internal constant CurveStableSwapNG =
+    // Fraxtal Mainnet
         ICurveStableSwapNG(0x63Eb7846642630456707C3efBb50A03c79B89D81);
+    // Simulated on Fraxtal Testnet
+        // ICurveStableSwapNG();
     IBeefyVaultV7 internal constant BeefyVaultV7 =
+    // Fraxtal Mainnet
         IBeefyVaultV7(0x01Fbf9B624a6133Ab04Fc4000ae513AC97e4d114);
+    // Simulated on Fraxtal Testnet
+        // IBeefyVaultV7();
 
     function mintLPT(uint256 depositAmount) internal returns (uint256) {
         uint256[8] memory depositAmounts;
