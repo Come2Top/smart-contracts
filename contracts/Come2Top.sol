@@ -8,9 +8,10 @@ import {CurveMooLib} from "./libraries/CurveMooLib.sol";
 
 /**
     @author @4bit-lab
-    @title Come2Top Main Contract.
+    @title Come2Top System Contract.
     @notice Come2Top is a secure, automated, and fully decentralized GameFi platform
-        built on the Fraxta; Mainnet, that works without the involvement of third parties.
+        built on top of the Fraxtal Mainnet, Curve Protocol & Beefy Yield Farming Protocol
+        that works without the involvement of third parties.
         For more information & further questions, visit: https://come2.top
 */
 contract Come2Top {
@@ -656,7 +657,7 @@ contract Come2Top {
         @notice Allows anyone to have the prize sent to the winning ticket holder.
         @param gameID_ The ID of the wager for which the owner of the winning ticket will get the prize.
     */
-    function claim(uint256 gameID_) external {
+    function claimOperation(uint256 gameID_) external {
         address sender = msg.sender;
 
         if (gameID_ > currentGameID) gameID_ = currentGameID;
