@@ -720,6 +720,8 @@ contract Come2Top {
             delete gameData[gameID_].mooBalance;
             delete gameData[gameID_].baseBalance;
             delete gameData[gameID_].savedBalance;
+
+            gameData[gameID_].tickets = tickets;
         } else {
             playerClaimableMooAmount =
                 ((
@@ -828,12 +830,12 @@ contract Come2Top {
         uint256 index;
 
         if (stat != Status.commingWave && stat != Status.operational) {
-            remainingTickets = MAX_PARTIES - gameData[gameID].soldTickets;
             currentTicketValue = ticketPrice;
             nextWaveTicketValue = currentTicketValue * TWO;
             nextWaveWinrate = (BASIS**TWO) / TWO;
 
             if (stat == Status.ticketSale) {
+                remainingTickets = MAX_PARTIES - gameData[gameID].soldTickets;
                 while (index != MAX_PARTIES) {
                     ticketsData[index] = TicketInfo(
                         Offer(ZERO, ZERO_ADDRESS),
@@ -870,7 +872,7 @@ contract Come2Top {
                 ((tickets.length / TWO) * BASIS**TWO) /
                 tickets.length;
 
-            uint256 plus10pTV = currentTicketValue +
+            uint256 plus10PCT = currentTicketValue +
                 (currentTicketValue * MIN_TICKET_VALUE_OFFER) /
                 BASIS;
 
@@ -879,8 +881,8 @@ contract Come2Top {
                     .amount;
                 ticketsData[uint8(tickets[index])] = TicketInfo(
                     Offer(
-                        loadedOffer >= plus10pTV ? uint96(loadedOffer) : ZERO,
-                        loadedOffer >= plus10pTV
+                        loadedOffer >= plus10PCT ? uint96(loadedOffer) : ZERO,
+                        loadedOffer >= plus10PCT
                             ? offer[gameID][uint8(tickets[index])].maker
                             : ZERO_ADDRESS
                     ),
@@ -904,6 +906,20 @@ contract Come2Top {
                 }
             }
         }
+    }
+
+    function claimableAmount(uint256 gameID, address player)
+        external
+        view
+        returns (
+            Status stat,
+            uint256 baseAmount,
+            uint256 savedAmount,
+            int256 profit,
+            bool claimed
+        )
+    {
+
     }
 
     /**
