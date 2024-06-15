@@ -14,4 +14,8 @@ interface IBeefyVaultV7 {
      * tokens are burned in the process.
      */
     function withdraw(uint256 shares) external;
+
+    function balanceOf(address account) external view returns (uint256);
+
+    function getPricePerFullShare() external view returns (uint256);
 }
