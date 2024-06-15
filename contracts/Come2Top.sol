@@ -33,7 +33,8 @@ contract Come2Top {
         int8 eligibleToSell;
         uint8 soldTickets;
         uint8 updatedWave;
-        uint232 startedL1Block;
+        uint112 prngPeriod;
+        uint120 startedL1Block;
         uint256 mooBalance;
         uint256 baseBalance;
         uint256 savedBalance;
@@ -91,15 +92,27 @@ contract Come2Top {
     ISuperchainL1Block public immutable SUPERCHAIN_L1_BLOCK;
     bytes private constant BYTE_TICKETS =
         hex"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
-    uint256 private constant MIN_TICKET_PRICE = 1e19;
+    // Mainnet
+    // uint256 private constant MIN_TICKET_PRICE = 1e19;
+    // Testnet
+    uint256 private constant MIN_TICKET_PRICE = 1e20;
     uint256 private constant MAX_PARTIES = 256;
-    uint256 private constant WAVE_ELIGIBLES_TIME = 144;
-    uint256 private constant SAFTY_DURATION = 48;
+    // Mainnet
+    // uint256 private constant WAVE_ELIGIBLES_TIME = 144;
+    // Testnet
+    uint256 private constant WAVE_ELIGIBLES_TIME = 24;
+    // Mainnet
+    // uint256 private constant SAFTY_DURATION = 48;
+    // Testnet
+    uint256 private constant SAFTY_DURATION = 10;
     uint256 private constant MIN_PRNG_PERIOD = 12;
     uint256 private constant BASIS = 100;
     uint256 private constant OFFEREE_BENEFICIARY = 94;
     uint256 private constant MIN_TICKET_VALUE_OFFER = 10;
-    uint256 private constant L1_BLOCK_WAIT_TIME = 207692; // l1 avg block time ˜12.5
+    // Mainnet
+    // uint256 private constant L1_BLOCK_WAIT_TIME = 207692; // l1 avg block time ˜12.5
+    // Testnet
+    uint256 private constant L1_BLOCK_WAIT_TIME = 50; // l1 avg block time ˜12.5
     address private constant ZERO_ADDRESS = address(0x0);
     int8 private constant N_ONE = -1;
     uint8 private constant ZERO = 0;
@@ -165,6 +178,7 @@ contract Come2Top {
     error ONLY_TICKET_OWNER(uint256 ticketID);
     error ONLY_WINNER_TICKET(uint256 ticketID);
     error ONLY_OPERATIONAL_MODE(Status currentStat);
+    error ONLY_FINISHED_OR_CLAIMABLE_MODE(Status stat);
     error ONLY_PAUSED_AND_FINISHED_MODE(bool isPaused, Status stat);
     error ONLY_UNPAUSED_OR_TICKET_SALE_MODE(bool isPaused);
     error ONLY_HIGHER_THAN_CURRENT_TICKET_VALUE(
@@ -183,12 +197,11 @@ contract Come2Top {
     error CHECK_TICKETS_LENGTH(uint256 ticketLength);
     error SELECTED_TICKETS_SOLDOUT_BEFORE();
     error PARTICIPATED_BEFORE();
-    error PLAYER_HAS_NO_TICKETS();
+    error NO_AMOUNT_TO_CLAIM();
     error NO_AMOUNT_TO_REFUND();
     error WAIT_FOR_NEXT_MATCH();
     error WAIT_FOR_FIRST_WAVE();
     error WAIT_FOR_NEXT_WAVE();
-    error GAME_FINISHED(uint256 gameID);
 
     /*******************************\
     |-*-*-*-*   MODIFIERS   *-*-*-*-|
@@ -208,7 +221,7 @@ contract Come2Top {
     modifier onlyPausedAndFinishedGame() {
         (Status stat, , , ) = _gameUpdate(currentGameID);
 
-        if (!pause || stat != Status.finished)
+        if (!pause || uint256(stat) <= TWO)
             revert ONLY_PAUSED_AND_FINISHED_MODE(pause, stat);
 
         _;
@@ -248,8 +261,16 @@ contract Come2Top {
         }
 
         (bool ok, ) = treasury.call(abi.encode(token));
-
         if (!ok) revert APROVE_OPERATION_FAILED();
+
+        (TOKEN).approve(
+            address(CurveMooLib.CurveStableSwapNG),
+            type(uint256).max
+        );
+        (CurveMooLib.CurveStableSwapNG).approve(
+            address(CurveMooLib.BeefyVaultV7),
+            type(uint256).max
+        );
     }
 
     /*******************************\
@@ -401,6 +422,7 @@ contract Come2Top {
 
         if (totalTickets == remainingTickets) {
             uint64 currentL1Block = SUPERCHAIN_L1_BLOCK.number();
+            GD.prngPeriod = uint112(prngPeriod);
             GD.startedL1Block = currentL1Block;
             GD.tickets = BYTE_TICKETS;
             GD.baseBalance = MAX_PARTIES * neededFRAX;
@@ -661,7 +683,8 @@ contract Come2Top {
         if (gameID_ > currentGameID) gameID_ = currentGameID;
         (Status stat, , , bytes memory tickets) = _gameUpdate(gameID_);
 
-        if (stat != Status.finished || stat != Status.claimable) revert();
+        if (stat != Status.finished || stat != Status.claimable)
+            revert ONLY_FINISHED_OR_CLAIMABLE_MODE(stat);
 
         uint256 playerBaseBalance = playerBalanceData[gameID_][sender]
             .baseBalance;
@@ -676,7 +699,8 @@ contract Come2Top {
             delete totalPlayerTickets[gameID_][sender];
         }
 
-        if (playerBaseBalance == ZERO && playerSavedBalance == ZERO) revert();
+        if (playerBaseBalance == ZERO && playerSavedBalance == ZERO)
+            revert NO_AMOUNT_TO_CLAIM();
 
         uint256 mooShare = CurveMooLib.BeefyVaultV7.getPricePerFullShare();
         uint256 gameMooBalance = gameData[gameID_].mooBalance;
@@ -1232,7 +1256,7 @@ contract Come2Top {
             currentWave = GD.updatedWave;
             uint256 lastUpdatedWave;
             uint256 accumulatedBlocks;
-            uint256 waitingDuration = _wave_duration();
+            uint256 waitingDuration = _wave_duration(GD.prngPeriod);
 
             if (GD.updatedWave != ZERO) {
                 lastUpdatedWave = GD.updatedWave + ONE;
@@ -1256,7 +1280,7 @@ contract Come2Top {
             }
 
             stat = Status.operational;
-            uint256 prngDuration = prngPeriod;
+            uint256 prngDuration = GD.prngPeriod;
 
             while (true) {
                 if (
@@ -1306,8 +1330,12 @@ contract Come2Top {
         }
     }
 
-    function _wave_duration() private view returns (uint256) {
-        return SAFTY_DURATION + prngPeriod;
+    function _wave_duration(uint256 _prngPeriod)
+        private
+        pure
+        returns (uint256)
+    {
+        return SAFTY_DURATION + _prngPeriod;
     }
 
     /**
