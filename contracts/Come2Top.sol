@@ -32,11 +32,11 @@ contract Come2Top {
         int8 eligibleToSell;
         uint8 soldTickets;
         uint8 updatedWave;
-        uint96 baseBalance;
-        uint120 startedL1Block;
+        uint232 startedL1Block;
+        uint256 mooBalance;
+        uint256 baseBalance;
+        uint256 savedBalance;
         uint256 virtualBalance;
-        uint256 baseRewardedBalance;
-        uint256 lpMintedBalance;
         bytes tickets;
     }
 
@@ -97,7 +97,7 @@ contract Come2Top {
     uint256 private constant WAVE_ELIGIBLES_TIME = 144;
     uint256 private constant SAFTY_DURATION = 48;
     uint256 private constant MIN_PRNG_PERIOD = 12;
-    uint256 private constant REWARD_BASIS = 1e6;
+    // uint256 private constant REWARD_BASIS = 1e6;
     uint256 private constant BASIS = 100;
     uint256 private constant OFFEREE_BENEFICIARY = 94;
     uint256 private constant MIN_TICKET_VALUE_OFFER = 10;
@@ -119,21 +119,28 @@ contract Come2Top {
     event GameStarted(
         uint256 indexed gameID,
         uint256 indexed startedBlockNo,
-        uint256 indexed amount
+        uint256 amount
     );
 
     event GameUpdated(
         uint256 indexed gameID,
         address indexed winner,
-        uint256 indexed amount,
+        uint256 amount,
         uint256 ticketID
     );
 
-    event GameFinished(
-        uint256 indexed gameID,
-        address indexed winner,
-        uint256 indexed amount,
-        uint256 ticketID
+    event OfferMade(
+        address indexed maker,
+        uint256 indexed ticketID,
+        uint256 amount,
+        address lastOfferor
+    );
+
+    event OfferAccepted(
+        address indexed newOwner,
+        uint256 indexed ticketID,
+        uint256 amount,
+        address lastOwner
     );
 
     event GameFinished(
@@ -143,21 +150,16 @@ contract Come2Top {
         uint256[TWO] ticketIDs
     );
 
-    event OfferMade(
-        address indexed maker,
-        uint256 indexed ticketID,
-        uint256 indexed amount,
-        address lastOfferor
+    event Claimed(
+        uint256 indexed gameID,
+        address indexed player,
+        uint256 amount,
+        int256 profit
     );
 
-    event OfferAccepted(
-        address indexed newOwner,
-        uint256 indexed ticketID,
-        uint256 indexed amount,
-        address lastOwner
-    );
+    event GameCompleted(uint256 indexed gameID);
 
-    event StaleOffersTookBack(address indexed maker, uint256 indexed amount);
+    event StaleOffersTookBack(address indexed maker, uint256 amount);
 
     /********************************\
     |-*-*-*-*-*   ERRORS   *-*-*-*-*-|
@@ -400,10 +402,16 @@ contract Come2Top {
             uint64 currentL1Block = SuperchainL1Block.number();
             GD.startedL1Block = currentL1Block;
             GD.tickets = BYTE_TICKETS;
-            GD.baseBalance = uint96(MAX_PARTIES * neededFRAX);
-            GD.virtualBalance = uint96(MAX_PARTIES * neededFRAX);
-            GD.lpMintedBalance = (MAX_PARTIES * neededFRAX).mintLPT();
-            (GD.lpMintedBalance).depositLPT();
+            GD.baseBalance = MAX_PARTIES * neededFRAX;
+            GD.virtualBalance = MAX_PARTIES * neededFRAX;
+
+            uint256 beforeBalance = CurveMooLib.BeefyVaultV7.balanceOf(THIS);
+
+            ((MAX_PARTIES * neededFRAX).mintLPT()).depositLPT();
+
+            GD.mooBalance =
+                CurveMooLib.BeefyVaultV7.balanceOf(THIS) -
+                beforeBalance;
 
             emit GameStarted(gameID, currentL1Block, MAX_PARTIES * neededFRAX);
         } else {
@@ -477,12 +485,12 @@ contract Come2Top {
 
             tempTicketOwnership[gameID][ticketID] = O.maker;
 
-            uint96 offereeBeneficiary = uint96(
-                (O.amount * OFFEREE_BENEFICIARY) / BASIS
-            );
+            uint256 offereeBeneficiary = (O.amount * OFFEREE_BENEFICIARY) /
+                BASIS;
 
             unchecked {
                 gameData[gameID].baseBalance += O.amount;
+                gameData[gameID].savedBalance += O.amount;
                 gameData[gameID].virtualBalance +=
                     O.amount -
                     offereeBeneficiary;
@@ -497,11 +505,14 @@ contract Come2Top {
 
             _transferFromHelper(TREASURY, THIS, O.amount);
 
-            uint256 lpMintedAmount = uint256(O.amount).mintLPT();
-            lpMintedAmount.depositLPT();
+            uint256 beforeBalance = CurveMooLib.BeefyVaultV7.balanceOf(THIS);
+
+            (uint256(O.amount).mintLPT()).depositLPT();
 
             unchecked {
-                gameData[gameID].lpMintedBalance += lpMintedAmount;
+                gameData[gameID].mooBalance +=
+                    CurveMooLib.BeefyVaultV7.balanceOf(THIS) -
+                    beforeBalance;
             }
 
             emit OfferAccepted(O.maker, ticketID, offereeBeneficiary, sender);
@@ -529,6 +540,7 @@ contract Come2Top {
             delete totalPlayerTickets[gameID][winner2];
 
             unchecked {
+                gameData[gameID].savedBalance += virtualBalance;
                 playerBalanceData[gameID][winner1].savedBalance += uint120(
                     winner1Amount
                 );
@@ -560,7 +572,8 @@ contract Come2Top {
             uint256 idealWinnerPrize = virtualBalance / tickets.length;
 
             unchecked {
-                gameData[gameID].virtualBalance -= uint96(idealWinnerPrize);
+                gameData[gameID].savedBalance += idealWinnerPrize;
+                gameData[gameID].virtualBalance -= idealWinnerPrize;
                 playerBalanceData[gameID][sender].savedBalance += uint120(
                     idealWinnerPrize
                 );
@@ -639,42 +652,86 @@ contract Come2Top {
 
     /**
         @notice Allows anyone to have the prize sent to the winning ticket holder.
-        @param wagerID_ The ID of the wager for which the owner of the winning ticket will get the prize.
+        @param gameID_ The ID of the wager for which the owner of the winning ticket will get the prize.
     */
-    function claim(uint256 wagerID_) external {
-        (
-            uint256 gameID,
-            ,
-            int256 eligibleToSell,
-            ,
-            uint256 virtualBalance,
-            ,
-            uint256[] memory winnerTickets
-        ) = gameStatus(wagerID_);
+    function claim(uint256 gameID_) external {
+        address sender = msg.sender;
 
-        if (eligibleToSell == N_ONE || winnerTickets.length != ONE)
-            revert GAME_FINISHED(gameID);
+        if (gameID_ > currentGameID) gameID_ = currentGameID;
+        (Status stat, , , bytes memory tickets) = _gameUpdate(gameID_);
 
-        uint256 fee = (virtualBalance * TWO) / BASIS;
-        gameData[gameID].tickets = bytes(abi.encodePacked(winnerTickets[ZERO]));
-        gameData[gameID].eligibleToSell = N_ONE;
+        if (stat != Status.finished || stat != Status.claimable) revert();
 
-        _transferHelper(owner, fee);
+        uint256 playerBaseBalance = playerBalanceData[gameID_][sender]
+            .baseBalance;
+        uint256 playerSavedBalance = playerBalanceData[gameID_][sender]
+            .savedBalance;
 
-        address ticketOwner = tempTicketOwnership[gameID][
-            uint8(winnerTickets[ZERO])
-        ];
+        if (
+            tickets.length == ONE &&
+            tempTicketOwnership[gameID_][uint8(tickets[ZERO])] == sender
+        ) {
+            playerSavedBalance += gameData[gameID_].virtualBalance;
+            delete totalPlayerTickets[gameID_][sender];
+        }
 
-        delete totalPlayerTickets[gameID][ticketOwner];
-        delete gameData[gameID].baseBalance;
+        if (playerBaseBalance == ZERO && playerSavedBalance == ZERO) revert();
 
-        _transferHelper(ticketOwner, virtualBalance - fee);
+        uint256 mooShare = CurveMooLib.BeefyVaultV7.getPricePerFullShare();
+        uint256 gameMooBalance = gameData[gameID_].mooBalance;
+        uint256 gameRewardedMoo = ((gameMooBalance * mooShare) / 1e18) -
+            gameMooBalance;
+        uint256 gameBaseMoo = gameMooBalance - gameRewardedMoo;
 
-        emit GameFinished(
-            gameID,
-            ticketOwner,
-            virtualBalance - fee,
-            winnerTickets[ZERO]
+        uint256 gameBaseBalance = gameData[gameID_].baseBalance;
+        uint256 gameSavedBalance = gameData[gameID_].savedBalance +
+            gameData[gameID_].virtualBalance;
+
+        uint256 playerClaimableMooAmount;
+
+        if (gameBaseBalance == playerBaseBalance) {
+            playerClaimableMooAmount = gameMooBalance;
+
+            delete gameData[gameID_].mooBalance;
+            delete gameData[gameID_].baseBalance;
+            delete gameData[gameID_].savedBalance;
+        } else {
+            playerClaimableMooAmount =
+                ((
+                    ((playerBaseBalance * 1e18) / gameBaseBalance) *
+                        gameSavedBalance ==
+                        ZERO
+                        ? gameMooBalance
+                        : gameBaseMoo
+                ) / 1e18) +
+                (
+                    gameSavedBalance == ZERO
+                        ? ZERO
+                        : (((playerSavedBalance * 1e18) / gameSavedBalance) *
+                            gameRewardedMoo) / 1e18
+                );
+
+            gameData[gameID_].mooBalance -= playerClaimableMooAmount;
+            gameData[gameID_].baseBalance -= 1;
+            if (gameSavedBalance != ZERO) gameData[gameID_].savedBalance -= 1;
+        }
+
+        delete playerBalanceData[gameID_][sender];
+        if (
+            tickets.length == ONE &&
+            tempTicketOwnership[gameID_][uint8(tickets[ZERO])] == sender
+        ) delete gameData[gameID_].virtualBalance;
+
+        uint256 beforeLPbalance = CurveMooLib.CurveStableSwapNG.balanceOf(THIS);
+        playerClaimableMooAmount.withdrawLPT();
+        uint256 claimedAmount = (CurveMooLib.CurveStableSwapNG.balanceOf(THIS) -
+            beforeLPbalance).burnLPT(sender);
+
+        emit Claimed(
+            gameID_,
+            sender,
+            claimedAmount,
+            int256(claimedAmount - playerBaseBalance)
         );
     }
 
@@ -894,7 +951,7 @@ contract Come2Top {
         @notice Retrieves the current status and details of a specific wager.
         @dev This function provides detailed information about a specific wager
             including its status, eligible withdrawals, current wave, winner tickets, and wager baseBalance.
-        @param wagerID_ The ID of the wager for which the status and details are being retrieved.
+        @param gameID_ The ID of the wager for which the status and details are being retrieved.
         @return gameID The ID of the retrieved wager.
         @return stat The current status of the wager (ticketSale, commingWave, operational, finished).
         @return eligibleToSell The number of eligible withdrawals for the current wager.
@@ -903,7 +960,7 @@ contract Come2Top {
         @return winners The array containing the winner addresses for the given wager ID.
         @return winnerTickets The array containing the winning ticket IDs for the given wager ID.
     */
-    function gameStatus(uint256 wagerID_)
+    function gameStatus(uint256 gameID_)
         public
         view
         returns (
@@ -916,8 +973,8 @@ contract Come2Top {
             uint256[] memory winnerTickets
         )
     {
-        if (wagerID_ > currentGameID) gameID = currentGameID;
-        else gameID = wagerID_;
+        if (gameID_ > currentGameID) gameID = currentGameID;
+        else gameID = gameID_;
 
         virtualBalance = gameData[gameID].virtualBalance;
 
@@ -1074,7 +1131,9 @@ contract Come2Top {
                                     abi.encodePacked(
                                         SuperchainL1Block.numberToRandao(
                                             uint64(
-                                                startBlock - prngDuration / THREE
+                                                startBlock -
+                                                    prngDuration /
+                                                    THREE
                                             )
                                         )
                                     )
@@ -1160,7 +1219,7 @@ contract Come2Top {
             currentL1Block;
 
         if (GD.startedL1Block == ZERO) stat = Status.ticketSale;
-        else if (GD.baseBalance == ZERO) {
+        else if (GD.mooBalance == ZERO) {
             stat = Status.completed;
             eligibleToSell = N_ONE;
         } else if (GD.eligibleToSell == N_ONE && !isClaimable)
@@ -1245,7 +1304,6 @@ contract Come2Top {
 
     function _wave_duration() private view returns (uint256) {
         return SAFTY_DURATION + prngPeriod;
-        
     }
 
     /**
@@ -1268,9 +1326,7 @@ contract Come2Top {
         _revertOnZeroUint(value);
 
         if (value < MIN_PRNG_PERIOD)
-        
             revert VALUE_CANT_BE_LOWER_THAN(MIN_PRNG_PERIOD);
-            
     }
 
     /**
