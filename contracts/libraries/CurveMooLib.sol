@@ -6,9 +6,9 @@ import {IBeefyVaultV7} from "../interfaces/IBeefyVaultV7.sol";
 
 library CurveMooLib {
     uint256 private constant $_I = 1;
-    ICurveStableSwapNG private constant CurveStableSwapNG =
+    ICurveStableSwapNG internal constant CurveStableSwapNG =
         ICurveStableSwapNG(0x63Eb7846642630456707C3efBb50A03c79B89D81);
-    IBeefyVaultV7 private constant BeefyVaultV7 =
+    IBeefyVaultV7 internal constant BeefyVaultV7 =
         IBeefyVaultV7(0x01Fbf9B624a6133Ab04Fc4000ae513AC97e4d114);
 
     function mintLPT(uint256 depositAmount) internal returns (uint256) {
