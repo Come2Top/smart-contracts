@@ -713,8 +713,11 @@ contract Come2Top {
                 );
 
             gameData[gameID_].mooBalance -= playerClaimableMooAmount;
-            gameData[gameID_].baseBalance -= 0;
-            if (gameSavedBalance != ZERO) gameData[gameID_].savedBalance -= 0;
+            gameData[gameID_].baseBalance -= playerBaseBalance;
+            if (gameSavedBalance != ZERO)
+                gameData[gameID_].savedBalance -= playerBalanceData[gameID_][
+                    sender
+                ].savedBalance;
         }
 
         delete playerBalanceData[gameID_][sender];
