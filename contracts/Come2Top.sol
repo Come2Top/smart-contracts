@@ -47,8 +47,8 @@ contract Come2Top {
     }
 
     struct OfferorData {
-        uint96 latestWagerIDoffersValue;
-        uint160 latestWagerID;
+        uint96 latestGameIDoffersValue;
+        uint160 latestGameID;
         uint256 totalOffersValue;
     }
 
@@ -67,7 +67,7 @@ contract Come2Top {
     |-*-*-*-*-*   STATES   *-*-*-*-*-|
     \********************************/
     bool public pause;
-    uint8 public maxTicketsPerWager;
+    uint8 public maxTicketsPerGame;
     uint80 public ticketPrice;
     address public owner;
     uint256 public currentGameID;
@@ -185,7 +185,7 @@ contract Come2Top {
     error PARTICIPATED_BEFORE();
     error PLAYER_HAS_NO_TICKETS();
     error NO_AMOUNT_TO_REFUND();
-    error WAIT_FOR_NEXT_WAGER_MATCH();
+    error WAIT_FOR_NEXT_MATCH();
     error WAIT_FOR_FIRST_WAVE();
     error WAIT_FOR_NEXT_WAVE();
     error GAME_FINISHED(uint256 gameID);
@@ -218,14 +218,14 @@ contract Come2Top {
     |-*-*-*-*   BUILT-IN   *-*-*-*-|
     \******************************/
     constructor(
-        uint8 mtpw,
+        uint8 mtpg,
         uint80 tp,
         uint256 prngp,
         address token,
         address treasury,
         address superchainL1Block
     ) {
-        _checkMTPW(mtpw);
+        _checkMTPG(mtpg);
         _checkTP(tp);
         _checkPRNGP(prngp);
 
@@ -236,7 +236,7 @@ contract Come2Top {
         ) revert ZERO_ADDRESS_PROVIDED();
 
         owner = msg.sender;
-        maxTicketsPerWager = mtpw;
+        maxTicketsPerGame = mtpg;
         ticketPrice = tp;
         prngPeriod = prngp;
         TOKEN = IERC20(token);
@@ -276,8 +276,8 @@ contract Come2Top {
     }
 
     /**
-        @notice Changes the ticket price for joining the wager.
-        @dev Allows the owner to change the ticket price for joining the wager. 
+        @notice Changes the ticket price for joining the game.
+        @dev Allows the owner to change the ticket price for joining the game. 
             Only the owner can call this function. 
         @param newTP The new ticket price to be set.
     */
@@ -292,19 +292,19 @@ contract Come2Top {
     }
 
     /**
-        @notice Changes the maximum number of tickets allowed per wager.
-        @dev Allows the owner to change the maximum number of tickets allowed per wager. 
+        @notice Changes the maximum number of tickets allowed per game.
+        @dev Allows the owner to change the maximum number of tickets allowed per game. 
             Only the owner can call this function.
-        @param newMTPW The new maximum number of tickets allowed per wager.
+        @param newMTPG The new maximum number of tickets allowed per game.
     */
-    function changeMaxTicketsPerWager(uint8 newMTPW)
+    function changeMaxTicketsPerGame(uint8 newMTPG)
         external
         onlyOwner
         onlyPausedAndFinishedGame
     {
-        _checkMTPW(newMTPW);
+        _checkMTPG(newMTPG);
 
-        maxTicketsPerWager = newMTPW;
+        maxTicketsPerGame = newMTPG;
     }
 
     /**
@@ -324,22 +324,22 @@ contract Come2Top {
     }
 
     /*********************************\
-    |-*-*-*-*   WAGER-LOGIC   *-*-*-*-|
+    |-*-*-*-*   GAME-LOGIC   *-*-*-*-|
     \*********************************/
     /**
-        @notice Players can buy tickets for wagering.
+        @notice Players can buy tickets for game.
         @dev Manages the ticket allocation, ownership, and purchase process.
-            Also ensures that the maximum number of tickets specified by {maxTicketsPerWager}
+            Also ensures that the maximum number of tickets specified by {maxTicketsPerGame}
             and the ticket price set by {ticketPrice} are adhered to.
-            The player joining the wager, must be an externally owned account (EOA).
-        @param ticketIDs The ticket IDs that players want to buy for a wager.
+            The player joining the game, must be an externally owned account (EOA).
+        @param ticketIDs The ticket IDs that players want to buy for a game.
     */
     function ticketSaleOperation(uint8[] calldata ticketIDs) external onlyEOA {
         address sender = msg.sender;
         uint256 gameID = currentGameID;
         uint256 neededFRAX = ticketPrice;
         uint256 totalTickets = ticketIDs.length;
-        uint256 ticketLimit = maxTicketsPerWager;
+        uint256 ticketLimit = maxTicketsPerGame;
         bytes memory realTickets;
         GameData storage GD;
 
@@ -363,7 +363,7 @@ contract Come2Top {
         if (totalTickets == ZERO || totalTickets > ticketLimit)
             revert CHECK_TICKETS_LENGTH(totalTickets);
 
-        if (GD.startedL1Block != ZERO) revert WAIT_FOR_NEXT_WAGER_MATCH();
+        if (GD.startedL1Block != ZERO) revert WAIT_FOR_NEXT_MATCH();
 
         if (totalTickets + totalPlayerTickets[gameID][sender] > ticketLimit)
             revert PARTICIPATED_BEFORE();
@@ -444,10 +444,10 @@ contract Come2Top {
 
             2. When claiming a prize for a winning lottery ticket:
                 If the ticket owner tries to claim the prize for a winning ticket
-                    the function checks if the wager status allows for withdrawals
+                    the function checks if the game status allows for withdrawals
                     if the player owns the ticket
                     and if the ticket is eligible for withdrawals.
-                If the wager has ended and there are two winners
+                If the game has ended and there are two winners
                     the prize amount is split between them.
         @param ticketID The ID of the ticket for which the offer is being accepted.
     */
@@ -478,7 +478,7 @@ contract Come2Top {
             delete offer[gameID][ticketID].maker;
 
             unchecked {
-                offerorData[O.maker].latestWagerIDoffersValue -= O.amount;
+                offerorData[O.maker].latestGameIDoffersValue -= O.amount;
                 offerorData[O.maker].totalOffersValue -= O.amount;
                 totalPlayerTickets[gameID][sender]--;
                 totalPlayerTickets[gameID][O.maker]++;
@@ -632,17 +632,17 @@ contract Come2Top {
             }
         }
 
-        if (offerorData[sender].latestWagerID != gameID) {
-            offerorData[sender].latestWagerID = uint160(gameID);
-            offerorData[sender].latestWagerIDoffersValue = uint96(amount);
-        } else offerorData[sender].latestWagerIDoffersValue += uint96(amount);
+        if (offerorData[sender].latestGameID != gameID) {
+            offerorData[sender].latestGameID = uint160(gameID);
+            offerorData[sender].latestGameIDoffersValue = uint96(amount);
+        } else offerorData[sender].latestGameIDoffersValue += uint96(amount);
 
         if (O.maker != ZERO_ADDRESS) {
             _transferFromHelper(TREASURY, O.maker, O.amount);
 
             unchecked {
                 offerorData[O.maker].totalOffersValue -= O.amount;
-                offerorData[O.maker].latestWagerIDoffersValue -= O.amount;
+                offerorData[O.maker].latestGameIDoffersValue -= O.amount;
             }
         }
 
@@ -653,7 +653,7 @@ contract Come2Top {
 
     /**
         @notice Allows anyone to have the prize sent to the winning ticket holder.
-        @param gameID_ The ID of the wager for which the owner of the winning ticket will get the prize.
+        @param gameID_ The ID of the game for which the owner of the winning ticket will get the prize.
     */
     function claimOperation(uint256 gameID_) external {
         address sender = msg.sender;
@@ -713,8 +713,8 @@ contract Come2Top {
                 );
 
             gameData[gameID_].mooBalance -= playerClaimableMooAmount;
-            gameData[gameID_].baseBalance -= 1;
-            if (gameSavedBalance != ZERO) gameData[gameID_].savedBalance -= 1;
+            gameData[gameID_].baseBalance -= 0;
+            if (gameSavedBalance != ZERO) gameData[gameID_].savedBalance -= 0;
         }
 
         delete playerBalanceData[gameID_][sender];
@@ -762,18 +762,18 @@ contract Come2Top {
     |-*-*-*-*-*   VIEW   *-*-*-*-*-|
     \******************************/
     /**
-        @notice Returns all informations about the current wager.
+        @notice Returns all informations about the current game.
         @dev This function will be used in Web-2.
-        @return stat The current status of the wager (ticketSale, commingWave, operational, finished).
-        @return maxPurchasableTickets Maximum purchasable tickets for each address, based on {maxTicketsPerWager}.
+        @return stat The current status of the game (ticketSale, commingWave, operational, finished).
+        @return maxPurchasableTickets Maximum purchasable tickets for each address, based on {maxTicketsPerGame}.
         @return startedL1Block Started block number of game, in which all tickets sold out.
-        @return currentWave The current wave of the wager.
+        @return currentWave The current wave of the game.
         @return currentTicketValue The current value of a winning ticket in TOKEN tokens.
         @return remainingTickets Total number of current wave winner tickets.
-        @return eligibleToSell The number of eligible withdrawals for the current wave of the wager.
+        @return eligibleToSell The number of eligible withdrawals for the current wave of the game.
         @return nextWaveTicketValue The value of a winning ticket in TOKEN tokens for the coming wave.
         @return nextWaveWinrate The chance of winning each ticket for the coming wave.
-        @return tickets The byte array containing the winning ticket IDs for the current wager.
+        @return tickets The byte array containing the winning ticket IDs for the current game.
         @return ticketsData An array of TicketInfo structures containing the ticket ID
             owner address and offer data for each winning ticket.
     */
@@ -795,7 +795,7 @@ contract Come2Top {
         )
     {
         uint256 gameID = currentGameID;
-        maxPurchasableTickets = maxTicketsPerWager;
+        maxPurchasableTickets = maxTicketsPerGame;
         (stat, eligibleToSell, currentWave, tickets) = _gameUpdate(gameID);
 
         uint256 index;
@@ -928,12 +928,12 @@ contract Come2Top {
     }
 
     /**
-        @notice Retrieves the latest update of the current wager.
-        @dev It provides essential information about the wager's current state.
-        @return stat The current status of the wager (ticketSale, commingWave, operational, finished).
-        @return eligibleToSell The number of eligible withdrawals for the current wave of the wager.
-        @return currentWave The current wave of the wager.
-        @return winnerTickets The byte array containing the winning ticket IDs for the current wager.
+        @notice Retrieves the latest update of the current game.
+        @dev It provides essential information about the game's current state.
+        @return stat The current status of the game (ticketSale, commingWave, operational, finished).
+        @return eligibleToSell The number of eligible withdrawals for the current wave of the game.
+        @return currentWave The current wave of the game.
+        @return winnerTickets The byte array containing the winning ticket IDs for the current game.
     */
     function latestGameUpdate()
         external
@@ -949,17 +949,17 @@ contract Come2Top {
     }
 
     /**
-        @notice Retrieves the current status and details of a specific wager.
-        @dev This function provides detailed information about a specific wager
-            including its status, eligible withdrawals, current wave, winner tickets, and wager baseBalance.
-        @param gameID_ The ID of the wager for which the status and details are being retrieved.
-        @return gameID The ID of the retrieved wager.
-        @return stat The current status of the wager (ticketSale, commingWave, operational, finished).
-        @return eligibleToSell The number of eligible withdrawals for the current wager.
-        @return currentWave The current wave of the wager.
-        @return virtualBalance The baseBalance of the wager in TOKEN tokens.
-        @return winners The array containing the winner addresses for the given wager ID.
-        @return winnerTickets The array containing the winning ticket IDs for the given wager ID.
+        @notice Retrieves the current status and details of a specific game.
+        @dev This function provides detailed information about a specific game
+            including its status, eligible withdrawals, current wave, winner tickets, and game baseBalance.
+        @param gameID_ The ID of the game for which the status and details are being retrieved.
+        @return gameID The ID of the retrieved game.
+        @return stat The current status of the game (ticketSale, commingWave, operational, finished).
+        @return eligibleToSell The number of eligible withdrawals for the current game.
+        @return currentWave The current wave of the game.
+        @return virtualBalance The baseBalance of the game in TOKEN tokens.
+        @return winners The array containing the winner addresses for the given game ID.
+        @return winnerTickets The array containing the winning ticket IDs for the given game ID.
     */
     function gameStatus(uint256 gameID_)
         public
@@ -1027,14 +1027,14 @@ contract Come2Top {
         @return uint256 The total stale offer amount for the specified offeror.
     */
     function _staleOffers(address offeror) private view returns (uint256) {
-        if (offerorData[offeror].latestWagerID == currentGameID) {
+        if (offerorData[offeror].latestGameID == currentGameID) {
             (Status stat, , , ) = _gameUpdate(currentGameID);
 
             if (stat != Status.commingWave && stat != Status.operational)
                 return (offerorData[offeror].totalOffersValue);
 
             return (offerorData[offeror].totalOffersValue -
-                offerorData[offeror].latestWagerIDoffersValue);
+                offerorData[offeror].latestGameIDoffersValue);
         }
 
         return (offerorData[offeror].totalOffersValue);
@@ -1193,13 +1193,13 @@ contract Come2Top {
     }
 
     /**
-        @notice Retrieves the current status and details of a specific wager.
-        @dev This function provides detailed information about a specific wager
-            including its status, eligible withdrawals, current wave, winner tickets, and wager baseBalance.
-        @param gameID The ID of the wager for which the status and details are being retrieved.
-        @return stat The current status of the wager (ticketSale, commingWave, operational, finished).
-        @return eligibleToSell The number of eligible withdrawals for the current wager.
-        @return currentWave The current wave of the wager.
+        @notice Retrieves the current status and details of a specific game.
+        @dev This function provides detailed information about a specific game
+            including its status, eligible withdrawals, current wave, winner tickets, and game baseBalance.
+        @param gameID The ID of the game for which the status and details are being retrieved.
+        @return stat The current status of the game (ticketSale, commingWave, operational, finished).
+        @return eligibleToSell The number of eligible withdrawals for the current game.
+        @return currentWave The current wave of the game.
     */
     function _gameUpdate(uint256 gameID)
         private
@@ -1310,9 +1310,9 @@ contract Come2Top {
     /**
         @dev It verifies that the value is not zero
             and not greater than the maximum limit predefined as {EIGHT}.
-        @param value The value to be checked for maximum tickets per wager.
+        @param value The value to be checked for maximum tickets per game.
     */
-    function _checkMTPW(uint8 value) private pure {
+    function _checkMTPG(uint8 value) private pure {
         _revertOnZeroUint(value);
 
         if (value > EIGHT) revert VALUE_CANT_BE_GREATER_THAN(EIGHT);
@@ -1321,7 +1321,7 @@ contract Come2Top {
     /**
         @dev It verifies that the value is not zero
             and not lower than the minimum limit predefined as {MIN_PRNG_PERIOD}.
-        @param value The value to be checked for maximum tickets per wager.
+        @param value The value to be checked for maximum tickets per game.
     */
     function _checkPRNGP(uint256 value) private pure {
         _revertOnZeroUint(value);
@@ -1351,9 +1351,9 @@ contract Come2Top {
     }
 
     /**
-        @dev Checks the current status of the wager and reverts the transaction
-            if the wager status is not withrawable.
-        @param stat The current status of the wager (ticketSale, commingWave, operational, finished).
+        @dev Checks the current status of the game and reverts the transaction
+            if the game status is not withrawable.
+        @param stat The current status of the game (ticketSale, commingWave, operational, finished).
     */
     function _onlyOperational(uint256 currentWave, Status stat) private pure {
         if (currentWave == ZERO) revert WAIT_FOR_FIRST_WAVE();
