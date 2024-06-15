@@ -14,4 +14,6 @@ interface ICurveStableSwapNG {
         uint256 min_received,
         address receiver
     ) external returns (uint256);
+
+    function balanceOf(address account) external view returns (uint256);
 }
