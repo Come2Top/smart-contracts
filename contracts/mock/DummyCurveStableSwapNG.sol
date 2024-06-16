@@ -61,7 +61,7 @@ contract DummyCurveStableSwapNG is ICurveStableSwapNG {
 
         require(msg.sender == OWNER.come2Top());
         FRAX.transfer(address(this), deposit_amounts[1]);
-        FRAX.internalBurn(address(this),deposit_amounts[1]);
+        FRAX.internalBurn(address(this), deposit_amounts[1]);
         return deposit_amounts[1];
     }
 

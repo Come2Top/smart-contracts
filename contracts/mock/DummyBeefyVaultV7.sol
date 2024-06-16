@@ -24,7 +24,7 @@ contract DummyYieldFarming {
         come2Top = _come2Top;
     }
 
-    function deposit(uint amount) external {}
+    function deposit(uint256 amount) external {}
 
     function withdraw(uint256 shares) external {}
 
