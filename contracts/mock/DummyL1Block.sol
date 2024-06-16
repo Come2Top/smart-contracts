@@ -20,5 +20,4 @@ contract DummyL1Block is ISuperchainL1Block {
 
         return uint256(dummyFakeRandao);
     }
-
 }
