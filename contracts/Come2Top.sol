@@ -178,7 +178,7 @@ contract Come2Top {
     error ONLY_TICKET_OWNER(uint256 ticketID);
     error ONLY_WINNER_TICKET(uint256 ticketID);
     error ONLY_OPERATIONAL_MODE(Status currentStat);
-    error ONLY_FINISHED_OR_CLAIMABLE_MODE(Status stat);
+    error ONLY_CLAIMABLE_MODE(Status stat);
     error ONLY_PAUSED_AND_FINISHED_MODE(bool isPaused, Status stat);
     error ONLY_UNPAUSED_OR_TICKET_SALE_MODE(bool isPaused);
     error ONLY_HIGHER_THAN_CURRENT_TICKET_VALUE(
@@ -691,8 +691,7 @@ contract Come2Top {
         if (gameID > currentGameID) gameID = currentGameID;
         (Status stat, , , bytes memory tickets) = _gameUpdate(gameID);
 
-        if (stat != Status.finished || stat != Status.claimable)
-            revert ONLY_FINISHED_OR_CLAIMABLE_MODE(stat);
+        if (stat != Status.claimable) revert ONLY_CLAIMABLE_MODE(stat);
 
         uint256 playerBaseBalance = playerBalanceData[gameID][sender]
             .baseBalance;
