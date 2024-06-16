@@ -675,53 +675,53 @@ contract Come2Top {
 
     /**
         @notice Allows anyone to have the prize sent to the winning ticket holder.
-        @param gameID_ The ID of the game for which the owner of the winning ticket will get the prize.
+        @param gameID The ID of the game for which the owner of the winning ticket will get the prize.
     */
-    function claimOperation(uint256 gameID_) external {
+    function claimOperation(uint256 gameID) external {
         address sender = msg.sender;
 
-        if (gameID_ > currentGameID) gameID_ = currentGameID;
-        (Status stat, , , bytes memory tickets) = _gameUpdate(gameID_);
+        if (gameID > currentGameID) gameID = currentGameID;
+        (Status stat, , , bytes memory tickets) = _gameUpdate(gameID);
 
         if (stat != Status.finished || stat != Status.claimable)
             revert ONLY_FINISHED_OR_CLAIMABLE_MODE(stat);
 
-        uint256 playerBaseBalance = playerBalanceData[gameID_][sender]
+        uint256 playerBaseBalance = playerBalanceData[gameID][sender]
             .baseBalance;
-        uint256 playerSavedBalance = playerBalanceData[gameID_][sender]
+        uint256 playerSavedBalance = playerBalanceData[gameID][sender]
             .savedBalance;
 
         if (
             tickets.length == ONE &&
-            tempTicketOwnership[gameID_][uint8(tickets[ZERO])] == sender
+            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == sender
         ) {
-            playerSavedBalance += gameData[gameID_].virtualBalance;
-            delete totalPlayerTickets[gameID_][sender];
+            playerSavedBalance += gameData[gameID].virtualBalance;
+            delete totalPlayerTickets[gameID][sender];
         }
 
         if (playerBaseBalance == ZERO && playerSavedBalance == ZERO)
             revert NO_AMOUNT_TO_CLAIM();
 
         uint256 mooShare = CurveMooLib.BeefyVaultV7.getPricePerFullShare();
-        uint256 gameMooBalance = gameData[gameID_].mooBalance;
+        uint256 gameMooBalance = gameData[gameID].mooBalance;
         uint256 gameRewardedMoo = ((gameMooBalance * mooShare) / 1e18) -
             gameMooBalance;
         uint256 gameBaseMoo = gameMooBalance - gameRewardedMoo;
 
-        uint256 gameBaseBalance = gameData[gameID_].baseBalance;
-        uint256 gameSavedBalance = gameData[gameID_].savedBalance +
-            gameData[gameID_].virtualBalance;
+        uint256 gameBaseBalance = gameData[gameID].baseBalance;
+        uint256 gameSavedBalance = gameData[gameID].savedBalance +
+            gameData[gameID].virtualBalance;
 
         uint256 playerClaimableMooAmount;
 
         if (gameBaseBalance == playerBaseBalance) {
             playerClaimableMooAmount = gameMooBalance;
 
-            delete gameData[gameID_].mooBalance;
-            delete gameData[gameID_].baseBalance;
-            delete gameData[gameID_].savedBalance;
+            delete gameData[gameID].mooBalance;
+            delete gameData[gameID].baseBalance;
+            delete gameData[gameID].savedBalance;
 
-            gameData[gameID_].tickets = tickets;
+            gameData[gameID].tickets = tickets;
         } else {
             playerClaimableMooAmount =
                 ((
@@ -738,19 +738,19 @@ contract Come2Top {
                             gameRewardedMoo) / 1e18
                 );
 
-            gameData[gameID_].mooBalance -= playerClaimableMooAmount;
-            gameData[gameID_].baseBalance -= playerBaseBalance;
+            gameData[gameID].mooBalance -= playerClaimableMooAmount;
+            gameData[gameID].baseBalance -= playerBaseBalance;
             if (gameSavedBalance != ZERO)
-                gameData[gameID_].savedBalance -= playerBalanceData[gameID_][
+                gameData[gameID].savedBalance -= playerBalanceData[gameID][
                     sender
                 ].savedBalance;
         }
 
-        delete playerBalanceData[gameID_][sender];
+        delete playerBalanceData[gameID][sender];
         if (
             tickets.length == ONE &&
-            tempTicketOwnership[gameID_][uint8(tickets[ZERO])] == sender
-        ) delete gameData[gameID_].virtualBalance;
+            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == sender
+        ) delete gameData[gameID].virtualBalance;
 
         uint256 beforeLPbalance = CurveMooLib.CurveStableSwapNG.balanceOf(THIS);
         playerClaimableMooAmount.withdrawLPT();
@@ -758,7 +758,7 @@ contract Come2Top {
             beforeLPbalance).burnLPT(sender);
 
         emit Claimed(
-            gameID_,
+            gameID,
             sender,
             claimedAmount,
             int256(claimedAmount - playerBaseBalance)
