@@ -5,7 +5,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "DEFT_GAME",
+		"name": "COME2TOP",
 		"outputs": [
 			{
 				"internalType": "address",
@@ -18,25 +18,25 @@
 	},
 	{
 		"inputs": [],
-		"name": "DEFT",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "LOCKED",
+		"name": "INIT",
 		"outputs": [
 			{
 				"internalType": "bool",
 				"name": "",
 				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "TOKEN",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
 			}
 		],
 		"stateMutability": "view",

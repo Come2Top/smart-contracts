@@ -3,7 +3,7 @@
 		"inputs": [
 			{
 				"internalType": "uint8",
-				"name": "mtpw",
+				"name": "mtpg",
 				"type": "uint8"
 			},
 			{
@@ -18,12 +18,17 @@
 			},
 			{
 				"internalType": "address",
-				"name": "deft",
+				"name": "token",
 				"type": "address"
 			},
 			{
 				"internalType": "address",
 				"name": "treasury",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "superchainL1Block",
 				"type": "address"
 			}
 		],
@@ -47,6 +52,42 @@
 		"type": "error"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "stat",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "baseAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "savedAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "claimableAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "int256",
+				"name": "profit",
+				"type": "int256"
+			}
+		],
+		"name": "FETCHED_CLAIMABLE_AMOUNT",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "NO_AMOUNT_TO_CLAIM",
+		"type": "error"
+	},
+	{
 		"inputs": [],
 		"name": "NO_AMOUNT_TO_REFUND",
 		"type": "error"
@@ -54,6 +95,17 @@
 	{
 		"inputs": [],
 		"name": "ONLY_EOA",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "stat",
+				"type": "uint8"
+			}
+		],
+		"name": "ONLY_FINISHED_OR_CLAIMABLE_MODE",
 		"type": "error"
 	},
 	{
@@ -89,6 +141,17 @@
 		"type": "error"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "currentStat",
+				"type": "uint8"
+			}
+		],
+		"name": "ONLY_OPERATIONAL_MODE",
+		"type": "error"
+	},
+	{
 		"inputs": [],
 		"name": "ONLY_OWNER",
 		"type": "error"
@@ -99,6 +162,11 @@
 				"internalType": "bool",
 				"name": "isPaused",
 				"type": "bool"
+			},
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "stat",
+				"type": "uint8"
 			}
 		],
 		"name": "ONLY_PAUSED_AND_FINISHED_MODE",
@@ -138,24 +206,8 @@
 		"type": "error"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "enum DeftGame.Status",
-				"name": "currentStat",
-				"type": "uint8"
-			}
-		],
-		"name": "ONLY_WITHDRAWABLE_MODE",
-		"type": "error"
-	},
-	{
 		"inputs": [],
 		"name": "PARTICIPATED_BEFORE",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "PLAYER_HAS_NO_TICKETS",
 		"type": "error"
 	},
 	{
@@ -187,17 +239,12 @@
 	},
 	{
 		"inputs": [],
-		"name": "WAGER_FINISHED",
-		"type": "error"
-	},
-	{
-		"inputs": [],
 		"name": "WAIT_FOR_FIRST_WAVE",
 		"type": "error"
 	},
 	{
 		"inputs": [],
-		"name": "WAIT_FOR_NEXT_WAGER_MATCH",
+		"name": "WAIT_FOR_NEXT_MATCH",
 		"type": "error"
 	},
 	{
@@ -220,6 +267,124 @@
 		"inputs": [
 			{
 				"indexed": true,
+				"internalType": "uint256",
+				"name": "gameID",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "player",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "int256",
+				"name": "profit",
+				"type": "int256"
+			}
+		],
+		"name": "Claimed",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "gameID",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "address[2]",
+				"name": "winners",
+				"type": "address[2]"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256[2]",
+				"name": "amounts",
+				"type": "uint256[2]"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256[2]",
+				"name": "ticketIDs",
+				"type": "uint256[2]"
+			}
+		],
+		"name": "GameFinished",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "gameID",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "startedBlockNo",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "GameStarted",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "gameID",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "winner",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "ticketID",
+				"type": "uint256"
+			}
+		],
+		"name": "GameUpdated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
 				"internalType": "address",
 				"name": "newOwner",
 				"type": "address"
@@ -231,7 +396,7 @@
 				"type": "uint256"
 			},
 			{
-				"indexed": true,
+				"indexed": false,
 				"internalType": "uint256",
 				"name": "amount",
 				"type": "uint256"
@@ -262,7 +427,7 @@
 				"type": "uint256"
 			},
 			{
-				"indexed": true,
+				"indexed": false,
 				"internalType": "uint256",
 				"name": "amount",
 				"type": "uint256"
@@ -287,7 +452,7 @@
 				"type": "address"
 			},
 			{
-				"indexed": true,
+				"indexed": false,
 				"internalType": "uint256",
 				"name": "amount",
 				"type": "uint256"
@@ -316,137 +481,6 @@
 		"type": "event"
 	},
 	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "wagerID",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "winner",
-				"type": "address"
-			},
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "ticketID",
-				"type": "uint256"
-			}
-		],
-		"name": "WagerFinished",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "wagerID",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "address[2]",
-				"name": "winners",
-				"type": "address[2]"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256[2]",
-				"name": "amounts",
-				"type": "uint256[2]"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256[2]",
-				"name": "ticketIDs",
-				"type": "uint256[2]"
-			}
-		],
-		"name": "WagerFinished",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "wagerID",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "startedBlockNo",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "prizeAmount",
-				"type": "uint256"
-			}
-		],
-		"name": "WagerStarted",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "wagerID",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "winner",
-				"type": "address"
-			},
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "ticketID",
-				"type": "uint256"
-			}
-		],
-		"name": "WagerUpdated",
-		"type": "event"
-	},
-	{
-		"inputs": [],
-		"name": "DEFT",
-		"outputs": [
-			{
-				"internalType": "contract IDeft",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
 		"inputs": [],
 		"name": "MAGIC_VALUE",
 		"outputs": [
@@ -461,10 +495,36 @@
 	},
 	{
 		"inputs": [],
+		"name": "SUPERCHAIN_L1_BLOCK",
+		"outputs": [
+			{
+				"internalType": "contract ISuperchainL1Block",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
 		"name": "THIS",
 		"outputs": [
 			{
 				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "TOKEN",
+		"outputs": [
+			{
+				"internalType": "contract IERC20",
 				"name": "",
 				"type": "address"
 			}
@@ -489,11 +549,11 @@
 		"inputs": [
 			{
 				"internalType": "uint8",
-				"name": "newMTPW",
+				"name": "newMTPG",
 				"type": "uint8"
 			}
 		],
-		"name": "changeMaxTicketsPerWager",
+		"name": "changeMaxTicketsPerGame",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -541,18 +601,128 @@
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "wagerID_",
+				"name": "gameID_",
 				"type": "uint256"
 			}
 		],
-		"name": "claim",
+		"name": "claimOperation",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "gameID",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "player",
+				"type": "address"
+			}
+		],
+		"name": "claimableAmount",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
 		"inputs": [],
-		"name": "currentWagerID",
+		"name": "continuesIntegration",
+		"outputs": [
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "stat",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "maxPurchasableTickets",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "startedL1Block",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "currentWave",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "currentTicketValue",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "remainingTickets",
+				"type": "uint256"
+			},
+			{
+				"internalType": "int256",
+				"name": "eligibleToSell",
+				"type": "int256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "nextWaveTicketValue",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "nextWaveWinrate",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes",
+				"name": "tickets",
+				"type": "bytes"
+			},
+			{
+				"components": [
+					{
+						"components": [
+							{
+								"internalType": "uint96",
+								"name": "amount",
+								"type": "uint96"
+							},
+							{
+								"internalType": "address",
+								"name": "maker",
+								"type": "address"
+							}
+						],
+						"internalType": "struct Come2Top.Offer",
+						"name": "offer",
+						"type": "tuple"
+					},
+					{
+						"internalType": "uint256",
+						"name": "ticketID",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					}
+				],
+				"internalType": "struct Come2Top.TicketInfo[256]",
+				"name": "ticketsData",
+				"type": "tuple[256]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "currentGameID",
 		"outputs": [
 			{
 				"internalType": "uint256",
@@ -566,28 +736,128 @@
 	{
 		"inputs": [
 			{
-				"internalType": "uint8[]",
-				"name": "ticketIDs",
-				"type": "uint8[]"
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
-		"name": "join",
-		"outputs": [],
-		"stateMutability": "nonpayable",
+		"name": "gameData",
+		"outputs": [
+			{
+				"internalType": "int8",
+				"name": "eligibleToSell",
+				"type": "int8"
+			},
+			{
+				"internalType": "uint8",
+				"name": "soldTickets",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint8",
+				"name": "updatedWave",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint112",
+				"name": "prngPeriod",
+				"type": "uint112"
+			},
+			{
+				"internalType": "uint120",
+				"name": "startedL1Block",
+				"type": "uint120"
+			},
+			{
+				"internalType": "uint256",
+				"name": "mooBalance",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "baseBalance",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "savedBalance",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "virtualBalance",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes",
+				"name": "tickets",
+				"type": "bytes"
+			}
+		],
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "latestUpdate",
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "gameID_",
+				"type": "uint256"
+			}
+		],
+		"name": "gameStatus",
 		"outputs": [
 			{
-				"internalType": "enum DeftGame.Status",
+				"internalType": "uint256",
+				"name": "gameID",
+				"type": "uint256"
+			},
+			{
+				"internalType": "enum Come2Top.Status",
 				"name": "stat",
 				"type": "uint8"
 			},
 			{
 				"internalType": "int256",
-				"name": "eligibleWithdrawals",
+				"name": "eligibleToSell",
+				"type": "int256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "currentWave",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "virtualBalance",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address[]",
+				"name": "winners",
+				"type": "address[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "winnerTickets",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "latestGameUpdate",
+		"outputs": [
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "stat",
+				"type": "uint8"
+			},
+			{
+				"internalType": "int256",
+				"name": "eligibleToSell",
 				"type": "int256"
 			},
 			{
@@ -605,26 +875,8 @@
 		"type": "function"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "uint8",
-				"name": "ticketID",
-				"type": "uint8"
-			},
-			{
-				"internalType": "uint96",
-				"name": "amount",
-				"type": "uint96"
-			}
-		],
-		"name": "makeOffer",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
 		"inputs": [],
-		"name": "maxTicketsPerWager",
+		"name": "maxTicketsPerGame",
 		"outputs": [
 			{
 				"internalType": "uint8",
@@ -667,6 +919,24 @@
 	{
 		"inputs": [
 			{
+				"internalType": "uint8",
+				"name": "ticketID",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint96",
+				"name": "amount",
+				"type": "uint96"
+			}
+		],
+		"name": "offerOperation",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
 				"internalType": "address",
 				"name": "",
 				"type": "address"
@@ -676,12 +946,12 @@
 		"outputs": [
 			{
 				"internalType": "uint96",
-				"name": "latestWagerIDoffersValue",
+				"name": "latestGameIDoffersValue",
 				"type": "uint96"
 			},
 			{
 				"internalType": "uint160",
-				"name": "latestWagerID",
+				"name": "latestGameID",
 				"type": "uint160"
 			},
 			{
@@ -722,22 +992,27 @@
 	{
 		"inputs": [
 			{
-				"internalType": "address",
-				"name": "player",
-				"type": "address"
-			}
-		],
-		"name": "playerWithWinningTickets",
-		"outputs": [
-			{
 				"internalType": "uint256",
-				"name": "totalTicketsValue",
+				"name": "",
 				"type": "uint256"
 			},
 			{
-				"internalType": "bytes",
-				"name": "playerTickets",
-				"type": "bytes"
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "playerBalanceData",
+		"outputs": [
+			{
+				"internalType": "uint120",
+				"name": "baseBalance",
+				"type": "uint120"
+			},
+			{
+				"internalType": "uint120",
+				"name": "savedBalance",
+				"type": "uint120"
 			}
 		],
 		"stateMutability": "view",
@@ -754,19 +1029,6 @@
 			}
 		],
 		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint8",
-				"name": "ticketID",
-				"type": "uint8"
-			}
-		],
-		"name": "redeem",
-		"outputs": [],
-		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -842,7 +1104,7 @@
 				"type": "uint8"
 			}
 		],
-		"name": "ticketOwnership",
+		"name": "tempTicketOwnership",
 		"outputs": [
 			{
 				"internalType": "address",
@@ -864,6 +1126,19 @@
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint8[]",
+				"name": "ticketIDs",
+				"type": "uint8[]"
+			}
+		],
+		"name": "ticketSaleOperation",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -913,233 +1188,14 @@
 	{
 		"inputs": [
 			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"name": "wagerData",
-		"outputs": [
-			{
-				"internalType": "int8",
-				"name": "eligibleWithdrawals",
-				"type": "int8"
-			},
-			{
 				"internalType": "uint8",
-				"name": "soldTickets",
+				"name": "ticketID",
 				"type": "uint8"
-			},
-			{
-				"internalType": "uint8",
-				"name": "updatedWave",
-				"type": "uint8"
-			},
-			{
-				"internalType": "uint96",
-				"name": "balance",
-				"type": "uint96"
-			},
-			{
-				"internalType": "uint120",
-				"name": "startedBlock",
-				"type": "uint120"
-			},
-			{
-				"internalType": "bytes",
-				"name": "tickets",
-				"type": "bytes"
 			}
 		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "wagerInfo",
-		"outputs": [
-			{
-				"internalType": "enum DeftGame.Status",
-				"name": "stat",
-				"type": "uint8"
-			},
-			{
-				"internalType": "uint256",
-				"name": "maxPurchasableTickets",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "startedBlock",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "currentWave",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "currentTicketValue",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "remainingTickets",
-				"type": "uint256"
-			},
-			{
-				"internalType": "int256",
-				"name": "eligibleWithdrawals",
-				"type": "int256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "nextWaveTicketValue",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "nextWaveWinrate",
-				"type": "uint256"
-			},
-			{
-				"internalType": "bytes",
-				"name": "tickets",
-				"type": "bytes"
-			},
-			{
-				"components": [
-					{
-						"components": [
-							{
-								"internalType": "uint96",
-								"name": "amount",
-								"type": "uint96"
-							},
-							{
-								"internalType": "address",
-								"name": "maker",
-								"type": "address"
-							}
-						],
-						"internalType": "struct DeftGame.Offer",
-						"name": "offer",
-						"type": "tuple"
-					},
-					{
-						"internalType": "uint256",
-						"name": "ticketID",
-						"type": "uint256"
-					},
-					{
-						"internalType": "address",
-						"name": "owner",
-						"type": "address"
-					}
-				],
-				"internalType": "struct DeftGame.TicketInfo[256]",
-				"name": "ticketsData",
-				"type": "tuple[256]"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "wagerID_",
-				"type": "uint256"
-			}
-		],
-		"name": "wagerStatus",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "wagerID",
-				"type": "uint256"
-			},
-			{
-				"internalType": "enum DeftGame.Status",
-				"name": "stat",
-				"type": "uint8"
-			},
-			{
-				"internalType": "int256",
-				"name": "eligibleWithdrawals",
-				"type": "int256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "currentWave",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "wagerBalance",
-				"type": "uint256"
-			},
-			{
-				"internalType": "address[]",
-				"name": "winners",
-				"type": "address[]"
-			},
-			{
-				"internalType": "uint256[]",
-				"name": "winnerTickets",
-				"type": "uint256[]"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "winnersWithTickets",
-		"outputs": [
-			{
-				"internalType": "int256",
-				"name": "eligibleWithdrawals",
-				"type": "int256"
-			},
-			{
-				"components": [
-					{
-						"components": [
-							{
-								"internalType": "uint96",
-								"name": "amount",
-								"type": "uint96"
-							},
-							{
-								"internalType": "address",
-								"name": "maker",
-								"type": "address"
-							}
-						],
-						"internalType": "struct DeftGame.Offer",
-						"name": "offer",
-						"type": "tuple"
-					},
-					{
-						"internalType": "uint256",
-						"name": "ticketID",
-						"type": "uint256"
-					},
-					{
-						"internalType": "address",
-						"name": "owner",
-						"type": "address"
-					}
-				],
-				"internalType": "struct DeftGame.TicketInfo[]",
-				"name": "allTicketsData",
-				"type": "tuple[]"
-			}
-		],
-		"stateMutability": "view",
+		"name": "winnerOperation",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	}
 ]
