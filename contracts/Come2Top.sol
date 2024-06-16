@@ -202,6 +202,13 @@ contract Come2Top {
     error WAIT_FOR_NEXT_MATCH();
     error WAIT_FOR_FIRST_WAVE();
     error WAIT_FOR_NEXT_WAVE();
+    error FETCHED_CLAIMABLE_AMOUNT(
+        Status stat,
+        uint256 baseAmount,
+        uint256 savedAmount,
+        uint256 claimableAmount,
+        int256 profit
+    );
 
     /*******************************\
     |-*-*-*-*   MODIFIERS   *-*-*-*-|
@@ -348,10 +355,12 @@ contract Come2Top {
     |-*-*-*-*   GAME-LOGIC   *-*-*-*-|
     \*********************************/
     /**
-        @notice Players can buy tickets for game.
+        @notice Players can buy tickets to join the game.
         @dev Manages the ticket allocation, ownership, and purchase process.
             Also ensures that the maximum number of tickets specified by {maxTicketsPerGame}
-            and the ticket price set by {ticketPrice} are adhered to.
+                and the ticket price set by {ticketPrice} are adhered to.
+            When all tickets are sold out, it will lock them for {L1_BLOCK_WAIT_TIME} time duration 
+                and invest them in a yield farming protocol (stables) such as Beefy.
             The player joining the game, must be an externally owned account (EOA).
         @param ticketIDs The ticket IDs that players want to buy for a game.
     */
@@ -611,11 +620,10 @@ contract Come2Top {
         @dev Allows a player to make an offer for a specific ticket.
             The player specifies the ticket ID and the amount of the offer.
             If the offered amount is higher than the current ticket value and the last offer
-            the offer is accepted and stored.
-            If a higher offer is made for the same ticket
-            the previous offer is refunded to the maker.
+                the offer is accepted and stored.
+            If a higher offer is made for the same ticket the previous offer is refunded to the maker.
             The player making the offer, must be an externally owned account (EOA).
-        @param ticketID The ID of the ticket for which the offer is being made.
+        @param ticketID The ID of the winning ticket for which the offer is being made.
         @param amount The amount of the offer in TOKEN tokens.
     */
     function offerOperation(uint8 ticketID, uint96 amount) external onlyEOA {
@@ -674,8 +682,8 @@ contract Come2Top {
     }
 
     /**
-        @notice Allows anyone to have the prize sent to the winning ticket holder.
-        @param gameID The ID of the game for which the owner of the winning ticket will get the prize.
+        @notice 
+        @param gameID The ID of the game for which 
     */
     function claimOperation(uint256 gameID) external {
         address sender = msg.sender;
@@ -907,14 +915,6 @@ contract Come2Top {
             }
         }
     }
-
-    error FETCHED_CLAIMABLE_AMOUNT(
-        Status stat,
-        uint256 baseAmount,
-        uint256 savedAmount,
-        uint256 claimableAmount,
-        int256 profit
-    );
 
     // Strange, isn't it? << Error Prone Getter >>
     function claimableAmount(uint256 gameID, address player) external {
