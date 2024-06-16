@@ -624,7 +624,7 @@ contract Come2Top {
             If a higher offer is made for the same ticket the previous offer is refunded to the maker.
             The player making the offer, must be an externally owned account (EOA).
         @param ticketID The ID of the winning ticket for which the offer is being made.
-        @param amount The amount of the offer in TOKEN tokens.
+        @param amount The amount of the offer in {TOKEN} tokens.
     */
     function offerOperation(uint8 ticketID, uint96 amount) external onlyEOA {
         address sender = msg.sender;
@@ -801,17 +801,18 @@ contract Come2Top {
     /**
         @notice Returns all informations about the current game.
         @dev This function will be used in Web-2.
-        @return stat The current status of the game (ticketSale, commingWave, operational, finished).
+        @return stat The current status of the game
+            {ticketSale, commingWave, operational, finished, claimable, completed}.
         @return maxPurchasableTickets Maximum purchasable tickets for each address, based on {maxTicketsPerGame}.
-        @return startedL1Block Started block number of game, in which all tickets sold out.
+        @return startedL1Block Started block number ofthe game, in which all tickets sold out.
         @return currentWave The current wave of the game.
-        @return currentTicketValue The current value of a winning ticket in TOKEN tokens.
+        @return currentTicketValue The current value of a winning ticket in {TOKEN} tokens.
         @return remainingTickets Total number of current wave winner tickets.
         @return eligibleToSell The number of eligible withdrawals for the current wave of the game.
-        @return nextWaveTicketValue The value of a winning ticket in TOKEN tokens for the coming wave.
+        @return nextWaveTicketValue The value of a winning ticket in {TOKEN} tokens for the coming wave.
         @return nextWaveWinrate The chance of winning each ticket for the coming wave.
         @return tickets The byte array containing the winning ticket IDs for the current game.
-        @return ticketsData An array of TicketInfo structures containing the ticket ID
+        @return ticketsData An array of {TicketInfo} structures containing the ticket ID
             owner address and offer data for each winning ticket.
     */
     function continuesIntegration()
@@ -1017,12 +1018,12 @@ contract Come2Top {
     }
 
     /**
-        @notice Retrieves the current value of a ticket in TOKEN tokens.
+        @notice Retrieves the current value of a ticket in {TOKEN} tokens.
         @dev Calculates and returns the current value of a ticket:
             If it was in ticket sale mode, then the ticket value is equal to {ticketPrice}
-            Else by dividing the baseBalance of TOKEN tokens in the contract
+            Else by dividing the baseBalance of {TOKEN} tokens in the contract
                 by the total number of winning tickets.
-        @return The current value of a ticket in TOKEN tokens, based on status.
+        @return The current value of a ticket in {TOKEN} tokens, based on status.
     */
     function ticketValue() external view returns (uint256) {
         (Status stat, , , bytes memory tickets) = _gameUpdate(currentGameID);
@@ -1066,11 +1067,13 @@ contract Come2Top {
 
     /**
         @notice Retrieves the latest update of the current game.
-        @dev It provides essential information about the game's current state.
-        @return stat The current status of the game (ticketSale, commingWave, operational, finished).
-        @return eligibleToSell The number of eligible withdrawals for the current wave of the game.
+        @dev It provides essential information about the {currentGameID} game's state.
+        @return stat The current status of the game
+            {ticketSale, commingWave, operational, finished, claimable, completed}.
+        @return eligibleToSell The number of eligible players to sell their tickets 
+            for the current wave of the game.
         @return currentWave The current wave of the game.
-        @return winnerTickets The byte array containing the winning ticket IDs for the current game.
+        @return winnerTickets The byte array containing the winning ticket IDs for the {currentGameID}.
     */
     function latestGameUpdate()
         external
@@ -1088,13 +1091,17 @@ contract Come2Top {
     /**
         @notice Retrieves the current status and details of a specific game.
         @dev This function provides detailed information about a specific game
-            including its status, eligible withdrawals, current wave, winner tickets, and game baseBalance.
+            including its status, eligible withdrawals, current wave, winner tickets, and game virtualBalance.
         @param gameID_ The ID of the game for which the status and details are being retrieved.
         @return gameID The ID of the retrieved game.
-        @return stat The current status of the game (ticketSale, commingWave, operational, finished).
-        @return eligibleToSell The number of eligible withdrawals for the current game.
+        @return stat The current status of the game
+            {ticketSale, commingWave, operational, finished, claimable, completed}.
+        @return eligibleToSell The number of eligible players to sell their tickets 
+            for the current wave of the game.
         @return currentWave The current wave of the game.
-        @return virtualBalance The baseBalance of the game in TOKEN tokens.
+        @return virtualBalance The balance of the game in {TOKEN} tokens
+            which players compete in terms of to get a {savedBalance}
+            in which they will get a share of it from the yield farming protocol.
         @return winners The array containing the winner addresses for the given game ID.
         @return winnerTickets The array containing the winning ticket IDs for the given game ID.
     */
@@ -1136,19 +1143,19 @@ contract Come2Top {
     |-*-*-*-*   PRIVATE   *-*-*-*-|
     \*****************************/
     /**
-        @dev Allows the contract to transfer TOKEN tokens to a specified address.
-        @param to The address to which the TOKEN tokens will be transferred.
-        @param amount The amount of TOKEN tokens to be transferred.
+        @dev Allows the contract to transfer {TOKEN} tokens to a specified address.
+        @param to The address to which the {TOKEN} tokens will be transferred.
+        @param amount The amount of {TOKEN} tokens to be transferred.
     */
     function _transferHelper(address to, uint256 amount) private {
         TOKEN.transfer(to, amount);
     }
 
     /**
-        @dev Allows the contract to transfer TOKEN tokens from one address to another.
-        @param from The address from which the TOKEN tokens will be transferred.
-        @param to The address to which the TOKEN tokens will be transferred.
-        @param amount The amount of TOKEN tokens to be transferred.
+        @dev Allows the contract to transfer {TOKEN} tokens from one address to another.
+        @param from The address from which the {TOKEN} tokens will be transferred.
+        @param to The address to which the {TOKEN} tokens will be transferred.
+        @param amount The amount of {TOKEN} tokens to be transferred.
     */
     function _transferFromHelper(
         address from,
@@ -1161,7 +1168,7 @@ contract Come2Top {
     /**
         @notice Retrieves the total stale offer amount for a specific offeror.
         @param offeror The address of the offeror for whom the stale offer amount is being retrieved.
-        @return uint256 The total stale offer amount for the specified offeror.
+        @return The total stale offer amount for the specified offeror.
     */
     function _staleOffers(address offeror) private view returns (uint256) {
         if (offerorData[offeror].latestGameID == currentGameID) {
@@ -1213,7 +1220,7 @@ contract Come2Top {
             It returns a new byte array excluding the element at the specified index.
         @param index The index to be deleted from the byte array.
         @param bytesArray The byte array from which the index will be deleted.
-        @return bytes The new byte array after deleting the specified index.
+        @return The new byte array after deleting the specified index.
     */
     function _deleteIndex(uint8 index, bytes memory bytesArray)
         private
@@ -1234,11 +1241,11 @@ contract Come2Top {
     }
 
     /**
-        @notice Returns the current value of a winning ticket in TOKEN tokens.
+        @notice Returns the current value of a winning ticket in {TOKEN} tokens.
         @dev Calculates and returns the current value of a ticket
-            by dividing the baseBalance of TOKEN tokens in the contract
+            by dividing the baseBalance of {TOKEN} tokens in the contract
             by the total number of winning tickets.
-        @return uint256 The current value of a winning ticket in TOKEN tokens.
+        @return The current value of a winning ticket in {TOKEN} tokens.
     */
     function _ticketValue(uint256 totalTickets, uint256 gameID)
         private
@@ -1252,7 +1259,7 @@ contract Come2Top {
         @dev Creates a random seed value based on a series of l1 block prevrandaos.
             It selects various block prevrandaos and performs mathematical operations to calculate a random seed.
         @param startBlock The block number from where the calculation of the random seed starts.
-        @return uint256 The random seed value generated based on l1 block prevrandaos.
+        @return The random seed value generated based on l1 block prevrandaos.
     */
     function _createRandomSeed(uint256 startBlock, uint256 prngDuration)
         private
@@ -1334,7 +1341,8 @@ contract Come2Top {
         @dev This function provides detailed information about a specific game
             including its status, eligible withdrawals, current wave, winner tickets, and game baseBalance.
         @param gameID The ID of the game for which the status and details are being retrieved.
-        @return stat The current status of the game (ticketSale, commingWave, operational, finished).
+        @return stat The current status of the game
+            {ticketSale, commingWave, operational, finished, claimable, completed}.
         @return eligibleToSell The number of eligible withdrawals for the current game.
         @return currentWave The current wave of the game.
     */
@@ -1366,7 +1374,7 @@ contract Come2Top {
             currentWave = GD.updatedWave;
             uint256 lastUpdatedWave;
             uint256 accumulatedBlocks;
-            uint256 waitingDuration = _wave_duration(GD.prngPeriod);
+            uint256 waitingDuration = SAFTY_DURATION + GD.prngPeriod;
 
             if (GD.updatedWave != ZERO) {
                 lastUpdatedWave = GD.updatedWave + ONE;
@@ -1440,14 +1448,6 @@ contract Come2Top {
         }
     }
 
-    function _wave_duration(uint256 _prngPeriod)
-        private
-        pure
-        returns (uint256)
-    {
-        return SAFTY_DURATION + _prngPeriod;
-    }
-
     /**
         @dev It verifies that the value is not zero
             and not greater than the maximum limit predefined as {EIGHT}.
@@ -1493,8 +1493,10 @@ contract Come2Top {
 
     /**
         @dev Checks the current status of the game and reverts the transaction
-            if the game status is not withrawable.
-        @param stat The current status of the game (ticketSale, commingWave, operational, finished).
+            if the game status is not Operational.
+        @param stat The current status of the game
+            {ticketSale, commingWave, operational, finished, claimable, completed}.
+
     */
     function _onlyOperational(uint256 currentWave, Status stat) private pure {
         if (currentWave == ZERO) revert WAIT_FOR_FIRST_WAVE();
@@ -1507,7 +1509,7 @@ contract Come2Top {
             If the ticket ID is not found in the list of tickets, the transaction will be reverted.
         @param tickets The list of tickets to search within.
         @param ticketID The ticket ID to search for.
-        @return uint8 The index of the found ticket ID in the list.
+        @return The index of the found ticket ID in the list.
     */
     function _onlyWinnerTicket(bytes memory tickets, uint8 ticketID)
         private
