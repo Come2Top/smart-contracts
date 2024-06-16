@@ -601,7 +601,7 @@
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "gameID_",
+				"name": "gameID",
 				"type": "uint256"
 			}
 		],
