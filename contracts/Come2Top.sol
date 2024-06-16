@@ -110,16 +110,15 @@ contract Come2Top {
     uint256 private constant OFFEREE_BENEFICIARY = 94;
     uint256 private constant MIN_TICKET_VALUE_OFFER = 10;
     // Mainnet
-    // uint256 private constant L1_BLOCK_WAIT_TIME = 207692; // l1 avg block time ˜12.5
+    // uint256 private constant L1_BLOCK_LOCK_TIME = 207692; // l1 avg block time ˜12.5
     // Testnet
-    uint256 private constant L1_BLOCK_WAIT_TIME = 50; // l1 avg block time ˜12.5
+    uint256 private constant L1_BLOCK_LOCK_TIME = 50; // l1 avg block time ˜12.5
     address private constant ZERO_ADDRESS = address(0x0);
     int8 private constant N_ONE = -1;
     uint8 private constant ZERO = 0;
     uint8 private constant ONE = 1;
     uint8 private constant TWO = 2;
     uint8 private constant THREE = 3;
-    uint8 private constant FIVE = 5;
     uint8 private constant EIGHT = 8;
 
     /********************************\
@@ -305,9 +304,9 @@ contract Come2Top {
 
     /**
         @notice Changes the ticket price for joining the game.
-        @dev Allows the owner to change the ticket price for joining the game. 
-            Only the owner can call this function. 
-        @param newTP The new ticket price to be set.
+        @dev Allows the owner to change the ticket price for joining the game.
+            Only the owner can call this function.
+        @param newTP The new ticket price is to be set.
     */
     function changeTicketPrice(uint80 newTP)
         external
@@ -321,7 +320,7 @@ contract Come2Top {
 
     /**
         @notice Changes the maximum number of tickets allowed per game.
-        @dev Allows the owner to change the maximum number of tickets allowed per game. 
+        @dev Allows the owner to change the maximum number of tickets allowed per game.
             Only the owner can call this function.
         @param newMTPG The new maximum number of tickets allowed per game.
     */
@@ -337,9 +336,9 @@ contract Come2Top {
 
     /**
         @notice Changes the pseudorandom number generator period time.
-        @dev Allows the owner to change the pseudorandom number generator period time. 
+        @dev Allows the owner to change the pseudorandom number generator period time.
             Only the owner can call this function.
-        @param newPRNGP The new the pseudorandom number generator period.
+        @param newPRNGP The new pseudorandom number generator period.
     */
     function changePRNGperiod(uint256 newPRNGP)
         external
@@ -359,7 +358,7 @@ contract Come2Top {
         @dev Manages the ticket allocation, ownership, and purchase process.
             Also ensures that the maximum number of tickets specified by {maxTicketsPerGame}
                 and the ticket price set by {ticketPrice} are adhered to.
-            When all tickets are sold out, it will lock them for {L1_BLOCK_WAIT_TIME} time duration 
+            When all tickets are sold out, it will lock them for {L1_BLOCK_LOCK_TIME} time duration
                 and invest them in a yield farming protocol (stables) such as Beefy.
             The player joining the game, must be an externally owned account (EOA).
         @param ticketIDs The ticket IDs that players want to buy for a game.
@@ -462,24 +461,18 @@ contract Come2Top {
     }
 
     /**
-        @notice Allows the ticket owner to either accept an offer made for their ticket 
-            or claim the prize for a winning lottery ticket. 
-        @dev
-            1. When accepting an offer:
-                If the player has received an offer for their ticket
-                    that is higher than the current ticket value
-                    and the last offer, they can accept the offer.
-                The function transfers the ownership of the ticket
-                    to the offer maker and transfers the offered amount
-                    to the ticket owner.
-
-            2. When claiming a prize for a winning lottery ticket:
-                If the ticket owner tries to claim the prize for a winning ticket
-                    the function checks if the game status allows for withdrawals
-                    if the player owns the ticket
-                    and if the ticket is eligible for withdrawals.
-                If the game has ended and there are two winners
-                    the prize amount is split between them.
+        @notice Automatically, it saves the winning amount for the player
+            and in the future, he/she will have the ability
+            to claim the profit from the saved winning amount.
+        @dev Automatically:
+                If there is an offer for the currently winning ticket
+                    the player accepts the offer and grants ownership of the currently winning ticket
+                    to the offering player, and in the future, after the end of the {L1_BLOCK_LOCK_TIME} period
+                    the amount of the accepted offer in terms of token {TOKEN}
+                    allows the player of the former owner to claim the resulting profit.
+                Otherwise, if there is no offer, the owner's winning ticket will be removed
+                    and he/she will be allowed to claim the interest of the winning amount
+                    after the {L1_BLOCK_LOCK_TIME} time has passed.
         @param ticketID The ID of the ticket for which the offer is being accepted.
     */
     function winnerOperation(uint8 ticketID) external {
@@ -617,11 +610,12 @@ contract Come2Top {
 
     /**
         @notice Allows a player to make an offer for a ticket.
+            If the offered amount is {MIN_TICKET_VALUE_OFFER}% higher than the current ticket value
+                or just higher than the last offer
+                the offer is accepted and stored, or else it will be reverted.
         @dev Allows a player to make an offer for a specific ticket.
-            The player specifies the ticket ID and the amount of the offer.
-            If the offered amount is higher than the current ticket value and the last offer
-                the offer is accepted and stored.
-            If a higher offer is made for the same ticket the previous offer is refunded to the maker.
+            If a higher offer is made for the same ticket
+                the previous offer is refunded to the maker.
             The player making the offer, must be an externally owned account (EOA).
         @param ticketID The ID of the winning ticket for which the offer is being made.
         @param amount The amount of the offer in {TOKEN} tokens.
@@ -682,7 +676,10 @@ contract Come2Top {
     }
 
     /**
-        @notice 
+        @notice In a nutshell, it enables the players to claim the basic amount of participation
+            in the game (buying tickets, offers) that they contracted
+            and if they won, it also pays the player
+            the profit of the winning amount of that game.
         @param gameID The ID of the game for which 
     */
     function claimOperation(uint256 gameID) external {
@@ -773,9 +770,12 @@ contract Come2Top {
     }
 
     /**
-        @notice Allows the offeror to take back their stale offers and receive a refund.
-        @dev Enables the player to withdraw their offers that have not been accepted
-            and receive a refund in return.
+        @notice Allows the player to take back their stale offers and receive a refund.
+        @dev Enables the player to withdraw offers that have not been accepted
+                and receive a refund in return.
+            If the player has made an offer or offers in the {currentGameID}
+                he/she can withdraw them only after the game is finished
+                if they are not accepted.
             Only the player who made the offers can call this function.
     */
     function takeBackStaleOffers() external {
@@ -799,16 +799,19 @@ contract Come2Top {
     \******************************/
     /**
         @notice Returns all informations about the current game.
-        @dev This function will be used in Web-2.
+        @dev Usable for off-chain integrations.
         @return stat The current status of the game
             {ticketSale, commingWave, operational, finished, claimable, completed}.
-        @return maxPurchasableTickets Maximum purchasable tickets for each address, based on {maxTicketsPerGame}.
+        @return maxPurchasableTickets Maximum purchasable tickets for each address
+            ased on {maxTicketsPerGame}.
         @return startedL1Block Started block number ofthe game, in which all tickets sold out.
         @return currentWave The current wave of the game.
         @return currentTicketValue The current value of a winning ticket in {TOKEN} tokens.
         @return remainingTickets Total number of current wave winner tickets.
-        @return eligibleToSell The number of eligible withdrawals for the current wave of the game.
-        @return nextWaveTicketValue The value of a winning ticket in {TOKEN} tokens for the coming wave.
+        @return eligibleToSell The number of eligible players to sell their tickets
+            for the current wave of the game.
+        @return nextWaveTicketValue The value of a winning ticket in {TOKEN} tokens
+            for the coming wave.
         @return nextWaveWinrate The chance of winning each ticket for the coming wave.
         @return tickets The byte array containing the winning ticket IDs for the current game.
         @return ticketsData An array of {TicketInfo} structures containing the ticket ID
@@ -916,7 +919,7 @@ contract Come2Top {
         }
     }
 
-    // Strange, isn't it? << Error Prone Getter >>
+    /// @dev Strange, isn't it? << Error Prone Getter >>
     function claimableAmount(uint256 gameID, address player) external {
         if (gameID > currentGameID) gameID = currentGameID;
         (Status stat, , , bytes memory tickets) = _gameUpdate(gameID);
@@ -1342,7 +1345,8 @@ contract Come2Top {
         @param gameID The ID of the game for which the status and details are being retrieved.
         @return stat The current status of the game
             {ticketSale, commingWave, operational, finished, claimable, completed}.
-        @return eligibleToSell The number of eligible withdrawals for the current game.
+        @return eligibleToSell The number of eligible players to sell their tickets
+            for the current game.
         @return currentWave The current wave of the game.
     */
     function _gameUpdate(uint256 gameID)
@@ -1360,7 +1364,7 @@ contract Come2Top {
         eligibleToSell = GD.eligibleToSell;
 
         uint256 currentL1Block = SUPERCHAIN_L1_BLOCK.number();
-        bool isClaimable = GD.startedL1Block + L1_BLOCK_WAIT_TIME >
+        bool isClaimable = GD.startedL1Block + L1_BLOCK_LOCK_TIME >
             currentL1Block;
 
         if (GD.startedL1Block == ZERO) stat = Status.ticketSale;
