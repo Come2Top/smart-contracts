@@ -708,8 +708,7 @@ contract Come2Top {
             delete totalPlayerTickets[gameID][sender];
         }
 
-        if (playerBaseBalance == ZERO && playerSavedBalance == ZERO)
-            revert NO_AMOUNT_TO_CLAIM();
+        if (playerBaseBalance == ZERO) revert NO_AMOUNT_TO_CLAIM();
 
         uint256 mooShare = BEEFY_VAULT.getPricePerFullShare();
         uint256 gameMooBalance = gameData[gameID].mooBalance;
@@ -733,13 +732,9 @@ contract Come2Top {
             gameData[gameID].tickets = tickets;
         } else {
             playerClaimableMooAmount =
-                ((
-                    ((playerBaseBalance * 1e18) / gameBaseBalance) *
-                        gameSavedBalance ==
-                        ZERO
-                        ? gameMooBalance
-                        : gameBaseMoo
-                ) / 1e18) +
+                ((((playerBaseBalance * 1e18) / gameBaseBalance) *
+                    (gameSavedBalance == ZERO ? gameMooBalance : gameBaseMoo)) /
+                    1e18) +
                 (
                     gameSavedBalance == ZERO
                         ? ZERO
@@ -770,7 +765,7 @@ contract Come2Top {
             gameID,
             sender,
             claimedAmount,
-            int256(claimedAmount - playerBaseBalance)
+            int256(claimedAmount) - int256(playerBaseBalance)
         );
     }
 
@@ -804,7 +799,7 @@ contract Come2Top {
         if (gameID > currentGameID) gameID = currentGameID;
         (Status stat, , , bytes memory tickets) = _gameUpdate(gameID);
 
-        if (stat != Status.finished || stat != Status.claimable)
+        if (stat != Status.claimable)
             revert FETCHED_CLAIMABLE_AMOUNT(
                 stat,
                 ZERO,
@@ -826,7 +821,7 @@ contract Come2Top {
             delete totalPlayerTickets[gameID][player];
         }
 
-        if (playerBaseBalance == ZERO && playerSavedBalance == ZERO)
+        if (playerBaseBalance == ZERO)
             revert FETCHED_CLAIMABLE_AMOUNT(
                 stat,
                 ZERO,
@@ -857,13 +852,9 @@ contract Come2Top {
             gameData[gameID].tickets = tickets;
         } else {
             playerClaimableMooAmount =
-                ((
-                    ((playerBaseBalance * 1e18) / gameBaseBalance) *
-                        gameSavedBalance ==
-                        ZERO
-                        ? gameMooBalance
-                        : gameBaseMoo
-                ) / 1e18) +
+                ((((playerBaseBalance * 1e18) / gameBaseBalance) *
+                    (gameSavedBalance == ZERO ? gameMooBalance : gameBaseMoo)) /
+                    1e18) +
                 (
                     gameSavedBalance == ZERO
                         ? ZERO
@@ -895,7 +886,7 @@ contract Come2Top {
             playerBaseBalance,
             playerSavedBalance,
             claimedAmount,
-            int256(claimedAmount - playerBaseBalance)
+            int256(claimedAmount) - int256(playerBaseBalance)
         );
     }
 
