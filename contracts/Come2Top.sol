@@ -262,7 +262,7 @@ contract Come2Top {
             curveStablswapNG == ZERO_ADDRESS
         ) revert ZERO_ADDRESS_PROVIDED();
 
-        owner = msg.sender;
+        owner = tx.origin;
         maxTicketsPerGame = mtpg;
         ticketPrice = tp;
         prngPeriod = prngp;
@@ -445,9 +445,7 @@ contract Come2Top {
             ((MAX_PARTIES * neededToken).mintLPT(CURVE_STABLE_SWAP_NG))
                 .depositLPT(BEEFY_VAULT);
 
-            GD.mooBalance =
-                BEEFY_VAULT.balanceOf(THIS) -
-                beforeBalance;
+            GD.mooBalance = BEEFY_VAULT.balanceOf(THIS) - beforeBalance;
 
             emit GameStarted(gameID, currentL1Block, MAX_PARTIES * neededToken);
         } else {
@@ -537,7 +535,9 @@ contract Come2Top {
 
             uint256 beforeBalance = BEEFY_VAULT.balanceOf(THIS);
 
-            (uint256(O.amount).mintLPT(CURVE_STABLE_SWAP_NG)).depositLPT(BEEFY_VAULT);
+            (uint256(O.amount).mintLPT(CURVE_STABLE_SWAP_NG)).depositLPT(
+                BEEFY_VAULT
+            );
 
             unchecked {
                 gameData[gameID].mooBalance +=
@@ -799,6 +799,106 @@ contract Come2Top {
         emit StaleOffersTookBack(sender, refundableAmount);
     }
 
+    /// @dev Strange, isn't it? << Error Prone Getter >>
+    function claimableAmount(uint256 gameID, address player) external {
+        if (gameID > currentGameID) gameID = currentGameID;
+        (Status stat, , , bytes memory tickets) = _gameUpdate(gameID);
+
+        if (stat != Status.finished || stat != Status.claimable)
+            revert FETCHED_CLAIMABLE_AMOUNT(
+                stat,
+                ZERO,
+                ZERO,
+                ZERO,
+                int256(uint256(ZERO))
+            );
+
+        uint256 playerBaseBalance = playerBalanceData[gameID][player]
+            .baseBalance;
+        uint256 playerSavedBalance = playerBalanceData[gameID][player]
+            .savedBalance;
+
+        if (
+            tickets.length == ONE &&
+            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == player
+        ) {
+            playerSavedBalance += gameData[gameID].virtualBalance;
+            delete totalPlayerTickets[gameID][player];
+        }
+
+        if (playerBaseBalance == ZERO && playerSavedBalance == ZERO)
+            revert FETCHED_CLAIMABLE_AMOUNT(
+                stat,
+                ZERO,
+                ZERO,
+                ZERO,
+                int256(uint256(ZERO))
+            );
+
+        uint256 mooShare = BEEFY_VAULT.getPricePerFullShare();
+        uint256 gameMooBalance = gameData[gameID].mooBalance;
+        uint256 gameRewardedMoo = ((gameMooBalance * mooShare) / 1e18) -
+            gameMooBalance;
+        uint256 gameBaseMoo = gameMooBalance - gameRewardedMoo;
+
+        uint256 gameBaseBalance = gameData[gameID].baseBalance;
+        uint256 gameSavedBalance = gameData[gameID].savedBalance +
+            gameData[gameID].virtualBalance;
+
+        uint256 playerClaimableMooAmount;
+
+        if (gameBaseBalance == playerBaseBalance) {
+            playerClaimableMooAmount = gameMooBalance;
+
+            delete gameData[gameID].mooBalance;
+            delete gameData[gameID].baseBalance;
+            delete gameData[gameID].savedBalance;
+
+            gameData[gameID].tickets = tickets;
+        } else {
+            playerClaimableMooAmount =
+                ((
+                    ((playerBaseBalance * 1e18) / gameBaseBalance) *
+                        gameSavedBalance ==
+                        ZERO
+                        ? gameMooBalance
+                        : gameBaseMoo
+                ) / 1e18) +
+                (
+                    gameSavedBalance == ZERO
+                        ? ZERO
+                        : (((playerSavedBalance * 1e18) / gameSavedBalance) *
+                            gameRewardedMoo) / 1e18
+                );
+
+            gameData[gameID].mooBalance -= playerClaimableMooAmount;
+            gameData[gameID].baseBalance -= playerBaseBalance;
+            if (gameSavedBalance != ZERO)
+                gameData[gameID].savedBalance -= playerBalanceData[gameID][
+                    player
+                ].savedBalance;
+        }
+
+        delete playerBalanceData[gameID][player];
+        if (
+            tickets.length == ONE &&
+            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == player
+        ) delete gameData[gameID].virtualBalance;
+
+        uint256 beforeLPbalance = CURVE_STABLE_SWAP_NG.balanceOf(THIS);
+        playerClaimableMooAmount.withdrawLPT(BEEFY_VAULT);
+        uint256 claimedAmount = (CURVE_STABLE_SWAP_NG.balanceOf(THIS) -
+            beforeLPbalance).burnLPT(player, CURVE_STABLE_SWAP_NG);
+
+        revert FETCHED_CLAIMABLE_AMOUNT(
+            stat,
+            playerBaseBalance,
+            playerSavedBalance,
+            claimedAmount,
+            int256(claimedAmount - playerBaseBalance)
+        );
+    }
+
     /******************************\
     |-*-*-*-*-*   VIEW   *-*-*-*-*-|
     \******************************/
@@ -922,106 +1022,6 @@ contract Come2Top {
                 }
             }
         }
-    }
-
-    /// @dev Strange, isn't it? << Error Prone Getter >>
-    function claimableAmount(uint256 gameID, address player) external {
-        if (gameID > currentGameID) gameID = currentGameID;
-        (Status stat, , , bytes memory tickets) = _gameUpdate(gameID);
-
-        if (stat != Status.finished || stat != Status.claimable)
-            revert FETCHED_CLAIMABLE_AMOUNT(
-                stat,
-                ZERO,
-                ZERO,
-                ZERO,
-                int256(uint256(ZERO))
-            );
-
-        uint256 playerBaseBalance = playerBalanceData[gameID][player]
-            .baseBalance;
-        uint256 playerSavedBalance = playerBalanceData[gameID][player]
-            .savedBalance;
-
-        if (
-            tickets.length == ONE &&
-            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == player
-        ) {
-            playerSavedBalance += gameData[gameID].virtualBalance;
-            delete totalPlayerTickets[gameID][player];
-        }
-
-        if (playerBaseBalance == ZERO && playerSavedBalance == ZERO)
-            revert FETCHED_CLAIMABLE_AMOUNT(
-                stat,
-                ZERO,
-                ZERO,
-                ZERO,
-                int256(uint256(ZERO))
-            );
-
-        uint256 mooShare = BEEFY_VAULT.getPricePerFullShare();
-        uint256 gameMooBalance = gameData[gameID].mooBalance;
-        uint256 gameRewardedMoo = ((gameMooBalance * mooShare) / 1e18) -
-            gameMooBalance;
-        uint256 gameBaseMoo = gameMooBalance - gameRewardedMoo;
-
-        uint256 gameBaseBalance = gameData[gameID].baseBalance;
-        uint256 gameSavedBalance = gameData[gameID].savedBalance +
-            gameData[gameID].virtualBalance;
-
-        uint256 playerClaimableMooAmount;
-
-        if (gameBaseBalance == playerBaseBalance) {
-            playerClaimableMooAmount = gameMooBalance;
-
-            delete gameData[gameID].mooBalance;
-            delete gameData[gameID].baseBalance;
-            delete gameData[gameID].savedBalance;
-
-            gameData[gameID].tickets = tickets;
-        } else {
-            playerClaimableMooAmount =
-                ((
-                    ((playerBaseBalance * 1e18) / gameBaseBalance) *
-                        gameSavedBalance ==
-                        ZERO
-                        ? gameMooBalance
-                        : gameBaseMoo
-                ) / 1e18) +
-                (
-                    gameSavedBalance == ZERO
-                        ? ZERO
-                        : (((playerSavedBalance * 1e18) / gameSavedBalance) *
-                            gameRewardedMoo) / 1e18
-                );
-
-            gameData[gameID].mooBalance -= playerClaimableMooAmount;
-            gameData[gameID].baseBalance -= playerBaseBalance;
-            if (gameSavedBalance != ZERO)
-                gameData[gameID].savedBalance -= playerBalanceData[gameID][
-                    player
-                ].savedBalance;
-        }
-
-        delete playerBalanceData[gameID][player];
-        if (
-            tickets.length == ONE &&
-            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == player
-        ) delete gameData[gameID].virtualBalance;
-
-        uint256 beforeLPbalance = CURVE_STABLE_SWAP_NG.balanceOf(THIS);
-        playerClaimableMooAmount.withdrawLPT(BEEFY_VAULT);
-        uint256 claimedAmount = (CURVE_STABLE_SWAP_NG.balanceOf(THIS) -
-            beforeLPbalance).burnLPT(player, CURVE_STABLE_SWAP_NG);
-
-        revert FETCHED_CLAIMABLE_AMOUNT(
-            stat,
-            playerBaseBalance,
-            playerSavedBalance,
-            claimedAmount,
-            int256(claimedAmount - playerBaseBalance)
-        );
     }
 
     /**
@@ -1330,11 +1330,13 @@ contract Come2Top {
         pure
         returns (bool, uint8)
     {
-        for (uint256 i = tickets.length - ONE; i >= ZERO; ) {
+        uint256 i = tickets.length - ONE;
+        while (true) {
             if (uint8(tickets[i]) == ticketID) {
                 return (true, uint8(i));
             }
 
+            if (i == ZERO) break;
             unchecked {
                 i--;
             }
@@ -1369,16 +1371,12 @@ contract Come2Top {
         eligibleToSell = GD.eligibleToSell;
 
         uint256 currentL1Block = SUPERCHAIN_L1_BLOCK.number();
-        bool isClaimable = GD.startedL1Block + L1_BLOCK_LOCK_TIME >
-            currentL1Block;
 
         if (GD.startedL1Block == ZERO) stat = Status.ticketSale;
         else if (GD.mooBalance == ZERO) {
             stat = Status.completed;
             eligibleToSell = N_ONE;
-        } else if (GD.eligibleToSell == N_ONE && !isClaimable)
-            stat = Status.finished;
-        else {
+        } else {
             currentWave = GD.updatedWave;
             uint256 lastUpdatedWave;
             uint256 accumulatedBlocks;
@@ -1392,6 +1390,24 @@ contract Come2Top {
                         accumulatedBlocks += WAVE_ELIGIBLES_TIME / i;
                         i++;
                     }
+                }
+
+                if (GD.eligibleToSell == N_ONE) {
+                    stat = GD.startedL1Block +
+                        L1_BLOCK_LOCK_TIME +
+                        accumulatedBlocks +
+                        currentWave *
+                        waitingDuration <
+                        currentL1Block
+                        ? Status.claimable
+                        : Status.finished;
+
+                    return (
+                        stat,
+                        eligibleToSell,
+                        currentWave,
+                        remainingTickets
+                    );
                 }
             } else {
                 if (!(GD.startedL1Block + waitingDuration < currentL1Block))
@@ -1426,21 +1442,30 @@ contract Come2Top {
                         remainingTickets.length / TWO
                     );
 
+                    eligibleToSell = int256(remainingTickets.length / TWO);
+
+                    if (remainingTickets.length == ONE) {
+                        eligibleToSell = N_ONE;
+                        currentWave = lastUpdatedWave;
+
+                        stat = GD.startedL1Block +
+                            L1_BLOCK_LOCK_TIME +
+                            accumulatedBlocks +
+                            currentWave *
+                            waitingDuration <
+                            currentL1Block
+                            ? Status.claimable
+                            : Status.finished;
+
+                        break;
+                    }
+
                     unchecked {
                         accumulatedBlocks +=
                             WAVE_ELIGIBLES_TIME /
                             lastUpdatedWave;
                         currentWave++;
                         lastUpdatedWave++;
-                        eligibleToSell = int256(remainingTickets.length / TWO);
-                    }
-
-                    if (remainingTickets.length == ONE) {
-                        eligibleToSell = N_ONE;
-                        currentWave = lastUpdatedWave;
-                        stat = isClaimable ? Status.claimable : Status.finished;
-
-                        break;
                     }
                 } else {
                     if (
