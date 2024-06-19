@@ -50,17 +50,7 @@ contract DummyFraxStablecoin {
             balanceOf[to] += amount;
             totalSupply += amount;
         }
-        emit Transfer(address(0), to, amount);
-    }
-
-    function internalBurn(address from, uint256 amount) external {
-        require(msg.sender == OWNER, "ONLY_OWNER");
-
-        unchecked {
-            balanceOf[from] -= amount;
-            totalSupply -= amount;
-        }
-        emit Transfer(from, address(0), amount);
+        emit Transfer(OWNER, to, amount);
     }
 
     function mint() external {

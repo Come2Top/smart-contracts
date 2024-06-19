@@ -3,6 +3,8 @@ pragma solidity 0.8.20;
 
 import {IERC20} from "./interfaces/IERC20.sol";
 import {ISuperchainL1Block} from "./interfaces/ISuperchainL1Block.sol";
+import {IBeefyVaultV7} from "./interfaces/IBeefyVaultV7.sol";
+import {ICurveStableSwapNG} from "./interfaces/ICurveStableSwapNG.sol";
 
 import {CurveMooLib} from "./libraries/CurveMooLib.sol";
 
@@ -90,6 +92,8 @@ contract Come2Top {
     address public immutable TREASURY;
     address public immutable THIS = address(this);
     ISuperchainL1Block public immutable SUPERCHAIN_L1_BLOCK;
+    IBeefyVaultV7 public immutable BEEFY_VAULT;
+    ICurveStableSwapNG public immutable CURVE_STABLE_SWAP_NG;
     bytes private constant BYTE_TICKETS =
         hex"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
     // Mainnet
@@ -242,7 +246,9 @@ contract Come2Top {
         uint256 prngp,
         address token,
         address treasury,
-        address superchainL1Block
+        address superchainL1Block,
+        address beefyVault,
+        address curveStablswapNG
     ) {
         _checkMTPG(mtpg);
         _checkTP(tp);
@@ -251,7 +257,9 @@ contract Come2Top {
         if (
             token == ZERO_ADDRESS ||
             treasury == ZERO_ADDRESS ||
-            superchainL1Block == ZERO_ADDRESS
+            superchainL1Block == ZERO_ADDRESS ||
+            beefyVault == ZERO_ADDRESS ||
+            curveStablswapNG == ZERO_ADDRESS
         ) revert ZERO_ADDRESS_PROVIDED();
 
         owner = msg.sender;
@@ -261,6 +269,8 @@ contract Come2Top {
         TOKEN = IERC20(token);
         TREASURY = treasury;
         SUPERCHAIN_L1_BLOCK = ISuperchainL1Block(superchainL1Block);
+        BEEFY_VAULT = IBeefyVaultV7(beefyVault);
+        CURVE_STABLE_SWAP_NG = ICurveStableSwapNG(curveStablswapNG);
         gameData[ZERO].tickets = BYTE_TICKETS;
         unchecked {
             MAGIC_VALUE = uint160(address(this)) * block.chainid;
@@ -269,14 +279,8 @@ contract Come2Top {
         (bool ok, ) = treasury.call(abi.encode(token));
         if (!ok) revert APROVE_OPERATION_FAILED();
 
-        (TOKEN).approve(
-            address(CurveMooLib.CurveStableSwapNG),
-            type(uint256).max
-        );
-        (CurveMooLib.CurveStableSwapNG).approve(
-            address(CurveMooLib.BeefyVaultV7),
-            type(uint256).max
-        );
+        TOKEN.approve(address(CURVE_STABLE_SWAP_NG), type(uint256).max);
+        CURVE_STABLE_SWAP_NG.approve(address(BEEFY_VAULT), type(uint256).max);
     }
 
     /*******************************\
@@ -366,7 +370,7 @@ contract Come2Top {
     function ticketSaleOperation(uint8[] calldata ticketIDs) external onlyEOA {
         address sender = msg.sender;
         uint256 gameID = currentGameID;
-        uint256 neededFRAX = ticketPrice;
+        uint256 neededToken = ticketPrice;
         uint256 totalTickets = ticketIDs.length;
         uint256 ticketLimit = maxTicketsPerGame;
         bytes memory realTickets;
@@ -424,7 +428,7 @@ contract Come2Top {
 
         if (totalTickets == ZERO) revert SELECTED_TICKETS_SOLDOUT_BEFORE();
 
-        _transferFromHelper(sender, THIS, (totalTickets * neededFRAX));
+        _transferFromHelper(sender, THIS, (totalTickets * neededToken));
 
         emit TicketsSold(sender, realTickets);
 
@@ -433,18 +437,19 @@ contract Come2Top {
             GD.prngPeriod = uint112(prngPeriod);
             GD.startedL1Block = currentL1Block;
             GD.tickets = BYTE_TICKETS;
-            GD.baseBalance = MAX_PARTIES * neededFRAX;
-            GD.virtualBalance = MAX_PARTIES * neededFRAX;
+            GD.baseBalance = MAX_PARTIES * neededToken;
+            GD.virtualBalance = MAX_PARTIES * neededToken;
 
-            uint256 beforeBalance = CurveMooLib.BeefyVaultV7.balanceOf(THIS);
+            uint256 beforeBalance = BEEFY_VAULT.balanceOf(THIS);
 
-            ((MAX_PARTIES * neededFRAX).mintLPT()).depositLPT();
+            ((MAX_PARTIES * neededToken).mintLPT(CURVE_STABLE_SWAP_NG))
+                .depositLPT(BEEFY_VAULT);
 
             GD.mooBalance =
-                CurveMooLib.BeefyVaultV7.balanceOf(THIS) -
+                BEEFY_VAULT.balanceOf(THIS) -
                 beforeBalance;
 
-            emit GameStarted(gameID, currentL1Block, MAX_PARTIES * neededFRAX);
+            emit GameStarted(gameID, currentL1Block, MAX_PARTIES * neededToken);
         } else {
             GD.tickets = tickets;
             unchecked {
@@ -455,7 +460,7 @@ contract Come2Top {
         unchecked {
             totalPlayerTickets[gameID][sender] += uint8(totalTickets);
             playerBalanceData[gameID][sender].baseBalance += uint120(
-                totalTickets * neededFRAX
+                totalTickets * neededToken
             );
         }
     }
@@ -530,13 +535,13 @@ contract Come2Top {
 
             _transferFromHelper(TREASURY, THIS, O.amount);
 
-            uint256 beforeBalance = CurveMooLib.BeefyVaultV7.balanceOf(THIS);
+            uint256 beforeBalance = BEEFY_VAULT.balanceOf(THIS);
 
-            (uint256(O.amount).mintLPT()).depositLPT();
+            (uint256(O.amount).mintLPT(CURVE_STABLE_SWAP_NG)).depositLPT(BEEFY_VAULT);
 
             unchecked {
                 gameData[gameID].mooBalance +=
-                    CurveMooLib.BeefyVaultV7.balanceOf(THIS) -
+                    BEEFY_VAULT.balanceOf(THIS) -
                     beforeBalance;
             }
 
@@ -706,7 +711,7 @@ contract Come2Top {
         if (playerBaseBalance == ZERO && playerSavedBalance == ZERO)
             revert NO_AMOUNT_TO_CLAIM();
 
-        uint256 mooShare = CurveMooLib.BeefyVaultV7.getPricePerFullShare();
+        uint256 mooShare = BEEFY_VAULT.getPricePerFullShare();
         uint256 gameMooBalance = gameData[gameID].mooBalance;
         uint256 gameRewardedMoo = ((gameMooBalance * mooShare) / 1e18) -
             gameMooBalance;
@@ -756,10 +761,10 @@ contract Come2Top {
             tempTicketOwnership[gameID][uint8(tickets[ZERO])] == sender
         ) delete gameData[gameID].virtualBalance;
 
-        uint256 beforeLPbalance = CurveMooLib.CurveStableSwapNG.balanceOf(THIS);
-        playerClaimableMooAmount.withdrawLPT();
-        uint256 claimedAmount = (CurveMooLib.CurveStableSwapNG.balanceOf(THIS) -
-            beforeLPbalance).burnLPT(sender);
+        uint256 beforeLPbalance = CURVE_STABLE_SWAP_NG.balanceOf(THIS);
+        playerClaimableMooAmount.withdrawLPT(BEEFY_VAULT);
+        uint256 claimedAmount = (CURVE_STABLE_SWAP_NG.balanceOf(THIS) -
+            beforeLPbalance).burnLPT(sender, CURVE_STABLE_SWAP_NG);
 
         emit Claimed(
             gameID,
@@ -955,7 +960,7 @@ contract Come2Top {
                 int256(uint256(ZERO))
             );
 
-        uint256 mooShare = CurveMooLib.BeefyVaultV7.getPricePerFullShare();
+        uint256 mooShare = BEEFY_VAULT.getPricePerFullShare();
         uint256 gameMooBalance = gameData[gameID].mooBalance;
         uint256 gameRewardedMoo = ((gameMooBalance * mooShare) / 1e18) -
             gameMooBalance;
@@ -1005,10 +1010,10 @@ contract Come2Top {
             tempTicketOwnership[gameID][uint8(tickets[ZERO])] == player
         ) delete gameData[gameID].virtualBalance;
 
-        uint256 beforeLPbalance = CurveMooLib.CurveStableSwapNG.balanceOf(THIS);
-        playerClaimableMooAmount.withdrawLPT();
-        uint256 claimedAmount = (CurveMooLib.CurveStableSwapNG.balanceOf(THIS) -
-            beforeLPbalance).burnLPT(player);
+        uint256 beforeLPbalance = CURVE_STABLE_SWAP_NG.balanceOf(THIS);
+        playerClaimableMooAmount.withdrawLPT(BEEFY_VAULT);
+        uint256 claimedAmount = (CURVE_STABLE_SWAP_NG.balanceOf(THIS) -
+            beforeLPbalance).burnLPT(player, CURVE_STABLE_SWAP_NG);
 
         revert FETCHED_CLAIMABLE_AMOUNT(
             stat,
@@ -1459,7 +1464,7 @@ contract Come2Top {
     function _checkMTPG(uint8 value) private pure {
         _revertOnZeroUint(value);
 
-        if (value > EIGHT) revert VALUE_CANT_BE_GREATER_THAN(EIGHT);
+        // if (value > EIGHT) revert VALUE_CANT_BE_GREATER_THAN(EIGHT);
     }
 
     /**

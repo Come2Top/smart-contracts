@@ -7,31 +7,21 @@ import {IBeefyVaultV7} from "../interfaces/IBeefyVaultV7.sol";
 // ONLY USABLE for CURVE STABLESWAP NG
 library CurveMooLib {
     uint256 private constant $_I = 1;
-    ICurveStableSwapNG internal constant CurveStableSwapNG =
-    // Fraxtal Mainnet
-        ICurveStableSwapNG(0x63Eb7846642630456707C3efBb50A03c79B89D81);
-    // Simulated on Fraxtal Testnet
-        // ICurveStableSwapNG();
-    IBeefyVaultV7 internal constant BeefyVaultV7 =
-    // Fraxtal Mainnet
-        IBeefyVaultV7(0x01Fbf9B624a6133Ab04Fc4000ae513AC97e4d114);
-    // Simulated on Fraxtal Testnet
-        // IBeefyVaultV7();
 
-    function mintLPT(uint256 depositAmount) internal returns (uint256) {
+    function mintLPT(uint256 depositAmount, ICurveStableSwapNG curveStableswapNG) internal returns (uint256) {
         uint256[8] memory depositAmounts;
         depositAmounts[$_I] = depositAmount;
 
         return
-            CurveStableSwapNG.add_liquidity(depositAmounts, $_I, address(this));
+            curveStableswapNG.add_liquidity(depositAmounts, $_I, address(this));
     }
 
-    function burnLPT(uint256 withdrawAmount, address receiver)
+    function burnLPT(uint256 withdrawAmount, address receiver, ICurveStableSwapNG curveStableswapNG)
         internal
         returns (uint256)
     {
         return
-            CurveStableSwapNG.remove_liquidity_one_coin(
+            curveStableswapNG.remove_liquidity_one_coin(
                 withdrawAmount,
                 int128(uint128($_I)),
                 $_I,
@@ -39,11 +29,11 @@ library CurveMooLib {
             );
     }
 
-    function depositLPT(uint256 amount) internal {
-        BeefyVaultV7.deposit(amount);
+    function depositLPT(uint256 amount, IBeefyVaultV7 beefyVault) internal {
+        beefyVault.deposit(amount);
     }
 
-    function withdrawLPT(uint256 share) internal {
-        BeefyVaultV7.withdraw(share);
+    function withdrawLPT(uint256 share, IBeefyVaultV7 beefyVault) internal {
+        beefyVault.withdraw(share);
     }
 }
