@@ -12,7 +12,7 @@ contract DummyBeefyVaultV7 {
 
     address public come2Top;
     uint256 public totalSupply;
-    uint256 private lastUpdatedTime;
+    uint256 public supplyWatcher;
     mapping(address => uint256) public balanceOf;
 
     constructor() {
@@ -29,14 +29,15 @@ contract DummyBeefyVaultV7 {
         address sender = msg.sender;
         require(sender == come2Top);
 
+        if (totalSupply == 0) supplyWatcher = block.timestamp;
+        uint256 bal = balance();
         CurveStableSwapNG.transferFrom(sender, address(this), amount);
 
         uint256 shares;
         totalSupply == 0 ? shares = amount : shares =
             (amount * totalSupply) /
-            balance();
+            bal;
 
-        lastUpdatedTime = block.timestamp;
         totalSupply += shares;
         balanceOf[sender] += shares;
     }
@@ -47,28 +48,28 @@ contract DummyBeefyVaultV7 {
 
         CurveStableSwapNG.internalBurn(shares);
 
-        lastUpdatedTime = block.timestamp;
         balanceOf[sender] -= shares;
         totalSupply -= shares;
+
+        if (totalSupply == 0) delete supplyWatcher;
 
         CurveStableSwapNG.transfer(sender, asset);
     }
 
     function getPricePerFullShare() external view returns (uint256) {
-        return
-            totalSupply == 0
-                ? 1e18
-                : 1e18 +
-                    (balance() *
-                        (100 +
-                            ((block.timestamp - lastUpdatedTime) /
-                                8 minutes))) /
-                    (totalSupply * 100);
+        return totalSupply == 0 ? 1e18 : (balance() * 1e18) / totalSupply;
     }
 
     function balance() public view returns (uint256) {
-        return
-            CurveStableSwapNG.balanceOf(address(this)) +
-            ((1e18 * (block.timestamp - lastUpdatedTime)) / 8 minutes);
+        if (totalSupply == 0) return 0;
+
+        uint256 bal = CurveStableSwapNG.balanceOf(address(this));
+
+        // using simple interest for test
+        uint256 n = block.timestamp - supplyWatcher;
+        if (n == 0) n = 1;
+
+        // interest rate = 2777777777777/s (1e18 base -> 1% every hour == 1e16 of balance)
+        return bal + ((bal * n * 2777777777777) / 1e18);
     }
 }
