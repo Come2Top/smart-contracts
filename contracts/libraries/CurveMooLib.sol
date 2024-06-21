@@ -1,39 +1,37 @@
 //  SPDX-License-Identifier: -- Come2Top --
 pragma solidity 0.8.20;
 
-import {ICurveStableSwapNG} from "../interfaces/ICurveStableSwapNG.sol";
-import {IBeefyVaultV7} from "../interfaces/IBeefyVaultV7.sol";
+import {ICurveStableNG} from "../interfaces/ICurveStableNG.sol";
+import {IBeefyVault} from "../interfaces/IBeefyVault.sol";
 
 // ONLY USABLE for CURVE STABLESWAP NG
 library CurveMooLib {
-    uint256 private constant $_I = 1;
-
-    function mintLPT(uint256 depositAmount, ICurveStableSwapNG curveStableswapNG) internal returns (uint256) {
+    function mintLPT(uint256 depositAmount, uint256 fraxTokenPosition, ICurveStableNG curveStableNG) internal returns (uint256) {
         uint256[8] memory depositAmounts;
-        depositAmounts[$_I] = depositAmount;
+        depositAmounts[fraxTokenPosition] = depositAmount;
 
         return
-            curveStableswapNG.add_liquidity(depositAmounts, $_I, address(this));
+            curveStableNG.add_liquidity(depositAmounts, 0, address(this));
     }
 
-    function burnLPT(uint256 withdrawAmount, address receiver, ICurveStableSwapNG curveStableswapNG)
+    function burnLPT(uint256 withdrawAmount, address receiver, uint256 fraxTokenPosition, ICurveStableNG curveStableNG)
         internal
         returns (uint256)
     {
         return
-            curveStableswapNG.remove_liquidity_one_coin(
+            curveStableNG.remove_liquidity_one_coin(
                 withdrawAmount,
-                int128(uint128($_I)),
-                $_I,
+                int128(uint128(fraxTokenPosition)),
+                0,
                 receiver
             );
     }
 
-    function depositLPT(uint256 amount, IBeefyVaultV7 beefyVault) internal {
+    function depositLPT(uint256 amount, IBeefyVault beefyVault) internal {
         beefyVault.deposit(amount);
     }
 
-    function withdrawLPT(uint256 share, IBeefyVaultV7 beefyVault) internal {
+    function withdrawLPT(uint256 share, IBeefyVault beefyVault) internal {
         beefyVault.withdraw(share);
     }
 }

@@ -1,12 +1,12 @@
 //  SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-interface IBeefyVaultV7 {
+interface IBeefyVault {
     /**
      * @dev The entrypoint of funds into the system. People deposit with this function
      * into the vault. The vault is then in charge of sending funds into the strategy.
      */
-    function deposit(uint amount) external;
+    function deposit(uint256 amount) external;
 
     /**
      * @dev Function to exit the system. The vault will withdraw the required tokens
@@ -18,4 +18,6 @@ interface IBeefyVaultV7 {
     function getPricePerFullShare() external view returns (uint256);
 
     function balanceOf(address account) external view returns (uint256);
+
+    function want() external view returns (address);
 }
