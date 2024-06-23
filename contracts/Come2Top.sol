@@ -93,6 +93,7 @@ contract Come2Top {
     mapping(uint256 => mapping(address => PlayerGameBalance))
         public playerBalanceData;
     mapping(uint256 => mapping(uint8 => Offer)) public offer;
+    mapping(address => uint256[]) public playerRecentGames;
 
     /*******************************\
     |-*-*-*-*   CONSTANTS   *-*-*-*-|
@@ -130,6 +131,7 @@ contract Come2Top {
     uint8 private constant ONE = 1;
     uint8 private constant TWO = 2;
     uint8 private constant THREE = 3;
+    uint8 private constant SIX = 6;
     uint8 private constant SEVEN = 7;
     uint8 private constant EIGHT = 8;
 
@@ -254,6 +256,7 @@ contract Come2Top {
         uint8 mtpg,
         uint80 tp,
         uint48 prngp,
+        uint8 gameStrat,
         address frax,
         address treasury,
         address fraxtalL1Block,
@@ -262,6 +265,7 @@ contract Come2Top {
         _checkMTPG(mtpg);
         _checkTP(tp);
         _checkPRNGP(prngp);
+        _checkGS(gameStrat);
 
         if (
             frax == ZERO_ADDRESS ||
@@ -273,6 +277,7 @@ contract Come2Top {
         maxTicketsPerGame = mtpg;
         ticketPrice = tp;
         prngPeriod = prngp;
+        currentGameStrat = gameStrat;
         FRAX = IERC20(frax);
         TREASURY = treasury;
         FRAXTAL_L1_BLOCK = ISuperchainL1Block(fraxtalL1Block);
@@ -331,6 +336,12 @@ contract Come2Top {
         if (owner == ZERO_ADDRESS) revert ZERO_ADDRESS_PROVIDED();
 
         owner = newOwner;
+    }
+
+    function changeGameStrat(uint8 newGameStrat) external onlyOwner {
+        _checkGS(newGameStrat);
+
+        currentGameStrat = newGameStrat;
     }
 
     /**
@@ -508,6 +519,14 @@ contract Come2Top {
                 totalTickets * neededToken
             );
         }
+
+        if (
+            playerRecentGames[msg.sender].length == 0 ||
+            playerRecentGames[msg.sender][
+                playerRecentGames[msg.sender].length - 1
+            ] ==
+            gameID
+        ) playerRecentGames[msg.sender].push(gameID);
     }
 
     /**
@@ -605,6 +624,14 @@ contract Come2Top {
                 msg.sender
             );
 
+            if (
+                playerRecentGames[O.maker].length == 0 ||
+                playerRecentGames[O.maker][
+                    playerRecentGames[O.maker].length - 1
+                ] ==
+                gameID
+            ) playerRecentGames[O.maker].push(gameID);
+
             return;
         }
 
@@ -683,7 +710,6 @@ contract Come2Top {
         @param amount The amount of the offer in {FRAX} tokens.
     */
     function offerOperation(uint8 ticketID, uint96 amount) external onlyEOA {
-        address sender = msg.sender;
         uint256 gameID = currentGameID;
 
         (
@@ -696,7 +722,7 @@ contract Come2Top {
         uint256 plus10PCT = _ticketValue(tickets.length, gameID);
         plus10PCT += (plus10PCT * MIN_TICKET_VALUE_OFFER) / BASIS;
         Offer memory O = offer[gameID][ticketID];
-        uint256 offerorStaleAmount = _staleOffers(sender);
+        uint256 offerorStaleAmount = _staleOffers(msg.sender);
 
         _onlyOperational(currentWave, stat);
         _onlyWinnerTicket(tickets, ticketID);
@@ -710,18 +736,19 @@ contract Come2Top {
         if (offerorStaleAmount < amount) {
             uint256 diffOfferWithStaleAmount = amount - offerorStaleAmount;
 
-            _transferFromHelper(sender, TREASURY, diffOfferWithStaleAmount);
+            _transferFromHelper(msg.sender, TREASURY, diffOfferWithStaleAmount);
 
             unchecked {
-                offerorData[sender]
+                offerorData[msg.sender]
                     .totalOffersValue += diffOfferWithStaleAmount;
             }
         }
 
-        if (offerorData[sender].latestGameID != gameID) {
-            offerorData[sender].latestGameID = uint160(gameID);
-            offerorData[sender].latestGameIDoffersValue = uint96(amount);
-        } else offerorData[sender].latestGameIDoffersValue += uint96(amount);
+        if (offerorData[msg.sender].latestGameID != gameID) {
+            offerorData[msg.sender].latestGameID = uint160(gameID);
+            offerorData[msg.sender].latestGameIDoffersValue = uint96(amount);
+        } else
+            offerorData[msg.sender].latestGameIDoffersValue += uint96(amount);
 
         if (O.maker != ZERO_ADDRESS) {
             _transferFromHelper(TREASURY, O.maker, O.amount);
@@ -732,9 +759,9 @@ contract Come2Top {
             }
         }
 
-        offer[gameID][ticketID] = Offer(amount, sender);
+        offer[gameID][ticketID] = Offer(amount, msg.sender);
 
-        emit OfferMade(sender, ticketID, amount, O.maker);
+        emit OfferMade(msg.sender, ticketID, amount, O.maker);
     }
 
     /**
@@ -849,19 +876,17 @@ contract Come2Top {
                 Only the player who made the offers can call this function.
         */
     function takeBackStaleOffers() external {
-        address sender = msg.sender;
-
-        uint256 refundableAmount = _staleOffers(sender);
+        uint256 refundableAmount = _staleOffers(msg.sender);
 
         if (refundableAmount == ZERO) revert NO_AMOUNT_TO_REFUND();
 
         unchecked {
-            offerorData[sender].totalOffersValue -= refundableAmount;
+            offerorData[msg.sender].totalOffersValue -= refundableAmount;
         }
 
-        _transferFromHelper(TREASURY, sender, refundableAmount);
+        _transferFromHelper(TREASURY, msg.sender, refundableAmount);
 
-        emit StaleOffersTookBack(sender, refundableAmount);
+        emit StaleOffersTookBack(msg.sender, refundableAmount);
     }
 
     /// @dev Strange, isn't it? << Error Prone Getter >>
@@ -1095,6 +1120,78 @@ contract Come2Top {
                 unchecked {
                     index++;
                 }
+            }
+        }
+    }
+
+    function paginatedPlayerGames(uint256 page)
+        external
+        view
+        returns (
+            uint256 currentPage,
+            uint256 totalPages,
+            uint256[] memory paggedArray
+        )
+    {
+        if (playerRecentGames[msg.sender].length == 0)
+            return (currentPage, totalPages, paggedArray);
+        else if (playerRecentGames[msg.sender].length < 11) {
+            paggedArray = new uint256[](playerRecentGames[msg.sender].length);
+
+            uint256 x;
+            while (true) {
+                paggedArray[x] = playerRecentGames[msg.sender][
+                    playerRecentGames[msg.sender].length - 1 - x
+                ];
+
+                if (x == playerRecentGames[msg.sender].length - 1) break;
+
+                unchecked {
+                    x++;
+                }
+            }
+
+            return (1, 1, paggedArray);
+        }
+
+        if (page == 0) page = 1;
+
+        totalPages = playerRecentGames[msg.sender].length / 10;
+
+        uint256 diffLength = playerRecentGames[msg.sender].length -
+            (totalPages * 10);
+
+        if (totalPages * 10 < playerRecentGames[msg.sender].length)
+            totalPages++;
+        if (page > totalPages) page = totalPages;
+        currentPage = page;
+
+        uint256 firstIndex;
+        uint256 lastIndex;
+        if (page == 1) {
+            firstIndex = playerRecentGames[msg.sender].length - 1;
+            lastIndex = firstIndex - 10;
+        } else if (page == totalPages)
+            firstIndex = diffLength == 0 ? firstIndex = 9 : diffLength - 1;
+        else {
+            firstIndex +=
+                ((totalPages - page) * 10) +
+                (diffLength != 0 ? diffLength - 1 : 0);
+            lastIndex +=
+                ((totalPages - page - 1) * 10) +
+                (diffLength != 0 ? diffLength - 1 : 0);
+        }
+
+        paggedArray = new uint256[]((firstIndex + 1) - lastIndex);
+
+        uint256 i;
+        while (true) {
+            paggedArray[i] = playerRecentGames[msg.sender][firstIndex];
+
+            if (firstIndex == lastIndex) break;
+            unchecked {
+                i++;
+                firstIndex--;
             }
         }
     }
@@ -1588,6 +1685,12 @@ contract Come2Top {
 
         if (value < MIN_TICKET_PRICE)
             revert VALUE_CANT_BE_LOWER_THAN(MIN_TICKET_PRICE);
+    }
+
+    function _checkGS(uint8 value) private pure {
+
+        if (value > SIX)
+            revert VALUE_CANT_BE_GREATER_THAN(MIN_TICKET_PRICE);
     }
 
     /**
