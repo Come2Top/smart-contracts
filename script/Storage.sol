@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {IDeft} from "../test/interface/IDeft.sol";
-import {IDeftGame} from "../test/interface/IDeftGame.sol";
+import {IFrax} from "../test/interface/IFrax.sol";
+import {ICome2Top} from "../test/interface/ICome2Top.sol";
 
 abstract contract Storage {
-    IDeft constant internal _deft_ = IDeft(0x5c44535db05EfF9c84E89278Ee32BAbDC7EfB6cA);
-    IDeftGame constant internal _deftGame_ = IDeftGame(0x87be7A58D8a32dC69f32349D7342a94A0453952c);
+    ICome2Top internal constant _COME2TOP_ =
+        ICome2Top(0xD006944fB69DA8e38283acfEc4fFDf650205A18F);
+    IFrax internal constant _FRAX_ =
+        IFrax(0x358a46eF6f6Af38C8211daE29E9d0ae10469C66b);
     uint256[] internal _privateKeys_ = [
         0x7fc66c1f98a1cc8355601f5620e44328d3c7a4eff2cbf37d3705832e697c79a4,
         0x249b1b58b770c5a26cbedbd78f15d2c2784bccaf4833b7e895603a4397567297,
