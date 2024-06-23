@@ -12,13 +12,18 @@
 				"type": "uint80"
 			},
 			{
-				"internalType": "uint256",
+				"internalType": "uint48",
 				"name": "prngp",
-				"type": "uint256"
+				"type": "uint48"
+			},
+			{
+				"internalType": "uint8",
+				"name": "gameStrat",
+				"type": "uint8"
 			},
 			{
 				"internalType": "address",
-				"name": "token",
+				"name": "frax",
 				"type": "address"
 			},
 			{
@@ -28,8 +33,13 @@
 			},
 			{
 				"internalType": "address",
-				"name": "superchainL1Block",
+				"name": "fraxtalL1Block",
 				"type": "address"
+			},
+			{
+				"internalType": "address[7]",
+				"name": "beefyVaults",
+				"type": "address[7]"
 			}
 		],
 		"stateMutability": "nonpayable",
@@ -80,6 +90,16 @@
 			}
 		],
 		"name": "FETCHED_CLAIMABLE_AMOUNT",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "FRAX_TOKEN_NOT_FOUND",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "INVALID_CURVE_PAIR",
 		"type": "error"
 	},
 	{
@@ -482,12 +502,12 @@
 	},
 	{
 		"inputs": [],
-		"name": "MAGIC_VALUE",
+		"name": "FRAX",
 		"outputs": [
 			{
-				"internalType": "uint256",
+				"internalType": "contract IERC20",
 				"name": "",
-				"type": "uint256"
+				"type": "address"
 			}
 		],
 		"stateMutability": "view",
@@ -495,12 +515,25 @@
 	},
 	{
 		"inputs": [],
-		"name": "SUPERCHAIN_L1_BLOCK",
+		"name": "FRAXTAL_L1_BLOCK",
 		"outputs": [
 			{
 				"internalType": "contract ISuperchainL1Block",
 				"name": "",
 				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "MAGIC_VALUE",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",
@@ -521,19 +554,6 @@
 	},
 	{
 		"inputs": [],
-		"name": "TOKEN",
-		"outputs": [
-			{
-				"internalType": "contract IERC20",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
 		"name": "TREASURY",
 		"outputs": [
 			{
@@ -543,6 +563,19 @@
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint8",
+				"name": "newGameStrat",
+				"type": "uint8"
+			}
+		],
+		"name": "changeGameStrat",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -574,9 +607,9 @@
 	{
 		"inputs": [
 			{
-				"internalType": "uint256",
+				"internalType": "uint48",
 				"name": "newPRNGP",
-				"type": "uint256"
+				"type": "uint48"
 			}
 		],
 		"name": "changePRNGperiod",
@@ -734,6 +767,19 @@
 		"type": "function"
 	},
 	{
+		"inputs": [],
+		"name": "currentGameStrat",
+		"outputs": [
+			{
+				"internalType": "uint8",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [
 			{
 				"internalType": "uint256",
@@ -759,33 +805,38 @@
 				"type": "uint8"
 			},
 			{
+				"internalType": "uint8",
+				"name": "chosenConfig",
+				"type": "uint8"
+			},
+			{
 				"internalType": "uint112",
 				"name": "prngPeriod",
 				"type": "uint112"
 			},
 			{
-				"internalType": "uint120",
+				"internalType": "uint112",
 				"name": "startedL1Block",
-				"type": "uint120"
+				"type": "uint112"
 			},
 			{
 				"internalType": "uint256",
-				"name": "mooBalance",
+				"name": "mooTokenBalance",
 				"type": "uint256"
 			},
 			{
 				"internalType": "uint256",
-				"name": "baseBalance",
+				"name": "initialFraxBalance",
 				"type": "uint256"
 			},
 			{
 				"internalType": "uint256",
-				"name": "savedBalance",
+				"name": "loanedFraxBalance",
 				"type": "uint256"
 			},
 			{
 				"internalType": "uint256",
-				"name": "virtualBalance",
+				"name": "virtualFraxBalance",
 				"type": "uint256"
 			},
 			{
@@ -829,7 +880,7 @@
 			},
 			{
 				"internalType": "uint256",
-				"name": "virtualBalance",
+				"name": "virtualFraxBalance",
 				"type": "uint256"
 			},
 			{
@@ -841,6 +892,35 @@
 				"internalType": "uint256[]",
 				"name": "winnerTickets",
 				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "gameStratConfig",
+		"outputs": [
+			{
+				"internalType": "uint96",
+				"name": "fraxTokenPosition",
+				"type": "uint96"
+			},
+			{
+				"internalType": "contract ICurveStableNG",
+				"name": "curveStableNG",
+				"type": "address"
+			},
+			{
+				"internalType": "contract IBeefyVault",
+				"name": "beefyVault",
+				"type": "address"
 			}
 		],
 		"stateMutability": "view",
@@ -977,6 +1057,35 @@
 		"type": "function"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "page",
+				"type": "uint256"
+			}
+		],
+		"name": "paginatedPlayerGames",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "currentPage",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "totalPages",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "paggedArray",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [],
 		"name": "pause",
 		"outputs": [
@@ -1006,13 +1115,37 @@
 		"outputs": [
 			{
 				"internalType": "uint120",
-				"name": "baseBalance",
+				"name": "initialFraxBalance",
 				"type": "uint120"
 			},
 			{
 				"internalType": "uint120",
-				"name": "savedBalance",
+				"name": "loanedFraxBalance",
 				"type": "uint120"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "playerRecentGames",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",
@@ -1023,9 +1156,9 @@
 		"name": "prngPeriod",
 		"outputs": [
 			{
-				"internalType": "uint256",
+				"internalType": "uint248",
 				"name": "",
-				"type": "uint256"
+				"type": "uint248"
 			}
 		],
 		"stateMutability": "view",
