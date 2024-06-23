@@ -6,18 +6,23 @@ import {IBeefyVault} from "../interfaces/IBeefyVault.sol";
 
 // ONLY USABLE for CURVE STABLESWAP NG
 library CurveMooLib {
-    function mintLPT(uint256 depositAmount, uint256 fraxTokenPosition, ICurveStableNG curveStableNG) internal returns (uint256) {
+    function mintLPT(
+        uint256 depositAmount,
+        uint256 fraxTokenPosition,
+        ICurveStableNG curveStableNG
+    ) internal returns (uint256) {
         uint256[8] memory depositAmounts;
         depositAmounts[fraxTokenPosition] = depositAmount;
 
-        return
-            curveStableNG.add_liquidity(depositAmounts, 0, address(this));
+        return curveStableNG.add_liquidity(depositAmounts, 0, address(this));
     }
 
-    function burnLPT(uint256 withdrawAmount, address receiver, uint256 fraxTokenPosition, ICurveStableNG curveStableNG)
-        internal
-        returns (uint256)
-    {
+    function burnLPT(
+        uint256 withdrawAmount,
+        address receiver,
+        uint256 fraxTokenPosition,
+        ICurveStableNG curveStableNG
+    ) internal returns (uint256) {
         return
             curveStableNG.remove_liquidity_one_coin(
                 withdrawAmount,

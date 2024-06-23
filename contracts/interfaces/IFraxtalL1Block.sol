@@ -5,7 +5,7 @@ pragma solidity 0.8.20;
 ///         Values within this contract are updated once per epoch (every L1 block) and can only be
 ///         set by the "depositor" account, a special system address. Depositor account transactions
 ///         are created by the protocol whenever we move to a new epoch.
-interface ISuperchainL1Block {
+interface IFraxtalL1Block {
     /// @notice The latest L1 block number known by the Fraxtal L2 system.
     function number() external view returns (uint64);
 

@@ -2,7 +2,6 @@
 pragma solidity 0.8.20;
 
 import {DummyCurveStableNG} from "./DummyCurveStableNG.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract DummyBeefyVaultV7 {
     uint8 public constant decimals = 18;
@@ -82,7 +81,7 @@ contract DummyBeefyVaultV7 {
         return bal + ((bal * n * 2777777777777) / 1e18);
     }
 
-    function want() external view returns(address) {
+    function want() external view returns (address) {
         return address(CurveStableNG);
     }
 }
