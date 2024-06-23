@@ -2,7 +2,14 @@
 pragma solidity 0.8.20;
 
 interface ICome2Top {
-    type Status is uint8;
+    enum Status {
+        ticketSale,
+        commingWave,
+        operational,
+        finished,
+        claimable,
+        completed
+    }
 
     struct Offer {
         uint96 amount;
