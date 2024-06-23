@@ -2,10 +2,10 @@
 pragma solidity 0.8.20;
 
 /**
-    @author @4bit-lab
+    @author @4BitLab
     @title Come2Top Offerors Treasury.
     @dev Contract will be used by Come2Top contract
-        as a seperate Treasury for Offerors.
+        as a seperate Treasury for Pending/Stale Offerors.
 */
 contract Treasury {
     bool public INIT;
