@@ -894,7 +894,7 @@ contract Come2Top {
         if (gameID > currentGameID) gameID = currentGameID;
         (Status stat, , , bytes memory tickets) = _gameUpdate(gameID);
 
-        if (stat != Status.finished || stat != Status.claimable)
+        if (stat != Status.finished && stat != Status.claimable)
             revert FETCHED_CLAIMABLE_AMOUNT(
                 stat,
                 ZERO,
