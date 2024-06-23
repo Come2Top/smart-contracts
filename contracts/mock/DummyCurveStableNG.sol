@@ -25,7 +25,11 @@ contract DummyCurveStableNG is ICurveStableNG {
         uint256 value
     );
 
-    constructor(string memory _name, string memory _symbol, address frax) {
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        address frax
+    ) {
         name = _name;
         symbol = _symbol;
         FRAX = DummyFraxStablecoin(frax);
@@ -39,13 +43,16 @@ contract DummyCurveStableNG is ICurveStableNG {
         min_mint_amount;
         receiver;
 
+        uint256 index;
+        if (keccak256(bytes(symbol)) == keccak256("crvUSDFRAX")) index = 1;
+
         address sender = msg.sender;
 
         require(sender == OWNER.come2Top());
-        FRAX.transferFrom(sender, address(this), deposit_amounts[1]);
+        FRAX.transferFrom(sender, address(this), deposit_amounts[index]);
 
-        totalSupply += deposit_amounts[1];
-        balanceOf[sender] += deposit_amounts[1];
+        totalSupply += deposit_amounts[index];
+        balanceOf[sender] += deposit_amounts[index];
 
         return deposit_amounts[1];
     }
