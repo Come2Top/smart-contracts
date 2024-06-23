@@ -1124,6 +1124,80 @@ contract Come2Top {
         }
     }
 
+    /**
+        @notice Retrieves the latest update of the current game.
+        @dev It provides essential information about the {currentGameID} game's state.
+        @return stat The current status of the game
+            {ticketSale, commingWave, operational, finished, claimable, completed}.
+        @return eligibleToSell The number of eligible players to sell their tickets 
+            for the current wave of the game.
+        @return currentWave The current wave of the game.
+        @return winnerTickets The byte array containing the winning ticket IDs for the {currentGameID}.
+    */
+    function latestGameUpdate()
+        external
+        view
+        returns (
+            Status stat,
+            int256 eligibleToSell,
+            uint256 currentWave,
+            bytes memory winnerTickets
+        )
+    {
+        return _gameUpdate(currentGameID);
+    }
+
+    /**
+        @notice Retrieves the current status and details of a specific game.
+        @dev This function provides detailed information about a specific game
+            including its status, eligible withdrawals, current wave, winner tickets, and game virtualFraxBalance.
+        @param gameID_ The ID of the game for which the status and details are being retrieved.
+        @return gameID The ID of the retrieved game.
+        @return stat The current status of the game
+            {ticketSale, commingWave, operational, finished, claimable, completed}.
+        @return eligibleToSell The number of eligible players to sell their tickets 
+            for the current wave of the game.
+        @return currentWave The current wave of the game.
+        @return virtualFraxBalance The balance of the game in {FRAX} tokens
+            which players compete in terms of to get a {loanedFraxBalance}
+            in which they will get a share of it from the yield farming protocol.
+        @return winners The array containing the winner addresses for the given game ID.
+        @return winnerTickets The array containing the winning ticket IDs for the given game ID.
+    */
+    function gameStatus(uint256 gameID_)
+        public
+        view
+        returns (
+            uint256 gameID,
+            Status stat,
+            int256 eligibleToSell,
+            uint256 currentWave,
+            uint256 virtualFraxBalance,
+            address[] memory winners,
+            uint256[] memory winnerTickets
+        )
+    {
+        if (gameID_ > currentGameID) gameID = currentGameID;
+        else gameID = gameID_;
+
+        virtualFraxBalance = gameData[gameID].virtualFraxBalance;
+
+        bytes memory tickets;
+        (stat, eligibleToSell, currentWave, tickets) = _gameUpdate(gameID);
+
+        winners = new address[](tickets.length);
+        winnerTickets = new uint256[](tickets.length);
+
+        for (uint256 i; i < tickets.length; ) {
+            winners[i] = tempTicketOwnership[gameID][uint8(bytes1(tickets[i]))];
+            winnerTickets[i] = uint8(bytes1(tickets[i]));
+
+            unchecked {
+                i++;
+            }
+        }
+    }
+
     function paginatedPlayerGames(uint256 page)
         external
         view
@@ -1242,80 +1316,6 @@ contract Come2Top {
         uint256 to
     ) external pure returns (bytes memory) {
         return array[from:to];
-    }
-
-    /**
-        @notice Retrieves the latest update of the current game.
-        @dev It provides essential information about the {currentGameID} game's state.
-        @return stat The current status of the game
-            {ticketSale, commingWave, operational, finished, claimable, completed}.
-        @return eligibleToSell The number of eligible players to sell their tickets 
-            for the current wave of the game.
-        @return currentWave The current wave of the game.
-        @return winnerTickets The byte array containing the winning ticket IDs for the {currentGameID}.
-    */
-    function latestGameUpdate()
-        external
-        view
-        returns (
-            Status stat,
-            int256 eligibleToSell,
-            uint256 currentWave,
-            bytes memory winnerTickets
-        )
-    {
-        return _gameUpdate(currentGameID);
-    }
-
-    /**
-        @notice Retrieves the current status and details of a specific game.
-        @dev This function provides detailed information about a specific game
-            including its status, eligible withdrawals, current wave, winner tickets, and game virtualFraxBalance.
-        @param gameID_ The ID of the game for which the status and details are being retrieved.
-        @return gameID The ID of the retrieved game.
-        @return stat The current status of the game
-            {ticketSale, commingWave, operational, finished, claimable, completed}.
-        @return eligibleToSell The number of eligible players to sell their tickets 
-            for the current wave of the game.
-        @return currentWave The current wave of the game.
-        @return virtualFraxBalance The balance of the game in {FRAX} tokens
-            which players compete in terms of to get a {loanedFraxBalance}
-            in which they will get a share of it from the yield farming protocol.
-        @return winners The array containing the winner addresses for the given game ID.
-        @return winnerTickets The array containing the winning ticket IDs for the given game ID.
-    */
-    function gameStatus(uint256 gameID_)
-        public
-        view
-        returns (
-            uint256 gameID,
-            Status stat,
-            int256 eligibleToSell,
-            uint256 currentWave,
-            uint256 virtualFraxBalance,
-            address[] memory winners,
-            uint256[] memory winnerTickets
-        )
-    {
-        if (gameID_ > currentGameID) gameID = currentGameID;
-        else gameID = gameID_;
-
-        virtualFraxBalance = gameData[gameID].virtualFraxBalance;
-
-        bytes memory tickets;
-        (stat, eligibleToSell, currentWave, tickets) = _gameUpdate(gameID);
-
-        winners = new address[](tickets.length);
-        winnerTickets = new uint256[](tickets.length);
-
-        for (uint256 i; i < tickets.length; ) {
-            winners[i] = tempTicketOwnership[gameID][uint8(bytes1(tickets[i]))];
-            winnerTickets[i] = uint8(bytes1(tickets[i]));
-
-            unchecked {
-                i++;
-            }
-        }
     }
 
     /*****************************\
