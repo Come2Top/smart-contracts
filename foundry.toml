@@ -14,5 +14,6 @@ zkevm = "https://polygon-zkevm.drpc.org"
 # testnets
 cardona = "https://polygon-zkevm-cardona.blockpi.network/v1/rpc/public"
 
+fraxtal-test = "https://rpc.testnet.frax.com"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
