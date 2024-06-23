@@ -26,7 +26,6 @@ contract MultiJoin is Script, Storage {
                 tickets[3] = uint8(ticketID + 3);
 
                 if (
-                    firstEnter ||
                     _COME2TOP_.tempTicketOwnership(currentGameID, tickets[0]) ==
                     address(0) ||
                     _COME2TOP_.tempTicketOwnership(currentGameID, tickets[1]) ==
@@ -34,7 +33,8 @@ contract MultiJoin is Script, Storage {
                     _COME2TOP_.tempTicketOwnership(currentGameID, tickets[2]) ==
                     address(0) ||
                     _COME2TOP_.tempTicketOwnership(currentGameID, tickets[3]) ==
-                    address(0)
+                    address(0) ||
+                    firstEnter
                 ) {
                     vmSafe.startBroadcast(_privateKeys_[totalPlayers]);
                     _COME2TOP_.ticketSaleOperation(tickets);
