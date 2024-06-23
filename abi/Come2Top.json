@@ -518,7 +518,7 @@
 		"name": "FRAXTAL_L1_BLOCK",
 		"outputs": [
 			{
-				"internalType": "contract ISuperchainL1Block",
+				"internalType": "contract IFraxtalL1Block",
 				"name": "",
 				"type": "address"
 			}
