@@ -24,10 +24,11 @@ contract DummyFraxStablecoin {
         );
     uint256 private immutable MAX_SUPPLY = _MAX_UINT256;
     uint256 public immutable MINT_CAP;
-    address private immutable OWNER = msg.sender;
+    address private immutable OWNER = tx.origin;
     uint256 public totalSupply;
     mapping(address => uint256) public nonces;
     mapping(address => uint256) public balanceOf;
+    mapping(address => bool) public whitelist;
     mapping(address => mapping(address => uint256)) public allowance;
 
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -43,14 +44,21 @@ contract DummyFraxStablecoin {
         MINT_CAP = mintCap * (10**decimals);
     }
 
+    function addToWhitelist(address lp) external {
+        require(tx.origin == OWNER, "ONLY_OWNER");
+
+        whitelist[lp] = true;
+    }
+
     function internalMint(address to, uint256 amount) external {
-        require(msg.sender == OWNER, "ONLY_OWNER");
+        require(whitelist[msg.sender], "ONLY_WL");
 
         unchecked {
             balanceOf[to] += amount;
             totalSupply += amount;
         }
-        emit Transfer(OWNER, to, amount);
+
+        emit Transfer(msg.sender, to, amount);
     }
 
     function mint() external {
