@@ -338,6 +338,10 @@ contract Come2Top {
         owner = newOwner;
     }
 
+    /**
+        @notice Changes the current game strategy vault.
+        @dev Allows the current owner to change the current game strategy vault.
+    */
     function changeGameStrat(uint8 newGameStrat) external onlyOwner {
         _checkGS(newGameStrat);
 
@@ -1687,6 +1691,11 @@ contract Come2Top {
             revert VALUE_CANT_BE_LOWER_THAN(MIN_TICKET_PRICE);
     }
 
+    /**
+        @dev It verifies that the value is not zero
+            and not greater than the maximum limit predefined as {SIX}.
+        @param value The value to be checked for game strategy.
+    */
     function _checkGS(uint8 value) private pure {
         if (value > SIX) revert VALUE_CANT_BE_GREATER_THAN(SIX);
     }
