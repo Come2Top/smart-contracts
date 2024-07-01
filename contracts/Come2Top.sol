@@ -528,7 +528,7 @@ contract Come2Top {
             playerRecentGames[msg.sender].length == 0 ||
             playerRecentGames[msg.sender][
                 playerRecentGames[msg.sender].length - 1
-            ] ==
+            ] !=
             gameID
         ) playerRecentGames[msg.sender].push(gameID);
     }
@@ -632,7 +632,7 @@ contract Come2Top {
                 playerRecentGames[O.maker].length == 0 ||
                 playerRecentGames[O.maker][
                     playerRecentGames[O.maker].length - 1
-                ] ==
+                ] !=
                 gameID
             ) playerRecentGames[O.maker].push(gameID);
 
