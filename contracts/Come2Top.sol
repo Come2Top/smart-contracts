@@ -894,7 +894,7 @@ contract Come2Top {
     }
 
     /// @dev Strange, isn't it? << Error Prone Getter >>
-    function claimableAmount(uint256 gameID, address player) external {
+    function claimableAmount(address player, uint256 gameID) external {
         if (gameID > currentGameID) gameID = currentGameID;
         (Status stat, , , bytes memory tickets) = _gameUpdate(gameID);
 
@@ -1202,7 +1202,7 @@ contract Come2Top {
         }
     }
 
-    function paginatedPlayerGames(uint256 page)
+    function paginatedPlayerGames(address player, uint256 page)
         external
         view
         returns (
@@ -1211,18 +1211,18 @@ contract Come2Top {
             uint256[] memory paggedArray
         )
     {
-        if (playerRecentGames[msg.sender].length == 0)
+        if (playerRecentGames[player].length == 0)
             return (currentPage, totalPages, paggedArray);
-        else if (playerRecentGames[msg.sender].length < 11) {
-            paggedArray = new uint256[](playerRecentGames[msg.sender].length);
+        else if (playerRecentGames[player].length < 11) {
+            paggedArray = new uint256[](playerRecentGames[player].length);
 
             uint256 x;
             while (true) {
-                paggedArray[x] = playerRecentGames[msg.sender][
-                    playerRecentGames[msg.sender].length - 1 - x
+                paggedArray[x] = playerRecentGames[player][
+                    playerRecentGames[player].length - 1 - x
                 ];
 
-                if (x == playerRecentGames[msg.sender].length - 1) break;
+                if (x == playerRecentGames[player].length - 1) break;
 
                 unchecked {
                     x++;
@@ -1234,12 +1234,12 @@ contract Come2Top {
 
         if (page == 0) page = 1;
 
-        totalPages = playerRecentGames[msg.sender].length / 10;
+        totalPages = playerRecentGames[player].length / 10;
 
-        uint256 diffLength = playerRecentGames[msg.sender].length -
+        uint256 diffLength = playerRecentGames[player].length -
             (totalPages * 10);
 
-        if (totalPages * 10 < playerRecentGames[msg.sender].length)
+        if (totalPages * 10 < playerRecentGames[player].length)
             totalPages++;
         if (page > totalPages) page = totalPages;
         currentPage = page;
@@ -1247,7 +1247,7 @@ contract Come2Top {
         uint256 firstIndex;
         uint256 lastIndex;
         if (page == 1) {
-            firstIndex = playerRecentGames[msg.sender].length - 1;
+            firstIndex = playerRecentGames[player].length - 1;
             lastIndex = firstIndex - 10;
         } else if (page == totalPages)
             firstIndex = diffLength == 0 ? firstIndex = 9 : diffLength - 1;
@@ -1264,7 +1264,7 @@ contract Come2Top {
 
         uint256 i;
         while (true) {
-            paggedArray[i] = playerRecentGames[msg.sender][firstIndex];
+            paggedArray[i] = playerRecentGames[player][firstIndex];
 
             if (firstIndex == lastIndex) break;
             unchecked {

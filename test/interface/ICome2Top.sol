@@ -71,7 +71,7 @@ interface ICome2Top {
     function changePRNGperiod(uint48 newPRNGP) external;
     function changeTicketPrice(uint80 newTP) external;
     function claimOperation(uint256 gameID) external;
-    function claimableAmount(uint256 gameID, address player) external;
+    function claimableAmount(address player, uint256 gameID) external;
     function continuesIntegration()
         external
         view
@@ -134,7 +134,7 @@ interface ICome2Top {
         view
         returns (uint96 latestGameIDoffersValue, uint160 latestGameID, uint256 totalOffersValue);
     function owner() external view returns (address);
-    function paginatedPlayerGames(uint256 page)
+    function paginatedPlayerGames(address player, uint256 page)
         external
         view
         returns (uint256 currentPage, uint256 totalPages, uint256[] memory paggedArray);
