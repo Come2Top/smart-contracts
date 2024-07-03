@@ -3,7 +3,7 @@
 		"inputs": [
 			{
 				"internalType": "uint8",
-				"name": "mtpw",
+				"name": "mtpg",
 				"type": "uint8"
 			},
 			{
@@ -12,14 +12,34 @@
 				"type": "uint80"
 			},
 			{
+				"internalType": "uint48",
+				"name": "prngp",
+				"type": "uint48"
+			},
+			{
+				"internalType": "uint8",
+				"name": "gameStrat",
+				"type": "uint8"
+			},
+			{
 				"internalType": "address",
-				"name": "usdt",
+				"name": "frax",
 				"type": "address"
 			},
 			{
 				"internalType": "address",
 				"name": "treasury",
 				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "fraxtalL1Block",
+				"type": "address"
+			},
+			{
+				"internalType": "address[7]",
+				"name": "beefyVaults",
+				"type": "address[7]"
 			}
 		],
 		"stateMutability": "nonpayable",
@@ -42,8 +62,65 @@
 		"type": "error"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "stat",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "baseAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "savedAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "claimableAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "int256",
+				"name": "profit",
+				"type": "int256"
+			}
+		],
+		"name": "FETCHED_CLAIMABLE_AMOUNT",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "FRAX_TOKEN_NOT_FOUND",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "INVALID_CURVE_PAIR",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "NO_AMOUNT_TO_CLAIM",
+		"type": "error"
+	},
+	{
 		"inputs": [],
 		"name": "NO_AMOUNT_TO_REFUND",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "stat",
+				"type": "uint8"
+			}
+		],
+		"name": "ONLY_CLAIMABLE_MODE",
 		"type": "error"
 	},
 	{
@@ -84,6 +161,17 @@
 		"type": "error"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "currentStat",
+				"type": "uint8"
+			}
+		],
+		"name": "ONLY_OPERATIONAL_MODE",
+		"type": "error"
+	},
+	{
 		"inputs": [],
 		"name": "ONLY_OWNER",
 		"type": "error"
@@ -94,6 +182,11 @@
 				"internalType": "bool",
 				"name": "isPaused",
 				"type": "bool"
+			},
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "stat",
+				"type": "uint8"
 			}
 		],
 		"name": "ONLY_PAUSED_AND_FINISHED_MODE",
@@ -133,24 +226,8 @@
 		"type": "error"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "enum Come2Top.Status",
-				"name": "currentStat",
-				"type": "uint8"
-			}
-		],
-		"name": "ONLY_WITHDRAWABLE_MODE",
-		"type": "error"
-	},
-	{
 		"inputs": [],
 		"name": "PARTICIPATED_BEFORE",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "PLAYER_HAS_NO_TICKETS",
 		"type": "error"
 	},
 	{
@@ -187,7 +264,12 @@
 	},
 	{
 		"inputs": [],
-		"name": "WAIT_FOR_NEXT_WAGER_MATCH",
+		"name": "WAIT_FOR_NEXT_MATCH",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "WAIT_FOR_NEXT_WAVE",
 		"type": "error"
 	},
 	{
@@ -205,6 +287,124 @@
 		"inputs": [
 			{
 				"indexed": true,
+				"internalType": "uint256",
+				"name": "gameID",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "player",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "int256",
+				"name": "profit",
+				"type": "int256"
+			}
+		],
+		"name": "Claimed",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "gameID",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "address[2]",
+				"name": "winners",
+				"type": "address[2]"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256[2]",
+				"name": "amounts",
+				"type": "uint256[2]"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256[2]",
+				"name": "ticketIDs",
+				"type": "uint256[2]"
+			}
+		],
+		"name": "GameFinished",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "gameID",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "startedBlockNo",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "GameStarted",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "gameID",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "winner",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "ticketID",
+				"type": "uint256"
+			}
+		],
+		"name": "GameUpdated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
 				"internalType": "address",
 				"name": "newOwner",
 				"type": "address"
@@ -216,7 +416,7 @@
 				"type": "uint256"
 			},
 			{
-				"indexed": true,
+				"indexed": false,
 				"internalType": "uint256",
 				"name": "amount",
 				"type": "uint256"
@@ -226,12 +426,6 @@
 				"internalType": "address",
 				"name": "lastOwner",
 				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "ticketValue",
-				"type": "uint256"
 			}
 		],
 		"name": "OfferAccepted",
@@ -253,7 +447,7 @@
 				"type": "uint256"
 			},
 			{
-				"indexed": true,
+				"indexed": false,
 				"internalType": "uint256",
 				"name": "amount",
 				"type": "uint256"
@@ -263,12 +457,6 @@
 				"internalType": "address",
 				"name": "lastOfferor",
 				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "ticketValue",
-				"type": "uint256"
 			}
 		],
 		"name": "OfferMade",
@@ -284,13 +472,7 @@
 				"type": "address"
 			},
 			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "to",
-				"type": "address"
-			},
-			{
-				"indexed": true,
+				"indexed": false,
 				"internalType": "uint256",
 				"name": "amount",
 				"type": "uint256"
@@ -319,122 +501,30 @@
 		"type": "event"
 	},
 	{
-		"anonymous": false,
-		"inputs": [
+		"inputs": [],
+		"name": "FRAX",
+		"outputs": [
 			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "wagerID",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "winner",
+				"internalType": "contract IERC20",
+				"name": "",
 				"type": "address"
-			},
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "ticketID",
-				"type": "uint256"
 			}
 		],
-		"name": "WagerFinished",
-		"type": "event"
+		"stateMutability": "view",
+		"type": "function"
 	},
 	{
-		"anonymous": false,
-		"inputs": [
+		"inputs": [],
+		"name": "FRAXTAL_L1_BLOCK",
+		"outputs": [
 			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "wagerID",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "address[2]",
-				"name": "winners",
-				"type": "address[2]"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256[2]",
-				"name": "amounts",
-				"type": "uint256[2]"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256[2]",
-				"name": "ticketIDs",
-				"type": "uint256[2]"
-			}
-		],
-		"name": "WagerFinished",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "wagerID",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "startedBlockNo",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "prizeAmount",
-				"type": "uint256"
-			}
-		],
-		"name": "WagerStarted",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "wagerID",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "winner",
+				"internalType": "contract IFraxtalL1Block",
+				"name": "",
 				"type": "address"
-			},
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "ticketID",
-				"type": "uint256"
 			}
 		],
-		"name": "WagerUpdated",
-		"type": "event"
+		"stateMutability": "view",
+		"type": "function"
 	},
 	{
 		"inputs": [],
@@ -476,27 +566,27 @@
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "USDT",
-		"outputs": [
+		"inputs": [
 			{
-				"internalType": "contract IUSDT",
-				"name": "",
-				"type": "address"
+				"internalType": "uint8",
+				"name": "newGameStrat",
+				"type": "uint8"
 			}
 		],
-		"stateMutability": "view",
+		"name": "changeGameStrat",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
 		"inputs": [
 			{
 				"internalType": "uint8",
-				"name": "maxTicketsPerWager_",
+				"name": "newMTPG",
 				"type": "uint8"
 			}
 		],
-		"name": "changeMaxTicketsPerWager",
+		"name": "changeMaxTicketsPerGame",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -517,8 +607,21 @@
 	{
 		"inputs": [
 			{
+				"internalType": "uint48",
+				"name": "newPRNGP",
+				"type": "uint48"
+			}
+		],
+		"name": "changePRNGperiod",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
 				"internalType": "uint80",
-				"name": "ticketPrice_",
+				"name": "newTP",
 				"type": "uint80"
 			}
 		],
@@ -528,172 +631,16 @@
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "currentWagerID",
-		"outputs": [
+		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "",
+				"name": "gameID",
 				"type": "uint256"
 			}
 		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint8[]",
-				"name": "ticketIDs",
-				"type": "uint8[]"
-			}
-		],
-		"name": "join",
+		"name": "claimOperation",
 		"outputs": [],
 		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "latestUpdate",
-		"outputs": [
-			{
-				"internalType": "enum Come2Top.Status",
-				"name": "stat",
-				"type": "uint8"
-			},
-			{
-				"internalType": "int256",
-				"name": "eligibleWithdrawals",
-				"type": "int256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "currentWave",
-				"type": "uint256"
-			},
-			{
-				"internalType": "bytes",
-				"name": "winnerTickets",
-				"type": "bytes"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint8",
-				"name": "ticketID",
-				"type": "uint8"
-			},
-			{
-				"internalType": "uint96",
-				"name": "amount",
-				"type": "uint96"
-			}
-		],
-		"name": "makeOffer",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "maxTicketsPerWager",
-		"outputs": [
-			{
-				"internalType": "uint8",
-				"name": "",
-				"type": "uint8"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint8",
-				"name": "",
-				"type": "uint8"
-			}
-		],
-		"name": "offer",
-		"outputs": [
-			{
-				"internalType": "uint96",
-				"name": "amount",
-				"type": "uint96"
-			},
-			{
-				"internalType": "address",
-				"name": "maker",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"name": "offerorData",
-		"outputs": [
-			{
-				"internalType": "uint96",
-				"name": "latestWagerIDoffersValue",
-				"type": "uint96"
-			},
-			{
-				"internalType": "uint160",
-				"name": "latestWagerID",
-				"type": "uint160"
-			},
-			{
-				"internalType": "uint256",
-				"name": "totalOffersValue",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "owner",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "pause",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -702,221 +649,21 @@
 				"internalType": "address",
 				"name": "player",
 				"type": "address"
-			}
-		],
-		"name": "playerWithWinningTickets",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "totalTicketsValue",
-				"type": "uint256"
 			},
 			{
-				"internalType": "bytes",
-				"name": "playerTickets",
-				"type": "bytes"
+				"internalType": "uint256",
+				"name": "gameID",
+				"type": "uint256"
 			}
 		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint8",
-				"name": "ticketID",
-				"type": "uint8"
-			}
-		],
-		"name": "redeem",
+		"name": "claimableAmount",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "bytes",
-				"name": "array",
-				"type": "bytes"
-			},
-			{
-				"internalType": "uint256",
-				"name": "from",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "to",
-				"type": "uint256"
-			}
-		],
-		"name": "sliceBytedArray",
-		"outputs": [
-			{
-				"internalType": "bytes",
-				"name": "",
-				"type": "bytes"
-			}
-		],
-		"stateMutability": "pure",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "offeror",
-				"type": "address"
-			}
-		],
-		"name": "staleOffers",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "to",
-				"type": "address"
-			}
-		],
-		"name": "takeBackStaleOffers",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint8",
-				"name": "",
-				"type": "uint8"
-			}
-		],
-		"name": "ticketOwnership",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
 		"inputs": [],
-		"name": "ticketPrice",
-		"outputs": [
-			{
-				"internalType": "uint80",
-				"name": "",
-				"type": "uint80"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "ticketValue",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "togglePause",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			},
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"name": "totalPlayerTickets",
-		"outputs": [
-			{
-				"internalType": "uint8",
-				"name": "",
-				"type": "uint8"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"name": "wagerData",
-		"outputs": [
-			{
-				"internalType": "int8",
-				"name": "eligibleWithdrawals",
-				"type": "int8"
-			},
-			{
-				"internalType": "uint8",
-				"name": "soldTickets",
-				"type": "uint8"
-			},
-			{
-				"internalType": "uint8",
-				"name": "updatedWave",
-				"type": "uint8"
-			},
-			{
-				"internalType": "uint216",
-				"name": "startedBlock",
-				"type": "uint216"
-			},
-			{
-				"internalType": "bytes",
-				"name": "tickets",
-				"type": "bytes"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "wagerInfo",
+		"name": "continuesIntegration",
 		"outputs": [
 			{
 				"internalType": "enum Come2Top.Status",
@@ -930,7 +677,7 @@
 			},
 			{
 				"internalType": "uint256",
-				"name": "startedBlock",
+				"name": "startedL1Block",
 				"type": "uint256"
 			},
 			{
@@ -950,7 +697,7 @@
 			},
 			{
 				"internalType": "int256",
-				"name": "eligibleWithdrawals",
+				"name": "eligibleToSell",
 				"type": "int256"
 			},
 			{
@@ -1008,49 +755,585 @@
 	},
 	{
 		"inputs": [],
-		"name": "winnersWithTickets",
+		"name": "currentGameID",
 		"outputs": [
 			{
-				"internalType": "int256",
-				"name": "eligibleWithdrawals",
-				"type": "int256"
-			},
-			{
-				"components": [
-					{
-						"components": [
-							{
-								"internalType": "uint96",
-								"name": "amount",
-								"type": "uint96"
-							},
-							{
-								"internalType": "address",
-								"name": "maker",
-								"type": "address"
-							}
-						],
-						"internalType": "struct Come2Top.Offer",
-						"name": "offer",
-						"type": "tuple"
-					},
-					{
-						"internalType": "uint256",
-						"name": "ticketID",
-						"type": "uint256"
-					},
-					{
-						"internalType": "address",
-						"name": "owner",
-						"type": "address"
-					}
-				],
-				"internalType": "struct Come2Top.TicketInfo[]",
-				"name": "allTicketsData",
-				"type": "tuple[]"
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "currentGameStrat",
+		"outputs": [
+			{
+				"internalType": "uint8",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "gameData",
+		"outputs": [
+			{
+				"internalType": "int8",
+				"name": "eligibleToSell",
+				"type": "int8"
+			},
+			{
+				"internalType": "uint8",
+				"name": "soldTickets",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint8",
+				"name": "updatedWave",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint8",
+				"name": "chosenConfig",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint112",
+				"name": "prngPeriod",
+				"type": "uint112"
+			},
+			{
+				"internalType": "uint112",
+				"name": "startedL1Block",
+				"type": "uint112"
+			},
+			{
+				"internalType": "uint256",
+				"name": "mooTokenBalance",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "initialFraxBalance",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "loanedFraxBalance",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "virtualFraxBalance",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes",
+				"name": "tickets",
+				"type": "bytes"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "gameID_",
+				"type": "uint256"
+			}
+		],
+		"name": "gameStatus",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "gameID",
+				"type": "uint256"
+			},
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "stat",
+				"type": "uint8"
+			},
+			{
+				"internalType": "int256",
+				"name": "eligibleToSell",
+				"type": "int256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "currentWave",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "virtualFraxBalance",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address[]",
+				"name": "winners",
+				"type": "address[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "winnerTickets",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "gameStratConfig",
+		"outputs": [
+			{
+				"internalType": "uint96",
+				"name": "fraxTokenPosition",
+				"type": "uint96"
+			},
+			{
+				"internalType": "contract ICurveStableNG",
+				"name": "curveStableNG",
+				"type": "address"
+			},
+			{
+				"internalType": "contract IBeefyVault",
+				"name": "beefyVault",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "latestGameUpdate",
+		"outputs": [
+			{
+				"internalType": "enum Come2Top.Status",
+				"name": "stat",
+				"type": "uint8"
+			},
+			{
+				"internalType": "int256",
+				"name": "eligibleToSell",
+				"type": "int256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "currentWave",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes",
+				"name": "winnerTickets",
+				"type": "bytes"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "maxTicketsPerGame",
+		"outputs": [
+			{
+				"internalType": "uint8",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint8",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"name": "offer",
+		"outputs": [
+			{
+				"internalType": "uint96",
+				"name": "amount",
+				"type": "uint96"
+			},
+			{
+				"internalType": "address",
+				"name": "maker",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint8",
+				"name": "ticketID",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint96",
+				"name": "amount",
+				"type": "uint96"
+			}
+		],
+		"name": "offerOperation",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "offerorData",
+		"outputs": [
+			{
+				"internalType": "uint96",
+				"name": "latestGameIDoffersValue",
+				"type": "uint96"
+			},
+			{
+				"internalType": "uint160",
+				"name": "latestGameID",
+				"type": "uint160"
+			},
+			{
+				"internalType": "uint256",
+				"name": "totalOffersValue",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "owner",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "player",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "page",
+				"type": "uint256"
+			}
+		],
+		"name": "paginatedPlayerGames",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "currentPage",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "totalPages",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "paggedArray",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "pause",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "playerBalanceData",
+		"outputs": [
+			{
+				"internalType": "uint120",
+				"name": "initialFraxBalance",
+				"type": "uint120"
+			},
+			{
+				"internalType": "uint120",
+				"name": "loanedFraxBalance",
+				"type": "uint120"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "playerRecentGames",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "prngPeriod",
+		"outputs": [
+			{
+				"internalType": "uint248",
+				"name": "",
+				"type": "uint248"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes",
+				"name": "array",
+				"type": "bytes"
+			},
+			{
+				"internalType": "uint256",
+				"name": "from",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "to",
+				"type": "uint256"
+			}
+		],
+		"name": "sliceBytedArray",
+		"outputs": [
+			{
+				"internalType": "bytes",
+				"name": "",
+				"type": "bytes"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "offeror",
+				"type": "address"
+			}
+		],
+		"name": "staleOffers",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "totalStaleOffers",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "claimableOffers",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "takeBackStaleOffers",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint8",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"name": "tempTicketOwnership",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "ticketPrice",
+		"outputs": [
+			{
+				"internalType": "uint80",
+				"name": "",
+				"type": "uint80"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint8[]",
+				"name": "ticketIDs",
+				"type": "uint8[]"
+			}
+		],
+		"name": "ticketSaleOperation",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "ticketValue",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "togglePause",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "totalPlayerTickets",
+		"outputs": [
+			{
+				"internalType": "uint8",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint8",
+				"name": "ticketID",
+				"type": "uint8"
+			}
+		],
+		"name": "winnerOperation",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	}
 ]

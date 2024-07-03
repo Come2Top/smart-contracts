@@ -18,7 +18,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "LOCKED",
+		"name": "INIT",
 		"outputs": [
 			{
 				"internalType": "bool",
@@ -31,7 +31,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "USDT",
+		"name": "TOKEN",
 		"outputs": [
 			{
 				"internalType": "address",

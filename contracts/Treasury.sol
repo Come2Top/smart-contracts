@@ -2,26 +2,26 @@
 pragma solidity 0.8.20;
 
 /**
-    @author @Risk-Labs
+    @author @4BitLab
     @title Come2Top Offerors Treasury.
     @dev Contract will be used by Come2Top contract
-        as a seperate Treasury for Offerors.
+        as a seperate Treasury for Pending/Stale Offerors.
 */
 contract Treasury {
-    bool public LOCKED;
-    address public USDT;
+    bool public INIT;
+    address public TOKEN;
     address public COME2TOP;
 
     fallback() external {
         COME2TOP = msg.sender;
-        USDT = abi.decode(msg.data, (address));
+        TOKEN = abi.decode(msg.data, (address));
 
-        (bool OK, ) = USDT.call(
+        (bool OK, ) = TOKEN.call(
             abi.encodeWithSelector(0x095ea7b3, COME2TOP, type(uint256).max)
         );
 
-        require(OK && !LOCKED);
+        require(OK && !INIT);
 
-        LOCKED = true;
+        INIT = true;
     }
 }

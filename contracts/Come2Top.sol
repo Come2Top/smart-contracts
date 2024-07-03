@@ -1,29 +1,47 @@
 //  SPDX-License-Identifier: -- Come2Top --
 pragma solidity 0.8.20;
 
+import {IERC20} from "./interfaces/IERC20.sol";
+import {IFraxtalL1Block} from "./interfaces/IFraxtalL1Block.sol";
+import {IBeefyVault} from "./interfaces/IBeefyVault.sol";
+import {ICurveStableNG} from "./interfaces/ICurveStableNG.sol";
+
+import {CurveMooLib} from "./libraries/CurveMooLib.sol";
+
 /**
-    @author @Risk-Labs
-    @title Come2Top Main Contract.
-    @notice Come2Top is a secure, automated, and fully decentralized wagering platform
-        built on the Polygon Mainnet, that works without the involvement of third parties.
-        For more information & further questions, visit: https://www.come2.top
+    @author @4BitLab
+    @title Come2Top System Contract.
+    @notice Come2Top is a secure, automated, and fully decentralized GameFi platform
+        built on top of the Fraxtal Mainnet, Curve Protocol & Beefy Yield Farming Protocol
+        that works without the involvement of third parties.
+        For more information & further questions, visit: https://come2.top
 */
 contract Come2Top {
+    using CurveMooLib for uint256;
+
     /*******************************\
     |-*-*-*-*-*   TYPES   *-*-*-*-*-|
     \*******************************/
     enum Status {
         ticketSale,
-        waitForCommingWave,
-        Withdrawable,
-        finished
+        commingWave,
+        operational,
+        finished,
+        claimable,
+        completed
     }
 
-    struct WagerData {
-        int8 eligibleWithdrawals;
+    struct GameData {
+        int8 eligibleToSell;
         uint8 soldTickets;
         uint8 updatedWave;
-        uint216 startedBlock;
+        uint8 chosenConfig;
+        uint112 prngPeriod;
+        uint112 startedL1Block;
+        uint256 mooTokenBalance;
+        uint256 initialFraxBalance;
+        uint256 loanedFraxBalance;
+        uint256 virtualFraxBalance;
         bytes tickets;
     }
 
@@ -33,8 +51,8 @@ contract Come2Top {
     }
 
     struct OfferorData {
-        uint96 latestWagerIDoffersValue;
-        uint160 latestWagerID;
+        uint96 latestGameIDoffersValue;
+        uint160 latestGameID;
         uint256 totalOffersValue;
     }
 
@@ -44,44 +62,76 @@ contract Come2Top {
         address owner;
     }
 
+    struct PlayerGameBalance {
+        uint120 initialFraxBalance;
+        uint120 loanedFraxBalance;
+    }
+
+    struct StratConfig {
+        uint96 fraxTokenPosition;
+        ICurveStableNG curveStableNG;
+        IBeefyVault beefyVault;
+    }
+
     /********************************\
     |-*-*-*-*-*   STATES   *-*-*-*-*-|
     \********************************/
     bool public pause;
-    uint8 public maxTicketsPerWager;
+    uint8 public maxTicketsPerGame;
     uint80 public ticketPrice;
     address public owner;
-    uint256 public currentWagerID;
+    uint8 public currentGameStrat;
+    uint248 public prngPeriod;
+    uint256 public currentGameID;
 
-    mapping(uint256 => WagerData) public wagerData;
+    StratConfig[7] public gameStratConfig;
+
+    mapping(uint256 => GameData) public gameData;
     mapping(address => OfferorData) public offerorData;
-    mapping(uint256 => mapping(uint8 => address)) public ticketOwnership;
+    mapping(uint256 => mapping(uint8 => address)) public tempTicketOwnership;
     mapping(uint256 => mapping(address => uint8)) public totalPlayerTickets;
+    mapping(uint256 => mapping(address => PlayerGameBalance))
+        public playerBalanceData;
     mapping(uint256 => mapping(uint8 => Offer)) public offer;
+    mapping(address => uint256[]) public playerRecentGames;
 
     /*******************************\
     |-*-*-*-*   CONSTANTS   *-*-*-*-|
     \*******************************/
-    IUSDT public immutable USDT;
+    uint256 public immutable MAGIC_VALUE;
+    IERC20 public immutable FRAX;
     address public immutable TREASURY;
     address public immutable THIS = address(this);
-    uint256 public immutable MAGIC_VALUE;
+    IFraxtalL1Block public immutable FRAXTAL_L1_BLOCK;
     bytes private constant BYTE_TICKETS =
         hex"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
-    address private constant ZERO_ADDRESS = address(0x0);
-    uint256 private constant MIN_TICKET_PRICE = 1e6;
+    // Mainnet
+    // uint256 private constant MIN_TICKET_PRICE = 1e19;
+    // Testnet
+    uint256 private constant MIN_TICKET_PRICE = 1e20;
     uint256 private constant MAX_PARTIES = 256;
-    uint256 private constant WAVE_ELIGIBLES_TIME = 240;
+    // Mainnet
+    // uint256 private constant WAVE_ELIGIBLES_TIME = 144;
+    // Testnet
+    uint256 private constant WAVE_ELIGIBLES_TIME = 24;
+    // Mainnet
+    // uint256 private constant SAFTY_DURATION = 48;
+    // Testnet
+    uint256 private constant SAFTY_DURATION = 10;
+    uint256 private constant MIN_PRNG_PERIOD = 12;
     uint256 private constant BASIS = 100;
-    uint256 private constant OFFEREE_BENEFICIARY = 95;
-    uint256 private constant WAVE_DURATION = 16;
+    uint256 private constant MIN_TICKET_VALUE_OFFER = 10;
+    // Mainnet
+    // uint256 private constant L1_BLOCK_LOCK_TIME = 207692; // l1 avg block time ˜12.5
+    // Testnet
+    uint256 private constant L1_BLOCK_LOCK_TIME = 50; // l1 avg block time ˜12.5
+    address private constant ZERO_ADDRESS = address(0x0);
     int8 private constant N_ONE = -1;
     uint8 private constant ZERO = 0;
     uint8 private constant ONE = 1;
     uint8 private constant TWO = 2;
     uint8 private constant THREE = 3;
-    uint8 private constant FOUR = 4;
-    uint8 private constant FIVE = 5;
+    uint8 private constant SIX = 6;
     uint8 private constant SEVEN = 7;
     uint8 private constant EIGHT = 8;
 
@@ -90,54 +140,48 @@ contract Come2Top {
     \********************************/
     event TicketsSold(address indexed buyer, bytes ticketIDs);
 
-    event WagerStarted(
-        uint256 indexed wagerID,
+    event GameStarted(
+        uint256 indexed gameID,
         uint256 indexed startedBlockNo,
-        uint256 indexed prizeAmount
+        uint256 amount
     );
 
-    event WagerUpdated(
-        uint256 indexed wagerID,
+    event GameUpdated(
+        uint256 indexed gameID,
         address indexed winner,
-        uint256 indexed amount,
+        uint256 amount,
         uint256 ticketID
-    );
-
-    event WagerFinished(
-        uint256 indexed wagerID,
-        address indexed winner,
-        uint256 indexed amount,
-        uint256 ticketID
-    );
-
-    event WagerFinished(
-        uint256 indexed wagerID,
-        address[TWO] winners,
-        uint256[TWO] amounts,
-        uint256[TWO] ticketIDs
     );
 
     event OfferMade(
         address indexed maker,
         uint256 indexed ticketID,
-        uint256 indexed amount,
-        address lastOfferor,
-        uint256 ticketValue
+        uint256 amount,
+        address lastOfferor
     );
 
     event OfferAccepted(
         address indexed newOwner,
         uint256 indexed ticketID,
-        uint256 indexed amount,
-        address lastOwner,
-        uint256 ticketValue
+        uint256 amount,
+        address lastOwner
     );
 
-    event StaleOffersTookBack(
-        address indexed maker,
-        address indexed to,
-        uint256 indexed amount
+    event GameFinished(
+        uint256 indexed gameID,
+        address[TWO] winners,
+        uint256[TWO] amounts,
+        uint256[TWO] ticketIDs
     );
+
+    event Claimed(
+        uint256 indexed gameID,
+        address indexed player,
+        uint256 amount,
+        int256 profit
+    );
+
+    event StaleOffersTookBack(address indexed maker, uint256 amount);
 
     /********************************\
     |-*-*-*-*-*   ERRORS   *-*-*-*-*-|
@@ -146,8 +190,9 @@ contract Come2Top {
     error ONLY_OWNER();
     error ONLY_TICKET_OWNER(uint256 ticketID);
     error ONLY_WINNER_TICKET(uint256 ticketID);
-    error ONLY_WITHDRAWABLE_MODE(Status currentStat);
-    error ONLY_PAUSED_AND_FINISHED_MODE(bool isPaused);
+    error ONLY_OPERATIONAL_MODE(Status currentStat);
+    error ONLY_CLAIMABLE_MODE(Status stat);
+    error ONLY_PAUSED_AND_FINISHED_MODE(bool isPaused, Status stat);
     error ONLY_UNPAUSED_OR_TICKET_SALE_MODE(bool isPaused);
     error ONLY_HIGHER_THAN_CURRENT_TICKET_VALUE(
         uint256 offer,
@@ -158,6 +203,8 @@ contract Come2Top {
         uint256 lastOfferValue
     );
     error APROVE_OPERATION_FAILED();
+    error FRAX_TOKEN_NOT_FOUND();
+    error INVALID_CURVE_PAIR();
     error VALUE_CANT_BE_LOWER_THAN(uint256 givenValue);
     error VALUE_CANT_BE_GREATER_THAN(uint256 givenValue);
     error ZERO_ADDRESS_PROVIDED();
@@ -165,10 +212,18 @@ contract Come2Top {
     error CHECK_TICKETS_LENGTH(uint256 ticketLength);
     error SELECTED_TICKETS_SOLDOUT_BEFORE();
     error PARTICIPATED_BEFORE();
-    error PLAYER_HAS_NO_TICKETS();
+    error NO_AMOUNT_TO_CLAIM();
     error NO_AMOUNT_TO_REFUND();
-    error WAIT_FOR_NEXT_WAGER_MATCH();
+    error WAIT_FOR_NEXT_MATCH();
     error WAIT_FOR_FIRST_WAVE();
+    error WAIT_FOR_NEXT_WAVE();
+    error FETCHED_CLAIMABLE_AMOUNT(
+        Status stat,
+        uint256 baseAmount,
+        uint256 savedAmount,
+        uint256 claimableAmount,
+        int256 profit
+    );
 
     /*******************************\
     |-*-*-*-*   MODIFIERS   *-*-*-*-|
@@ -185,9 +240,11 @@ contract Come2Top {
         _;
     }
 
-    modifier onlyPausedAndFinishedWager() {
-        if (!pause || wagerData[currentWagerID].eligibleWithdrawals != N_ONE)
-            revert ONLY_PAUSED_AND_FINISHED_MODE(pause);
+    modifier onlyPausedAndFinishedGame() {
+        (Status stat, , , ) = _gameUpdate(currentGameID);
+
+        if (!pause || uint256(stat) <= TWO)
+            revert ONLY_PAUSED_AND_FINISHED_MODE(pause, stat);
 
         _;
     }
@@ -196,28 +253,76 @@ contract Come2Top {
     |-*-*-*-*   BUILT-IN   *-*-*-*-|
     \******************************/
     constructor(
-        uint8 mtpw,
+        uint8 mtpg,
         uint80 tp,
-        address usdt,
-        address treasury
+        uint48 prngp,
+        uint8 gameStrat,
+        address frax,
+        address treasury,
+        address fraxtalL1Block,
+        address[SEVEN] memory beefyVaults
     ) {
-        _checkMTPW(mtpw);
+        _checkMTPG(mtpg);
         _checkTP(tp);
+        _checkPRNGP(prngp);
+        _checkGS(gameStrat);
 
-        if (usdt == ZERO_ADDRESS || treasury == ZERO_ADDRESS)
-            revert ZERO_ADDRESS_PROVIDED();
+        if (
+            frax == ZERO_ADDRESS ||
+            treasury == ZERO_ADDRESS ||
+            fraxtalL1Block == ZERO_ADDRESS
+        ) revert ZERO_ADDRESS_PROVIDED();
 
-        owner = msg.sender;
-        maxTicketsPerWager = mtpw;
+        owner = tx.origin;
+        maxTicketsPerGame = mtpg;
         ticketPrice = tp;
-        USDT = IUSDT(usdt);
+        prngPeriod = prngp;
+        currentGameStrat = gameStrat;
+        FRAX = IERC20(frax);
         TREASURY = treasury;
-        MAGIC_VALUE = uint160(address(this));
-        wagerData[ZERO].tickets = BYTE_TICKETS;
+        FRAXTAL_L1_BLOCK = IFraxtalL1Block(fraxtalL1Block);
+        gameData[ZERO].tickets = BYTE_TICKETS;
+        unchecked {
+            MAGIC_VALUE = uint160(address(this)) * block.chainid;
+        }
 
-        (bool ok, ) = treasury.call(abi.encode(usdt));
-
+        (bool ok, ) = treasury.call(abi.encode(frax));
         if (!ok) revert APROVE_OPERATION_FAILED();
+
+        address curveStableNG;
+        uint256 fraxTokenPosition;
+        for (uint256 i; i < SEVEN; ) {
+            if (beefyVaults[i] == address(0)) revert ZERO_ADDRESS_PROVIDED();
+            curveStableNG = IBeefyVault(beefyVaults[i]).want();
+
+            if (ICurveStableNG(curveStableNG).N_COINS() != TWO)
+                revert INVALID_CURVE_PAIR();
+
+            IERC20(frax).approve(curveStableNG, type(uint256).max);
+            ICurveStableNG(curveStableNG).approve(
+                beefyVaults[i],
+                type(uint256).max
+            );
+
+            fraxTokenPosition = frax ==
+                ICurveStableNG(curveStableNG).coins(ZERO)
+                ? ZERO
+                : frax == ICurveStableNG(curveStableNG).coins(ONE)
+                ? ONE
+                : 404;
+
+            if (fraxTokenPosition == 404) revert FRAX_TOKEN_NOT_FOUND();
+
+            gameStratConfig[i] = StratConfig(
+                uint96(fraxTokenPosition),
+                ICurveStableNG(curveStableNG),
+                IBeefyVault(beefyVaults[i])
+            );
+
+            unchecked {
+                i++;
+            }
+        }
     }
 
     /*******************************\
@@ -234,6 +339,16 @@ contract Come2Top {
     }
 
     /**
+        @notice Changes the current game strategy vault.
+        @dev Allows the current owner to change the current game strategy vault.
+    */
+    function changeGameStrat(uint8 newGameStrat) external onlyOwner {
+        _checkGS(newGameStrat);
+
+        currentGameStrat = newGameStrat;
+    }
+
+    /**
         @notice Toggles the pause state of the contract.
         @dev Allows the owner to toggle the pause state of the contract.
             When the contract is paused, certain functions may be restricted or disabled.
@@ -244,79 +359,97 @@ contract Come2Top {
     }
 
     /**
-        @notice Changes the ticket price for joining the wager.
-        @dev Allows the owner to change the ticket price for joining the wager. 
-            Only the owner can call this function. 
-        @param ticketPrice_ The new ticket price to be set.
+        @notice Changes the ticket price for joining the game.
+        @dev Allows the owner to change the ticket price for joining the game.
+            Only the owner can call this function.
+        @param newTP The new ticket price is to be set.
     */
-    function changeTicketPrice(uint80 ticketPrice_)
+    function changeTicketPrice(uint80 newTP)
         external
         onlyOwner
-        onlyPausedAndFinishedWager
+        onlyPausedAndFinishedGame
     {
-        _checkTP(ticketPrice_);
+        _checkTP(newTP);
 
-        ticketPrice = ticketPrice_;
+        ticketPrice = newTP;
     }
 
     /**
-        @notice Changes the maximum number of tickets allowed per wager.
-        @dev Allows the owner to change the maximum number of tickets allowed per wager. 
+        @notice Changes the maximum number of tickets allowed per game.
+        @dev Allows the owner to change the maximum number of tickets allowed per game.
             Only the owner can call this function.
-        @param maxTicketsPerWager_ The new maximum number of tickets allowed per wager.
+        @param newMTPG The new maximum number of tickets allowed per game.
     */
-    function changeMaxTicketsPerWager(uint8 maxTicketsPerWager_)
+    function changeMaxTicketsPerGame(uint8 newMTPG)
         external
         onlyOwner
-        onlyPausedAndFinishedWager
+        onlyPausedAndFinishedGame
     {
-        _checkMTPW(maxTicketsPerWager_);
+        _checkMTPG(newMTPG);
 
-        maxTicketsPerWager = maxTicketsPerWager_;
+        maxTicketsPerGame = newMTPG;
+    }
+
+    /**
+        @notice Changes the pseudorandom number generator period time.
+        @dev Allows the owner to change the pseudorandom number generator period time.
+            Only the owner can call this function.
+        @param newPRNGP The new pseudorandom number generator period.
+    */
+    function changePRNGperiod(uint48 newPRNGP)
+        external
+        onlyOwner
+        onlyPausedAndFinishedGame
+    {
+        _checkPRNGP(newPRNGP);
+
+        prngPeriod = newPRNGP;
     }
 
     /*********************************\
-    |-*-*-*-*   WAGER-LOGIC   *-*-*-*-|
+    |-*-*-*-*   GAME-LOGIC   *-*-*-*-|
     \*********************************/
     /**
-        @notice Players can buy tickets for wagering.
+        @notice Players can buy tickets to join the game.
         @dev Manages the ticket allocation, ownership, and purchase process.
-            Also ensures that the maximum number of tickets specified by {maxTicketsPerWager}
-            and the ticket price set by {ticketPrice} are adhered to.
-            The player joining the wager, must be an externally owned account (EOA).
-        @param ticketIDs The ticket IDs that players want to buy for a wager.
+            Also ensures that the maximum number of tickets specified by {maxTicketsPerGame}
+                and the ticket price set by {ticketPrice} are adhered to.
+            When all tickets are sold out, it will lock them for {L1_BLOCK_LOCK_TIME} time duration
+                and invest them in a yield farming protocol (stables) such as Beefy.
+            The player joining the game, must be an externally owned account (EOA).
+        @param ticketIDs The ticket IDs that players want to buy for a game.
     */
-    function join(uint8[] calldata ticketIDs) external onlyEOA {
-        address sender = msg.sender;
-        uint256 wagerID = currentWagerID;
-        uint256 neededUSDT = ticketPrice;
+    function ticketSaleOperation(uint8[] calldata ticketIDs) external onlyEOA {
+        uint256 gameID = currentGameID;
+        uint256 neededToken = ticketPrice;
         uint256 totalTickets = ticketIDs.length;
-        uint256 ticketLimit = maxTicketsPerWager;
+        uint256 ticketLimit = maxTicketsPerGame;
         bytes memory realTickets;
-        WagerData storage BD;
+        GameData storage GD;
 
-        if (wagerData[wagerID].eligibleWithdrawals == N_ONE) {
+        (Status stat, , , ) = _gameUpdate(gameID);
+        if (uint256(stat) > TWO) {
             unchecked {
-                wagerID++;
-                currentWagerID++;
+                gameID++;
+                currentGameID++;
             }
 
-            BD = wagerData[wagerID];
-            BD.tickets = BYTE_TICKETS;
-        } else BD = wagerData[wagerID];
+            GD = gameData[gameID];
+            GD.tickets = BYTE_TICKETS;
+        } else GD = gameData[gameID];
 
-        uint256 remainingTickets = MAX_PARTIES - BD.soldTickets;
-        bytes memory tickets = BD.tickets;
+        uint256 remainingTickets = MAX_PARTIES - GD.soldTickets;
+        bytes memory tickets = GD.tickets;
 
-        if (pause && BD.soldTickets == ZERO)
+        if (pause && GD.soldTickets == ZERO)
             revert ONLY_UNPAUSED_OR_TICKET_SALE_MODE(pause);
 
         if (totalTickets == ZERO || totalTickets > ticketLimit)
             revert CHECK_TICKETS_LENGTH(totalTickets);
 
-        if (BD.startedBlock != ZERO) revert WAIT_FOR_NEXT_WAGER_MATCH();
+        if (GD.startedL1Block != ZERO) revert WAIT_FOR_NEXT_MATCH();
 
-        if (totalTickets + totalPlayerTickets[wagerID][sender] > ticketLimit)
+        if (totalTickets + totalPlayerTickets[gameID][msg.sender] > ticketLimit)
             revert PARTICIPATED_BEFORE();
 
         for (uint256 i; i < totalTickets; ) {
@@ -324,7 +457,7 @@ contract Come2Top {
                 if (tickets[ZERO] != 0xff) {
                     tickets[ZERO] = 0xff;
                     realTickets = abi.encodePacked(realTickets, bytes1(0x00));
-                    ticketOwnership[wagerID][ZERO] = sender;
+                    tempTicketOwnership[gameID][ZERO] = msg.sender;
                 }
             } else {
                 if (tickets[ticketIDs[i]] != 0x00) {
@@ -333,7 +466,7 @@ contract Come2Top {
                         realTickets,
                         bytes1(ticketIDs[i])
                     );
-                    ticketOwnership[wagerID][ticketIDs[i]] = sender;
+                    tempTicketOwnership[gameID][ticketIDs[i]] = msg.sender;
                 }
             }
 
@@ -346,212 +479,260 @@ contract Come2Top {
 
         if (totalTickets == ZERO) revert SELECTED_TICKETS_SOLDOUT_BEFORE();
 
-        totalPlayerTickets[wagerID][sender] += uint8(totalTickets);
+        _transferFromHelper(msg.sender, THIS, (totalTickets * neededToken));
 
-        _transferFromHelper(sender, THIS, (totalTickets * neededUSDT));
-
-        BD.tickets = tickets;
-
-        emit TicketsSold(sender, realTickets);
+        emit TicketsSold(msg.sender, realTickets);
 
         if (totalTickets == remainingTickets) {
-            uint256 currentBlock = block.number;
-            BD.startedBlock = uint216(currentBlock);
-            BD.tickets = BYTE_TICKETS;
+            uint64 currentL1Block = FRAXTAL_L1_BLOCK.number();
+            IBeefyVault beefyVault = gameStratConfig[currentGameStrat]
+                .beefyVault;
+            ICurveStableNG curveStableNG = gameStratConfig[currentGameStrat]
+                .curveStableNG;
 
-            emit WagerStarted(wagerID, currentBlock, MAX_PARTIES * neededUSDT);
-        } else BD.soldTickets += uint8(totalTickets);
+            GD.prngPeriod = uint112(prngPeriod);
+            GD.startedL1Block = currentL1Block;
+            GD.tickets = BYTE_TICKETS;
+            GD.chosenConfig = currentGameStrat;
+            GD.initialFraxBalance = MAX_PARTIES * neededToken;
+            GD.virtualFraxBalance = MAX_PARTIES * neededToken;
+
+            uint256 beforeBalance = beefyVault.balanceOf(THIS);
+
+            (
+                CurveMooLib.mintLPT(
+                    (MAX_PARTIES * neededToken),
+                    gameStratConfig[currentGameStrat].fraxTokenPosition,
+                    curveStableNG
+                )
+            ).depositLPT(beefyVault);
+
+            GD.mooTokenBalance = beefyVault.balanceOf(THIS) - beforeBalance;
+
+            emit GameStarted(gameID, currentL1Block, MAX_PARTIES * neededToken);
+        } else {
+            GD.tickets = tickets;
+            unchecked {
+                GD.soldTickets += uint8(totalTickets);
+            }
+        }
+
+        unchecked {
+            totalPlayerTickets[gameID][msg.sender] += uint8(totalTickets);
+            playerBalanceData[gameID][msg.sender].initialFraxBalance += uint120(
+                totalTickets * neededToken
+            );
+        }
+
+        if (
+            playerRecentGames[msg.sender].length == 0 ||
+            playerRecentGames[msg.sender][
+                playerRecentGames[msg.sender].length - 1
+            ] !=
+            gameID
+        ) playerRecentGames[msg.sender].push(gameID);
     }
 
     /**
-        @notice Allows the ticket owner to either accept an offer made for their ticket 
-            or claim the prize for a winning lottery ticket. 
-        @dev
-            1. When accepting an offer:
-                If the player has received an offer for their ticket
-                    that is higher than the current ticket value
-                    and the last offer, they can accept the offer.
-                The function transfers the ownership of the ticket
-                    to the offer maker and transfers the offered amount
-                    to the ticket owner.
-
-            2. When claiming a prize for a winning lottery ticket:
-                If the ticket owner tries to claim the prize for a winning ticket
-                    the function checks if the wager status allows for withdrawals
-                    if the player owns the ticket
-                    and if the ticket is eligible for withdrawals.
-                If the wager has ended and there are two winners
-                    the prize amount is split between them.
+        @notice Automatically, it saves the winning amount for the player
+            and in the future, he/she will have the ability
+            to claim the profit from the saved winning amount.
+        @dev Automatically:
+                If there is an offer for the currently winning ticket
+                    the player accepts the offer and grants ownership of the currently winning ticket
+                    to the offering player, and in the future, after the end of the {L1_BLOCK_LOCK_TIME} period
+                    the amount of the accepted offer in terms of token {FRAX}
+                    allows the player of the former owner to claim the resulting profit.
+                Otherwise, if there is no offer, the owner's winning ticket will be removed
+                    and he/she will be allowed to claim the interest of the winning amount
+                    after the {L1_BLOCK_LOCK_TIME} time has passed.
         @param ticketID The ID of the ticket for which the offer is being accepted.
     */
-    function redeem(uint8 ticketID) external {
-        address sender = msg.sender;
-        uint256 wagerID = currentWagerID;
-        uint256 balance = USDT.balanceOf(THIS);
-        uint256 fee;
-
+    function winnerOperation(uint8 ticketID) external {
+        uint256 gameID = currentGameID;
         (
             Status stat,
-            int256 eligibleWithdrawals,
+            int256 eligibleToSell,
             uint256 currentWave,
             bytes memory tickets
-        ) = latestUpdate();
+        ) = _gameUpdate(gameID);
 
-        _onlyWithrawable(currentWave, stat);
-
+        _onlyOperational(currentWave, stat);
         uint8 index = _onlyWinnerTicket(tickets, ticketID);
-        uint256 plus5TV = _ticketValue(tickets.length);
-        plus5TV += (plus5TV / BASIS) * FIVE;
+
+        uint256 plus10PCT = _ticketValue(tickets.length, gameID);
+        plus10PCT += (plus10PCT * MIN_TICKET_VALUE_OFFER) / BASIS;
 
         if (
-            offer[wagerID][ticketID].amount >= plus5TV &&
-            offer[wagerID][ticketID].maker != ZERO_ADDRESS &&
-            tickets.length != ONE
+            offer[gameID][ticketID].amount >= plus10PCT &&
+            offer[gameID][ticketID].maker != ZERO_ADDRESS
         ) {
-            Offer memory O = offer[wagerID][ticketID];
-            if (sender != ticketOwnership[currentWagerID][ticketID])
+            Offer memory O = offer[gameID][ticketID];
+            if (msg.sender != tempTicketOwnership[gameID][ticketID])
                 revert ONLY_TICKET_OWNER(ticketID);
 
-            delete offer[wagerID][ticketID].maker;
+            delete offer[gameID][ticketID].maker;
 
             unchecked {
-                offerorData[O.maker].latestWagerIDoffersValue -= O.amount;
+                offerorData[O.maker].latestGameIDoffersValue -= O.amount;
                 offerorData[O.maker].totalOffersValue -= O.amount;
-                totalPlayerTickets[wagerID][sender]--;
-                totalPlayerTickets[wagerID][O.maker]++;
+                totalPlayerTickets[gameID][msg.sender]--;
+                totalPlayerTickets[gameID][O.maker]++;
             }
 
-            ticketOwnership[wagerID][ticketID] = O.maker;
+            tempTicketOwnership[gameID][ticketID] = O.maker;
+
+            uint256 ticketValue_ = _ticketValue(tickets.length, gameID);
+            uint256 halfOfOfferProfit = (O.amount - ticketValue_) / 2;
+
+            unchecked {
+                gameData[gameID].initialFraxBalance += O.amount;
+                gameData[gameID].loanedFraxBalance += (ticketValue_ +
+                    halfOfOfferProfit);
+                gameData[gameID].virtualFraxBalance +=
+                    O.amount -
+                    (ticketValue_ + halfOfOfferProfit);
+
+                playerBalanceData[gameID][O.maker]
+                    .initialFraxBalance += uint120(O.amount);
+                playerBalanceData[gameID][msg.sender]
+                    .loanedFraxBalance += uint120(
+                    ticketValue_ + halfOfOfferProfit
+                );
+            }
 
             _transferFromHelper(TREASURY, THIS, O.amount);
-            _transferHelper(sender, (O.amount * OFFEREE_BENEFICIARY) / BASIS);
+
+            uint256 chosenConfig = gameData[gameID].chosenConfig;
+            IBeefyVault beefyVault = gameStratConfig[chosenConfig].beefyVault;
+
+            uint256 beforeBalance = beefyVault.balanceOf(THIS);
+
+            (
+                uint256(O.amount).mintLPT(
+                    gameStratConfig[chosenConfig].fraxTokenPosition,
+                    gameStratConfig[chosenConfig].curveStableNG
+                )
+            ).depositLPT(beefyVault);
+
+            unchecked {
+                gameData[gameID].mooTokenBalance +=
+                    beefyVault.balanceOf(THIS) -
+                    beforeBalance;
+            }
 
             emit OfferAccepted(
                 O.maker,
                 ticketID,
-                (O.amount * OFFEREE_BENEFICIARY) / BASIS,
-                sender,
-                _ticketValue(tickets.length)
+                ticketValue_ + halfOfOfferProfit,
+                msg.sender
             );
+
+            if (
+                playerRecentGames[O.maker].length == 0 ||
+                playerRecentGames[O.maker][
+                    playerRecentGames[O.maker].length - 1
+                ] !=
+                gameID
+            ) playerRecentGames[O.maker].push(gameID);
 
             return;
         }
 
-        if (tickets.length < THREE) {
-            fee = (balance / BASIS) * TWO;
-            wagerData[wagerID].tickets = tickets;
-            wagerData[wagerID].eligibleWithdrawals = N_ONE;
+        if (eligibleToSell == int8(ZERO)) revert WAIT_FOR_NEXT_WAVE();
 
-            _transferHelper(owner, fee);
+        uint256 virtualFraxBalance = gameData[gameID].virtualFraxBalance;
 
-            if (tickets.length == ONE) {
-                address ticketOwner = ticketOwnership[wagerID][ticketID];
+        if (tickets.length == TWO) {
+            gameData[gameID].tickets = tickets;
+            gameData[gameID].eligibleToSell = N_ONE;
 
-                delete ticketOwnership[wagerID][ticketID];
-                delete totalPlayerTickets[wagerID][ticketOwner];
-
-                _transferHelper(ticketOwner, balance - fee);
-
-                emit WagerFinished(
-                    wagerID,
-                    ticketOwner,
-                    balance - fee,
-                    ticketID
-                );
-            } else {
-                if (sender != ticketOwnership[currentWagerID][ticketID])
-                    revert ONLY_TICKET_OWNER(ticketID);
-
-                address winner1 = ticketOwnership[wagerID][
-                    uint8(tickets[ZERO])
-                ];
-                address winner2 = ticketOwnership[wagerID][uint8(tickets[ONE])];
-                uint256 winner1Amount = (balance - fee) / TWO;
-                uint256 winner2Amount = balance - fee - winner1Amount;
-
-                delete ticketOwnership[wagerID][uint8(tickets[ZERO])];
-                delete ticketOwnership[wagerID][uint8(tickets[ONE])];
-
-                delete totalPlayerTickets[wagerID][winner1];
-                delete totalPlayerTickets[wagerID][winner2];
-
-                _transferHelper(winner1, winner1Amount);
-                _transferHelper(winner2, winner2Amount);
-
-                emit WagerFinished(
-                    wagerID,
-                    [winner1, winner2],
-                    [winner1Amount, winner2Amount],
-                    [
-                        uint256(uint8(tickets[ZERO])),
-                        uint256(uint8(tickets[ONE]))
-                    ]
-                );
-            }
-        } else {
-            if (sender != ticketOwnership[currentWagerID][ticketID])
+            if (msg.sender != tempTicketOwnership[gameID][ticketID])
                 revert ONLY_TICKET_OWNER(ticketID);
 
-            delete ticketOwnership[wagerID][ticketID];
+            address winner1 = tempTicketOwnership[gameID][uint8(tickets[ZERO])];
+            address winner2 = tempTicketOwnership[gameID][uint8(tickets[ONE])];
+            uint256 winner1Amount = virtualFraxBalance / TWO;
 
-            totalPlayerTickets[wagerID][sender]--;
+            delete gameData[gameID].virtualFraxBalance;
+            delete totalPlayerTickets[gameID][winner1];
+            delete totalPlayerTickets[gameID][winner2];
 
-            wagerData[wagerID].tickets = _deleteIndex(index, tickets);
-            wagerData[wagerID].eligibleWithdrawals =
-                int8(eligibleWithdrawals) +
-                N_ONE;
+            unchecked {
+                gameData[gameID].loanedFraxBalance += virtualFraxBalance;
+                playerBalanceData[gameID][winner1].loanedFraxBalance += uint120(
+                    winner1Amount
+                );
+                playerBalanceData[gameID][winner2].loanedFraxBalance += uint120(
+                    virtualFraxBalance - winner1Amount
+                );
+            }
 
-            if (wagerData[wagerID].updatedWave != currentWave)
-                wagerData[wagerID].updatedWave = uint8(currentWave);
-
-            uint256 idealWinnerPrize = balance / tickets.length;
-            fee = (idealWinnerPrize / BASIS) * TWO;
-
-            _transferHelper(owner, fee);
-            _transferHelper(sender, idealWinnerPrize - fee);
-
-            emit WagerUpdated(
-                wagerID,
-                sender,
-                idealWinnerPrize - fee,
-                ticketID
+            emit GameFinished(
+                gameID,
+                [winner1, winner2],
+                [winner1Amount, virtualFraxBalance - winner1Amount],
+                [uint256(uint8(tickets[ZERO])), uint256(uint8(tickets[ONE]))]
             );
+        } else {
+            if (msg.sender != tempTicketOwnership[gameID][ticketID])
+                revert ONLY_TICKET_OWNER(ticketID);
+
+            delete tempTicketOwnership[gameID][ticketID];
+
+            totalPlayerTickets[gameID][msg.sender]--;
+
+            gameData[gameID].tickets = _deleteIndex(index, tickets);
+            gameData[gameID].eligibleToSell = int8(eligibleToSell) + N_ONE;
+
+            if (gameData[gameID].updatedWave != currentWave)
+                gameData[gameID].updatedWave = uint8(currentWave);
+
+            uint256 idealWinnerPrize = virtualFraxBalance / tickets.length;
+
+            unchecked {
+                gameData[gameID].loanedFraxBalance += idealWinnerPrize;
+                gameData[gameID].virtualFraxBalance -= idealWinnerPrize;
+                playerBalanceData[gameID][msg.sender]
+                    .loanedFraxBalance += uint120(idealWinnerPrize);
+            }
+
+            emit GameUpdated(gameID, msg.sender, idealWinnerPrize, ticketID);
         }
     }
 
     /**
         @notice Allows a player to make an offer for a ticket.
+            If the offered amount is {MIN_TICKET_VALUE_OFFER}% higher than the current ticket value
+                or just higher than the last offer
+                the offer is accepted and stored, or else it will be reverted.
         @dev Allows a player to make an offer for a specific ticket.
-            The player specifies the ticket ID and the amount of the offer.
-            If the offered amount is higher than the current ticket value and the last offer
-            the offer is accepted and stored.
             If a higher offer is made for the same ticket
-            the previous offer is refunded to the maker.
+                the previous offer is refunded to the maker.
             The player making the offer, must be an externally owned account (EOA).
-        @param ticketID The ID of the ticket for which the offer is being made.
-        @param amount The amount of the offer in USDT tokens.
+        @param ticketID The ID of the winning ticket for which the offer is being made.
+        @param amount The amount of the offer in {FRAX} tokens.
     */
-    function makeOffer(uint8 ticketID, uint96 amount) external onlyEOA {
-        address sender = msg.sender;
-        uint256 wagerID = currentWagerID;
+    function offerOperation(uint8 ticketID, uint96 amount) external onlyEOA {
+        uint256 gameID = currentGameID;
 
         (
             Status stat,
             ,
             uint256 currentWave,
             bytes memory tickets
-        ) = latestUpdate();
+        ) = _gameUpdate(currentGameID);
 
-        uint256 TV = _ticketValue(tickets.length);
-        TV += (TV * FIVE) / BASIS;
-        Offer memory O = offer[wagerID][ticketID];
-        uint256 offerorStaleAmount = _staleOffers(sender);
+        uint256 plus10PCT = _ticketValue(tickets.length, gameID);
+        plus10PCT += (plus10PCT * MIN_TICKET_VALUE_OFFER) / BASIS;
+        Offer memory O = offer[gameID][ticketID];
+        uint256 offerorStaleAmount = _staleOffers(msg.sender);
 
-        _onlyWithrawable(currentWave, stat);
+        _onlyOperational(currentWave, stat);
         _onlyWinnerTicket(tickets, ticketID);
 
-        if (amount < TV)
-            revert ONLY_HIGHER_THAN_CURRENT_TICKET_VALUE(amount, TV);
+        if (amount < plus10PCT)
+            revert ONLY_HIGHER_THAN_CURRENT_TICKET_VALUE(amount, plus10PCT);
 
         if (amount <= O.amount)
             revert ONLY_HIGHER_THAN_CURRENT_OFFER_VALUE(amount, O.amount);
@@ -559,291 +740,570 @@ contract Come2Top {
         if (offerorStaleAmount < amount) {
             uint256 diffOfferWithStaleAmount = amount - offerorStaleAmount;
 
-            _transferFromHelper(sender, TREASURY, diffOfferWithStaleAmount);
+            _transferFromHelper(msg.sender, TREASURY, diffOfferWithStaleAmount);
 
             unchecked {
-                offerorData[sender]
+                offerorData[msg.sender]
                     .totalOffersValue += diffOfferWithStaleAmount;
             }
         }
 
-        if (offerorData[sender].latestWagerID != wagerID) {
-            offerorData[sender].latestWagerID = uint160(wagerID);
-            offerorData[sender].latestWagerIDoffersValue = uint96(amount);
-        } else offerorData[sender].latestWagerIDoffersValue += uint96(amount);
+        if (offerorData[msg.sender].latestGameID != gameID) {
+            offerorData[msg.sender].latestGameID = uint160(gameID);
+            offerorData[msg.sender].latestGameIDoffersValue = uint96(amount);
+        } else
+            offerorData[msg.sender].latestGameIDoffersValue += uint96(amount);
 
         if (O.maker != ZERO_ADDRESS) {
             _transferFromHelper(TREASURY, O.maker, O.amount);
 
             unchecked {
                 offerorData[O.maker].totalOffersValue -= O.amount;
-                offerorData[O.maker].latestWagerIDoffersValue -= O.amount;
+                offerorData[O.maker].latestGameIDoffersValue -= O.amount;
             }
         }
 
-        offer[wagerID][ticketID] = Offer(amount, sender);
+        offer[gameID][ticketID] = Offer(amount, msg.sender);
 
-        emit OfferMade(
-            sender,
-            ticketID,
-            amount,
-            O.maker,
-            _ticketValue(tickets.length)
+        emit OfferMade(msg.sender, ticketID, amount, O.maker);
+    }
+
+    /**
+        @notice In a nutshell, it enables the players to claim the basic amount of participation
+            in the game (buying tickets, offers) that they contracted
+            and if they won, it also pays the player
+            the profit of the winning amount of that game.
+        @param gameID The ID of the game for which 
+    */
+    function claimOperation(uint256 gameID) external {
+        if (gameID > currentGameID) gameID = currentGameID;
+        (Status stat, , , bytes memory tickets) = _gameUpdate(gameID);
+
+        if (stat != Status.claimable) revert ONLY_CLAIMABLE_MODE(stat);
+
+        uint256 playerInitialFraxBalance = playerBalanceData[gameID][msg.sender]
+            .initialFraxBalance;
+        uint256 playerLoanedFraxBalance = playerBalanceData[gameID][msg.sender]
+            .loanedFraxBalance;
+
+        if (
+            tickets.length == ONE &&
+            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == msg.sender
+        ) {
+            playerLoanedFraxBalance += gameData[gameID].virtualFraxBalance;
+            delete totalPlayerTickets[gameID][msg.sender];
+        }
+
+        if (playerInitialFraxBalance == ZERO) revert NO_AMOUNT_TO_CLAIM();
+
+        uint256 chosenConfig = gameData[gameID].chosenConfig;
+        uint256 mooShare = (gameStratConfig[chosenConfig].beefyVault)
+            .getPricePerFullShare();
+        uint256 gameMooBalance = gameData[gameID].mooTokenBalance;
+        uint256 gameRewardedMoo = ((gameMooBalance * mooShare) / 1e18) -
+            gameMooBalance;
+
+        uint256 gameInitialFraxBalance = gameData[gameID].initialFraxBalance;
+        uint256 gameLoanedFraxBalance = gameData[gameID].loanedFraxBalance +
+            gameData[gameID].virtualFraxBalance;
+
+        uint256 playerClaimableMooAmount;
+
+        if (gameInitialFraxBalance == playerInitialFraxBalance) {
+            playerClaimableMooAmount = gameMooBalance;
+
+            delete gameData[gameID].mooTokenBalance;
+            delete gameData[gameID].initialFraxBalance;
+            delete gameData[gameID].loanedFraxBalance;
+
+            gameData[gameID].tickets = tickets;
+        } else {
+            playerClaimableMooAmount =
+                ((((playerInitialFraxBalance * 1e18) / gameInitialFraxBalance) *
+                    (
+                        gameLoanedFraxBalance == ZERO
+                            ? gameMooBalance
+                            : (gameMooBalance - gameRewardedMoo)
+                    )) / 1e18) +
+                (
+                    gameLoanedFraxBalance == ZERO
+                        ? ZERO
+                        : (((playerLoanedFraxBalance * 1e18) /
+                            gameLoanedFraxBalance) * gameRewardedMoo) / 1e18
+                );
+
+            gameData[gameID].mooTokenBalance -= playerClaimableMooAmount;
+            gameData[gameID].initialFraxBalance -= playerInitialFraxBalance;
+            if (gameLoanedFraxBalance != ZERO)
+                gameData[gameID].loanedFraxBalance -= playerBalanceData[gameID][
+                    msg.sender
+                ].loanedFraxBalance;
+        }
+
+        delete playerBalanceData[gameID][msg.sender];
+        if (
+            tickets.length == ONE &&
+            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == msg.sender
+        ) delete gameData[gameID].virtualFraxBalance;
+
+        ICurveStableNG curveStableNG = gameStratConfig[chosenConfig]
+            .curveStableNG;
+        uint256 beforeLPbalance = curveStableNG.balanceOf(THIS);
+
+        CurveMooLib.withdrawLPT(
+            playerClaimableMooAmount,
+            gameStratConfig[chosenConfig].beefyVault
+        );
+
+        uint256 claimedAmount = CurveMooLib.burnLPT(
+            curveStableNG.balanceOf(THIS) - beforeLPbalance,
+            msg.sender,
+            gameStratConfig[chosenConfig].fraxTokenPosition,
+            curveStableNG
+        );
+
+        emit Claimed(
+            gameID,
+            msg.sender,
+            claimedAmount,
+            int256(claimedAmount) - int256(playerInitialFraxBalance)
         );
     }
 
     /**
-        @notice Allows the offeror to take back their stale offers and receive a refund.
-        @dev Enables the player to withdraw their offers that have not been accepted
-            and receive a refund in return.
-            Only the player who made the offers can call this function.
-        @param to The address to which the refund amount will be transferred.
-            If not provided, the refund will be sent to the caller.
-    */
-    function takeBackStaleOffers(address to) external {
-        address sender = msg.sender;
-
-        if (to == ZERO_ADDRESS) to = sender;
-
-        uint256 refundableAmount = _staleOffers(sender);
+            @notice Allows the player to take back their stale offers and receive a refund.
+            @dev Enables the player to withdraw offers that have not been accepted
+                    and receive a refund in return.
+                If the player has made an offer or offers in the {currentGameID}
+                    he/she can withdraw them only after the game is finished
+                    if they are not accepted.
+                Only the player who made the offers can call this function.
+        */
+    function takeBackStaleOffers() external {
+        uint256 refundableAmount = _staleOffers(msg.sender);
 
         if (refundableAmount == ZERO) revert NO_AMOUNT_TO_REFUND();
 
-        offerorData[sender].totalOffersValue -= refundableAmount;
+        unchecked {
+            offerorData[msg.sender].totalOffersValue -= refundableAmount;
+        }
 
-        _transferFromHelper(TREASURY, to, refundableAmount);
+        _transferFromHelper(TREASURY, msg.sender, refundableAmount);
 
-        emit StaleOffersTookBack(sender, to, refundableAmount);
+        emit StaleOffersTookBack(msg.sender, refundableAmount);
+    }
+
+    /// @dev Strange, isn't it? << Error Prone Getter >>
+    function claimableAmount(address player, uint256 gameID) external {
+        if (gameID > currentGameID) gameID = currentGameID;
+        (Status stat, , , bytes memory tickets) = _gameUpdate(gameID);
+
+        if (stat != Status.finished && stat != Status.claimable)
+            revert FETCHED_CLAIMABLE_AMOUNT(
+                stat,
+                ZERO,
+                ZERO,
+                ZERO,
+                int256(uint256(ZERO))
+            );
+
+        uint256 playerInitialFraxBalance = playerBalanceData[gameID][player]
+            .initialFraxBalance;
+        uint256 playerLoanedFraxBalance = playerBalanceData[gameID][player]
+            .loanedFraxBalance;
+
+        if (
+            tickets.length == ONE &&
+            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == player
+        ) {
+            playerLoanedFraxBalance += gameData[gameID].virtualFraxBalance;
+            delete totalPlayerTickets[gameID][player];
+        }
+
+        if (playerInitialFraxBalance == ZERO)
+            revert FETCHED_CLAIMABLE_AMOUNT(
+                stat,
+                ZERO,
+                ZERO,
+                ZERO,
+                int256(uint256(ZERO))
+            );
+
+        uint256 chosenConfig = gameData[gameID].chosenConfig;
+        uint256 mooShare = (gameStratConfig[chosenConfig].beefyVault)
+            .getPricePerFullShare();
+        uint256 gameMooBalance = gameData[gameID].mooTokenBalance;
+        uint256 gameRewardedMoo = ((gameMooBalance * mooShare) / 1e18) -
+            gameMooBalance;
+
+        uint256 gameInitialFraxBalance = gameData[gameID].initialFraxBalance;
+        uint256 gameLoanedFraxBalance = gameData[gameID].loanedFraxBalance +
+            gameData[gameID].virtualFraxBalance;
+
+        uint256 playerClaimableMooAmount;
+
+        if (gameInitialFraxBalance == playerInitialFraxBalance) {
+            playerClaimableMooAmount = gameMooBalance;
+
+            delete gameData[gameID].mooTokenBalance;
+            delete gameData[gameID].initialFraxBalance;
+            delete gameData[gameID].loanedFraxBalance;
+
+            gameData[gameID].tickets = tickets;
+        } else {
+            playerClaimableMooAmount =
+                ((((playerInitialFraxBalance * 1e18) / gameInitialFraxBalance) *
+                    (
+                        gameLoanedFraxBalance == ZERO
+                            ? gameMooBalance
+                            : (gameMooBalance - gameRewardedMoo)
+                    )) / 1e18) +
+                (
+                    gameLoanedFraxBalance == ZERO
+                        ? ZERO
+                        : (((playerLoanedFraxBalance * 1e18) /
+                            gameLoanedFraxBalance) * gameRewardedMoo) / 1e18
+                );
+
+            gameData[gameID].mooTokenBalance -= playerClaimableMooAmount;
+            gameData[gameID].initialFraxBalance -= playerInitialFraxBalance;
+            if (gameLoanedFraxBalance != ZERO)
+                gameData[gameID].loanedFraxBalance -= playerBalanceData[gameID][
+                    player
+                ].loanedFraxBalance;
+        }
+
+        delete playerBalanceData[gameID][player];
+        if (
+            tickets.length == ONE &&
+            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == player
+        ) delete gameData[gameID].virtualFraxBalance;
+
+        ICurveStableNG curveStableNG = gameStratConfig[chosenConfig]
+            .curveStableNG;
+        uint256 beforeLPbalance = curveStableNG.balanceOf(THIS);
+
+        playerClaimableMooAmount.withdrawLPT(
+            gameStratConfig[chosenConfig].beefyVault
+        );
+
+        uint256 claimedAmount = CurveMooLib.burnLPT(
+            curveStableNG.balanceOf(THIS) - beforeLPbalance,
+            msg.sender,
+            gameStratConfig[chosenConfig].fraxTokenPosition,
+            curveStableNG
+        );
+
+        revert FETCHED_CLAIMABLE_AMOUNT(
+            stat,
+            playerInitialFraxBalance,
+            playerLoanedFraxBalance,
+            claimedAmount,
+            int256(claimedAmount) - int256(playerInitialFraxBalance)
+        );
     }
 
     /******************************\
     |-*-*-*-*-*   VIEW   *-*-*-*-*-|
     \******************************/
     /**
-        @notice Returns all informations about the current wager.
-        @dev This function will be used by Back-End side.
-        @return stat The current status of the wager (ticketSale, waitForCommingWave, Withdrawable, finished).
-        @return maxPurchasableTickets Maximum purchasable tickets for each address, based on {maxTicketsPerWager}.
-        @return startedBlock Started block number of game, in which all tickets sold out.
-        @return currentWave The current wave of the wager.
-        @return currentTicketValue The current value of a winning ticket in USDT tokens.
+        @notice Returns all informations about the current game.
+        @dev Usable for off-chain integrations.
+        @return stat The current status of the game
+            {ticketSale, commingWave, operational, finished, claimable, completed}.
+        @return maxPurchasableTickets Maximum purchasable tickets for each address
+            ased on {maxTicketsPerGame}.
+        @return startedL1Block Started block number ofthe game, in which all tickets sold out.
+        @return currentWave The current wave of the game.
+        @return currentTicketValue The current value of a winning ticket in {FRAX} tokens.
         @return remainingTickets Total number of current wave winner tickets.
-        @return eligibleWithdrawals The number of eligible withdrawals for the current wave of the wager.
-        @return nextWaveTicketValue The value of a winning ticket in USDT tokens for the coming wave.
+        @return eligibleToSell The number of eligible players to sell their tickets
+            for the current wave of the game.
+        @return nextWaveTicketValue The value of a winning ticket in {FRAX} tokens
+            for the coming wave.
         @return nextWaveWinrate The chance of winning each ticket for the coming wave.
-        @return tickets The byte array containing the winning ticket IDs for the current wager.
-        @return ticketsData An array of TicketInfo structures containing the ticket ID
+        @return tickets The byte array containing the winning ticket IDs for the current game.
+        @return ticketsData An array of {TicketInfo} structures containing the ticket ID
             owner address and offer data for each winning ticket.
     */
-    function wagerInfo()
+    function continuesIntegration()
         external
         view
         returns (
             Status stat,
             uint256 maxPurchasableTickets,
-            uint256 startedBlock,
+            uint256 startedL1Block,
             uint256 currentWave,
             uint256 currentTicketValue,
             uint256 remainingTickets,
-            int256 eligibleWithdrawals,
+            int256 eligibleToSell,
             uint256 nextWaveTicketValue,
             uint256 nextWaveWinrate,
             bytes memory tickets,
             TicketInfo[MAX_PARTIES] memory ticketsData
         )
     {
-        uint256 wagerID = currentWagerID;
-        startedBlock = wagerData[wagerID].startedBlock;
-        maxPurchasableTickets = maxTicketsPerWager;
-        (stat, eligibleWithdrawals, currentWave, tickets) = latestUpdate();
+        uint256 gameID = currentGameID;
+        maxPurchasableTickets = maxTicketsPerGame;
+        (stat, eligibleToSell, currentWave, tickets) = _gameUpdate(gameID);
 
-        if (stat == Status.ticketSale) currentTicketValue = ticketPrice;
-        else currentTicketValue = _ticketValue(tickets.length);
+        uint256 index;
 
-        remainingTickets = tickets.length;
+        if (stat != Status.commingWave && stat != Status.operational) {
+            currentTicketValue = ticketPrice;
+            nextWaveTicketValue = currentTicketValue * TWO;
+            nextWaveWinrate = (BASIS**TWO) / TWO;
 
-        if (tickets.length != ONE && stat != Status.finished) {
             if (stat == Status.ticketSale) {
-                remainingTickets = MAX_PARTIES - wagerData[wagerID].soldTickets;
-                nextWaveTicketValue = ticketPrice * TWO;
-                nextWaveWinrate = (BASIS**TWO) / TWO;
+                remainingTickets = MAX_PARTIES - gameData[gameID].soldTickets;
+                while (index != MAX_PARTIES) {
+                    ticketsData[index] = TicketInfo(
+                        Offer(ZERO, ZERO_ADDRESS),
+                        index,
+                        tempTicketOwnership[gameID][uint8(index)]
+                    );
+
+                    unchecked {
+                        index++;
+                    }
+                }
             } else {
-                nextWaveTicketValue =
-                    USDT.balanceOf(THIS) /
-                    (tickets.length / TWO);
-                nextWaveWinrate =
-                    ((tickets.length / TWO) * (BASIS**TWO)) /
-                    tickets.length;
+                ticketsData[uint8(tickets[ZERO])] = TicketInfo(
+                    Offer(ZERO, ZERO_ADDRESS),
+                    uint8(tickets[ZERO]),
+                    tempTicketOwnership[gameID][uint8(tickets[ZERO])]
+                );
+
+                if (tickets.length == TWO)
+                    ticketsData[uint8(tickets[ONE])] = TicketInfo(
+                        Offer(ZERO, ZERO_ADDRESS),
+                        uint8(tickets[ONE]),
+                        tempTicketOwnership[gameID][uint8(tickets[ONE])]
+                    );
             }
-        }
+        } else {
+            remainingTickets = tickets.length;
+            startedL1Block = gameData[gameID].startedL1Block;
+            currentTicketValue = _ticketValue(tickets.length, gameID);
+            nextWaveTicketValue =
+                gameData[gameID].virtualFraxBalance /
+                (tickets.length / TWO);
+            nextWaveWinrate =
+                ((tickets.length / TWO) * BASIS**TWO) /
+                tickets.length;
 
-        bytes memory chosenTickets = stat == Status.ticketSale
-            ? BYTE_TICKETS
-            : tickets;
-
-        if (chosenTickets.length != ONE) {
-            uint256 index;
-            uint256 plus5pTV = currentTicketValue +
-                (currentTicketValue * FIVE) /
+            uint256 plus10PCT = currentTicketValue +
+                (currentTicketValue * MIN_TICKET_VALUE_OFFER) /
                 BASIS;
 
-            while (index != chosenTickets.length) {
-                uint256 loadedOffer = offer[wagerID][
-                    uint8(chosenTickets[index])
-                ].amount;
-                ticketsData[uint8(chosenTickets[index])] = TicketInfo(
+            while (index != tickets.length) {
+                uint256 loadedOffer = offer[gameID][uint8(tickets[index])]
+                    .amount;
+                ticketsData[uint8(tickets[index])] = TicketInfo(
                     Offer(
-                        loadedOffer >= plus5pTV ? uint96(loadedOffer) : ZERO,
-                        loadedOffer >= plus5pTV
-                            ? offer[wagerID][uint8(chosenTickets[index])].maker
+                        loadedOffer >= plus10PCT ? uint96(loadedOffer) : ZERO,
+                        loadedOffer >= plus10PCT
+                            ? offer[gameID][uint8(tickets[index])].maker
                             : ZERO_ADDRESS
                     ),
-                    uint8(chosenTickets[index]),
-                    ticketOwnership[wagerID][uint8(chosenTickets[index])]
+                    uint8(tickets[index]),
+                    tempTicketOwnership[gameID][uint8(tickets[index])]
                 );
 
                 unchecked {
                     index++;
                 }
             }
-        } else
-            ticketsData[uint8(chosenTickets[ZERO])] = TicketInfo(
-                Offer(ZERO, ZERO_ADDRESS),
-                uint8(chosenTickets[ZERO]),
-                ticketOwnership[wagerID][uint8(chosenTickets[ZERO])]
-            );
-    }
 
-    /// @custom:see {_ticketValue()}
-    function ticketValue() external view returns (uint256) {
-        (Status stat, , , bytes memory tickets) = latestUpdate();
+            index = ZERO;
 
-        if (stat == Status.ticketSale) return ticketPrice;
-
-        return _ticketValue(tickets.length);
-    }
-
-    /**
-        @notice Returns the current winners with their winning tickets.
-        @dev Allows anyone to retrieve information about the current winners
-            along with their winning tickets. It returns the number of eligible withdrawals
-            and an array of TicketInfo structures containing the ticket ID and owner address
-            for each winning ticket.
-        @return eligibleWithdrawals The number of eligible withdrawals for the current wager.
-        @return allTicketsData An array of TicketInfo structures containing the ticket ID
-            owner address and offer data for each winning ticket.
-    */
-    function winnersWithTickets()
-        external
-        view
-        returns (int256 eligibleWithdrawals, TicketInfo[] memory allTicketsData)
-    {
-        uint256 wagerID = currentWagerID;
-
-        (
-            Status stat,
-            int256 _eligibleWithdrawals,
-            uint256 currentWave,
-            bytes memory winnerTickets
-        ) = latestUpdate();
-
-        _onlyWithrawable(currentWave, stat);
-
-        allTicketsData = new TicketInfo[](winnerTickets.length);
-        uint256 index;
-
-        uint256 currentTicketValue;
-        if (stat == Status.ticketSale) currentTicketValue = ticketPrice;
-        else currentTicketValue = _ticketValue(winnerTickets.length);
-
-        uint256 plus5TV = currentTicketValue +
-            (currentTicketValue / BASIS) *
-            FIVE;
-
-        while (index != winnerTickets.length) {
-            uint256 loadOffer = offer[wagerID][uint8(winnerTickets[index])]
-                .amount;
-            allTicketsData[index] = TicketInfo(
-                Offer(
-                    loadOffer >= plus5TV ? uint96(loadOffer) : ZERO,
-                    loadOffer >= plus5TV
-                        ? offer[wagerID][uint8(winnerTickets[index])].maker
-                        : ZERO_ADDRESS
-                ),
-                uint8(winnerTickets[index]),
-                ticketOwnership[wagerID][uint8(winnerTickets[index])]
-            );
-
-            unchecked {
-                index++;
-            }
-        }
-
-        return (_eligibleWithdrawals, allTicketsData);
-    }
-
-    /**
-        @notice Retrieves the total value of winning tickets 
-            and the tickets owned by a specific player.
-        @dev Allows anyone to retrieve information about the total value of winning tickets
-            and the tickets owned by a specific player.
-            It calculates the total value of winning tickets owned by the player
-            based on the current ticket value and the number of tickets owned.
-        @param player The address of the player for whom the information is being retrieved.
-        @return totalTicketsValue The total value of winning tickets owned by the player in USDT tokens.
-        @return playerTickets A byte array containing the IDs of the winning tickets owned by the player.
-    */
-    function playerWithWinningTickets(address player)
-        external
-        view
-        returns (uint256 totalTicketsValue, bytes memory playerTickets)
-    {
-        if (player == ZERO_ADDRESS) player = msg.sender;
-
-        uint256 wagerID = currentWagerID;
-        uint256 totalTickets = totalPlayerTickets[wagerID][player];
-
-        (
-            Status stat,
-            ,
-            uint256 currentWave,
-            bytes memory tickets
-        ) = latestUpdate();
-
-        uint8 latestIndex = uint8(tickets.length - ONE);
-
-        _onlyWithrawable(currentWave, stat);
-
-        if (totalTickets == ZERO) revert PLAYER_HAS_NO_TICKETS();
-
-        while (totalTickets != ZERO) {
-            if (
-                ticketOwnership[wagerID][uint8(tickets[latestIndex])] == player
-            ) {
-                playerTickets = abi.encodePacked(
-                    playerTickets,
-                    tickets[latestIndex]
-                );
+            while (index != MAX_PARTIES) {
+                if (ticketsData[index].owner == ZERO_ADDRESS)
+                    ticketsData[index].ticketID = index;
 
                 unchecked {
-                    totalTicketsValue++;
-                    totalTickets--;
+                    index++;
+                }
+            }
+        }
+    }
+
+    /**
+        @notice Retrieves the latest update of the current game.
+        @dev It provides essential information about the {currentGameID} game's state.
+        @return stat The current status of the game
+            {ticketSale, commingWave, operational, finished, claimable, completed}.
+        @return eligibleToSell The number of eligible players to sell their tickets 
+            for the current wave of the game.
+        @return currentWave The current wave of the game.
+        @return winnerTickets The byte array containing the winning ticket IDs for the {currentGameID}.
+    */
+    function latestGameUpdate()
+        external
+        view
+        returns (
+            Status stat,
+            int256 eligibleToSell,
+            uint256 currentWave,
+            bytes memory winnerTickets
+        )
+    {
+        return _gameUpdate(currentGameID);
+    }
+
+    /**
+        @notice Retrieves the current status and details of a specific game.
+        @dev This function provides detailed information about a specific game
+            including its status, eligible withdrawals, current wave, winner tickets, and game virtualFraxBalance.
+        @param gameID_ The ID of the game for which the status and details are being retrieved.
+        @return gameID The ID of the retrieved game.
+        @return stat The current status of the game
+            {ticketSale, commingWave, operational, finished, claimable, completed}.
+        @return eligibleToSell The number of eligible players to sell their tickets 
+            for the current wave of the game.
+        @return currentWave The current wave of the game.
+        @return virtualFraxBalance The balance of the game in {FRAX} tokens
+            which players compete in terms of to get a {loanedFraxBalance}
+            in which they will get a share of it from the yield farming protocol.
+        @return winners The array containing the winner addresses for the given game ID.
+        @return winnerTickets The array containing the winning ticket IDs for the given game ID.
+    */
+    function gameStatus(uint256 gameID_)
+        public
+        view
+        returns (
+            uint256 gameID,
+            Status stat,
+            int256 eligibleToSell,
+            uint256 currentWave,
+            uint256 virtualFraxBalance,
+            address[] memory winners,
+            uint256[] memory winnerTickets
+        )
+    {
+        if (gameID_ > currentGameID) gameID = currentGameID;
+        else gameID = gameID_;
+
+        virtualFraxBalance = gameData[gameID].virtualFraxBalance;
+
+        bytes memory tickets;
+        (stat, eligibleToSell, currentWave, tickets) = _gameUpdate(gameID);
+
+        winners = new address[](tickets.length);
+        winnerTickets = new uint256[](tickets.length);
+
+        for (uint256 i; i < tickets.length; ) {
+            winners[i] = tempTicketOwnership[gameID][uint8(bytes1(tickets[i]))];
+            winnerTickets[i] = uint8(bytes1(tickets[i]));
+
+            unchecked {
+                i++;
+            }
+        }
+    }
+
+    function paginatedPlayerGames(address player, uint256 page)
+        external
+        view
+        returns (
+            uint256 currentPage,
+            uint256 totalPages,
+            uint256[] memory paggedArray
+        )
+    {
+        if (playerRecentGames[player].length == 0)
+            return (currentPage, totalPages, paggedArray);
+        else if (playerRecentGames[player].length < 11) {
+            paggedArray = new uint256[](playerRecentGames[player].length);
+
+            uint256 x;
+            while (true) {
+                paggedArray[x] = playerRecentGames[player][
+                    playerRecentGames[player].length - 1 - x
+                ];
+
+                if (x == playerRecentGames[player].length - 1) break;
+
+                unchecked {
+                    x++;
                 }
             }
 
-            if (latestIndex == ZERO) break;
-
-            unchecked {
-                latestIndex--;
-            }
+            return (1, 1, paggedArray);
         }
 
-        totalTicketsValue *= _ticketValue(tickets.length);
+        if (page == 0) page = 1;
+
+        totalPages = playerRecentGames[player].length / 10;
+
+        uint256 diffLength = playerRecentGames[player].length -
+            (totalPages * 10);
+
+        if (totalPages * 10 < playerRecentGames[player].length)
+            totalPages++;
+        if (page > totalPages) page = totalPages;
+        currentPage = page;
+
+        uint256 firstIndex;
+        uint256 lastIndex;
+        if (page == 1) {
+            firstIndex = playerRecentGames[player].length - 1;
+            lastIndex = firstIndex - 10;
+        } else if (page == totalPages)
+            firstIndex = diffLength == 0 ? firstIndex = 9 : diffLength - 1;
+        else {
+            firstIndex +=
+                ((totalPages - page) * 10) +
+                (diffLength != 0 ? diffLength - 1 : 0);
+            lastIndex +=
+                ((totalPages - page - 1) * 10) +
+                (diffLength != 0 ? diffLength - 1 : 0);
+        }
+
+        paggedArray = new uint256[]((firstIndex + 1) - lastIndex);
+
+        uint256 i;
+        while (true) {
+            paggedArray[i] = playerRecentGames[player][firstIndex];
+
+            if (firstIndex == lastIndex) break;
+            unchecked {
+                i++;
+                firstIndex--;
+            }
+        }
     }
 
-    /// @custom:see {_staleOffers()}
-    function staleOffers(address offeror) external view returns (uint256) {
-        return _staleOffers(offeror);
+    /**
+        @notice Retrieves the current value of a ticket in {FRAX} tokens.
+        @dev Calculates and returns the current value of a ticket:
+            If it was in ticket sale mode, then the ticket value is equal to {ticketPrice}
+            Else by dividing the initialFraxBalance of {FRAX} tokens in the contract
+                by the total number of winning tickets.
+        @return The current value of a ticket in {FRAX} tokens, based on status.
+    */
+    function ticketValue() external view returns (uint256) {
+        (Status stat, , , bytes memory tickets) = _gameUpdate(currentGameID);
+
+        if (stat != Status.commingWave && stat != Status.operational)
+            return ticketPrice;
+
+        return _ticketValue(tickets.length, currentGameID);
+    }
+
+    /**
+        @notice Retrieves the total stale offer amount for a specific offeror.
+        @param offeror The address of the offeror for whom the stale offer amount is being retrieved.
+        @return totalStaleOffers The total stale offer amount for the specified offeror.
+        @return claimableOffers The total claimable stale amount for the specified offeror.
+    */
+    function staleOffers(address offeror)
+        external
+        view
+        returns (uint256 totalStaleOffers, uint256 claimableOffers)
+    {
+        totalStaleOffers = offerorData[offeror].totalOffersValue;
+        claimableOffers = _staleOffers(offeror);
     }
 
     /**
@@ -862,143 +1322,47 @@ contract Come2Top {
         return array[from:to];
     }
 
-    /**
-        @notice Retrieves the latest update of the current wager.
-        @dev It provides essential information about the wager's current state.
-        @return stat The current status of the wager (ticketSale, waitForCommingWave, Withdrawable, finished).
-        @return eligibleWithdrawals The number of eligible withdrawals for the current wave of the wager.
-        @return currentWave The current wave of the wager.
-        @return winnerTickets The byte array containing the winning ticket IDs for the current wager.
-    */
-    function latestUpdate()
-        public
-        view
-        returns (
-            Status stat,
-            int256 eligibleWithdrawals,
-            uint256 currentWave,
-            bytes memory winnerTickets
-        )
-    {
-        uint256 wagerID = currentWagerID;
-        WagerData memory BD = wagerData[wagerID];
-        winnerTickets = BD.tickets;
-        currentWave = BD.updatedWave;
-        eligibleWithdrawals = BD.eligibleWithdrawals;
-
-        if (BD.startedBlock == ZERO) stat = Status.ticketSale;
-        else if (BD.eligibleWithdrawals == N_ONE) stat = Status.finished;
-        else {
-            uint256 lastUpdatedWave;
-            uint256 accumulatedBlocks;
-            uint256 currentBlock = block.number;
-
-            if (BD.updatedWave != ZERO) {
-                lastUpdatedWave = BD.updatedWave + ONE;
-
-                for (uint256 i = ONE; i < lastUpdatedWave; ) {
-                    unchecked {
-                        accumulatedBlocks += WAVE_ELIGIBLES_TIME / i;
-                        i++;
-                    }
-                }
-            } else {
-                if (!(BD.startedBlock + WAVE_DURATION < currentBlock))
-                    return (
-                        Status.waitForCommingWave,
-                        eligibleWithdrawals,
-                        currentWave,
-                        winnerTickets
-                    );
-
-                lastUpdatedWave = ONE;
-            }
-
-            stat = Status.Withdrawable;
-
-            while (true) {
-                if (
-                    BD.startedBlock +
-                        (lastUpdatedWave * WAVE_DURATION) +
-                        accumulatedBlocks <
-                    currentBlock
-                ) {
-                    winnerTickets = _shuffleBytedArray(
-                        winnerTickets,
-                        _calculateRandomSeed(
-                            BD.startedBlock +
-                                (lastUpdatedWave * WAVE_DURATION) +
-                                accumulatedBlocks
-                        ),
-                        winnerTickets.length / TWO
-                    );
-
-                    unchecked {
-                        accumulatedBlocks +=
-                            WAVE_ELIGIBLES_TIME /
-                            lastUpdatedWave;
-                        currentWave++;
-                        lastUpdatedWave++;
-                        eligibleWithdrawals = int256(
-                            winnerTickets.length / TWO
-                        );
-                    }
-
-                    if (winnerTickets.length == ONE) {
-                        eligibleWithdrawals = int8(ONE);
-
-                        break;
-                    }
-                } else {
-                    if (
-                        BD.startedBlock +
-                            (currentWave * WAVE_DURATION) +
-                            accumulatedBlocks <
-                        currentBlock ||
-                        uint256(eligibleWithdrawals) == ZERO
-                    ) stat = Status.waitForCommingWave;
-
-                    break;
-                }
-            }
-        }
-    }
-
     /*****************************\
     |-*-*-*-*   PRIVATE   *-*-*-*-|
     \*****************************/
     /**
-        @dev Allows the contract to transfer USDT tokens to a specified address.
-        @param to The address to which the USDT tokens will be transferred.
-        @param amount The amount of USDT tokens to be transferred.
+        @dev Allows the contract to transfer {FRAX} tokens to a specified address.
+        @param to The address to which the {FRAX} tokens will be transferred.
+        @param amount The amount of {FRAX} tokens to be transferred.
     */
     function _transferHelper(address to, uint256 amount) private {
-        USDT.transfer(to, amount);
+        FRAX.transfer(to, amount);
     }
 
     /**
-        @dev Allows the contract to transfer USDT tokens from one address to another.
-        @param from The address from which the USDT tokens will be transferred.
-        @param to The address to which the USDT tokens will be transferred.
-        @param amount The amount of USDT tokens to be transferred.
+        @dev Allows the contract to transfer {FRAX} tokens from one address to another.
+        @param from The address from which the {FRAX} tokens will be transferred.
+        @param to The address to which the {FRAX} tokens will be transferred.
+        @param amount The amount of {FRAX} tokens to be transferred.
     */
     function _transferFromHelper(
         address from,
         address to,
         uint256 amount
     ) private {
-        USDT.transferFrom(from, to, amount);
+        FRAX.transferFrom(from, to, amount);
     }
 
     /**
         @notice Retrieves the total stale offer amount for a specific offeror.
         @param offeror The address of the offeror for whom the stale offer amount is being retrieved.
-        @return uint256 The total stale offer amount for the specified offeror.
+        @return The total stale offer amount for the specified offeror.
     */
     function _staleOffers(address offeror) private view returns (uint256) {
-        if (offerorData[offeror].latestWagerID == currentWagerID)
+        if (offerorData[offeror].latestGameID == currentGameID) {
+            (Status stat, , , ) = _gameUpdate(currentGameID);
+
+            if (stat != Status.commingWave && stat != Status.operational)
+                return (offerorData[offeror].totalOffersValue);
+
             return (offerorData[offeror].totalOffersValue -
-                offerorData[offeror].latestWagerIDoffersValue);
+                offerorData[offeror].latestGameIDoffersValue);
+        }
 
         return (offerorData[offeror].totalOffersValue);
     }
@@ -1039,7 +1403,7 @@ contract Come2Top {
             It returns a new byte array excluding the element at the specified index.
         @param index The index to be deleted from the byte array.
         @param bytesArray The byte array from which the index will be deleted.
-        @return bytes The new byte array after deleting the specified index.
+        @return The new byte array after deleting the specified index.
     */
     function _deleteIndex(uint8 index, bytes memory bytesArray)
         private
@@ -1060,26 +1424,27 @@ contract Come2Top {
     }
 
     /**
-        @notice Returns the current value of a winning ticket in USDT tokens.
+        @notice Returns the current value of a winning ticket in {FRAX} tokens.
         @dev Calculates and returns the current value of a ticket
-            by dividing the balance of USDT tokens in the contract
+            by dividing the initialFraxBalance of {FRAX} tokens in the contract
             by the total number of winning tickets.
-        @return uint256 The current value of a winning ticket in USDT tokens.
+        @return The current value of a winning ticket in {FRAX} tokens.
     */
-    function _ticketValue(uint256 totalTickets) private view returns (uint256) {
-        if (totalTickets == ZERO) return ZERO;
-
-        return USDT.balanceOf(THIS) / totalTickets;
+    function _ticketValue(uint256 totalTickets, uint256 gameID)
+        private
+        view
+        returns (uint256)
+    {
+        return gameData[gameID].virtualFraxBalance / totalTickets;
     }
 
     /**
-        @dev Calculates a random seed value based on a series of block hashes.
-            It selects various block hashes retrieved from previous block numbers and performs
-            mathematical operations to calculate a random seed.
+        @dev Creates a random seed value based on a series of l1 block prevrandaos.
+            It selects various block prevrandaos and performs mathematical operations to calculate a random seed.
         @param startBlock The block number from where the calculation of the random seed starts.
-        @return uint256 The random seed value generated based on block hashes.
+        @return The random seed value generated based on l1 block prevrandaos.
     */
-    function _calculateRandomSeed(uint256 startBlock)
+    function _createRandomSeed(uint256 startBlock, uint256 prngDuration)
         private
         view
         returns (uint256)
@@ -1089,8 +1454,38 @@ contract Come2Top {
                 uint256(
                     keccak256(
                         abi.encodePacked(
-                            uint256(blockhash(startBlock - SEVEN)) +
-                                uint256(blockhash(startBlock - EIGHT))
+                            uint256(
+                                sha256(
+                                    abi.encodePacked(
+                                        FRAXTAL_L1_BLOCK.numberToRandao(
+                                            uint64(
+                                                startBlock -
+                                                    prngDuration /
+                                                    THREE
+                                            )
+                                        )
+                                    )
+                                )
+                            ) +
+                                FRAXTAL_L1_BLOCK.numberToRandao(
+                                    uint64(startBlock - prngDuration / TWO)
+                                ) +
+                                uint160(
+                                    ripemd160(
+                                        abi.encodePacked(
+                                            uint160(
+                                                FRAXTAL_L1_BLOCK.numberToRandao(
+                                                    uint64(
+                                                        startBlock -
+                                                            (prngDuration *
+                                                                TWO) /
+                                                            THREE
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
                         )
                     )
                 ) * MAGIC_VALUE;
@@ -1110,11 +1505,13 @@ contract Come2Top {
         pure
         returns (bool, uint8)
     {
-        for (uint256 i = tickets.length - ONE; i >= ZERO; ) {
+        uint256 i = tickets.length - ONE;
+        while (true) {
             if (uint8(tickets[i]) == ticketID) {
                 return (true, uint8(i));
             }
 
+            if (i == ZERO) break;
             unchecked {
                 i--;
             }
@@ -1124,26 +1521,183 @@ contract Come2Top {
     }
 
     /**
-        @dev It verifies that the value is not zero
-            and not greater than the maximum limit predefined as {FOUR}.
-        @param value The value to be checked for maximum tickets per wager.
+        @notice Retrieves the current status and details of a specific game.
+        @dev This function provides detailed information about a specific game
+            including its status, eligible withdrawals, current wave, winner tickets, and game initialFraxBalance.
+        @param gameID The ID of the game for which the status and details are being retrieved.
+        @return stat The current status of the game
+            {ticketSale, commingWave, operational, finished, claimable, completed}.
+        @return eligibleToSell The number of eligible players to sell their tickets
+            for the current game.
+        @return currentWave The current wave of the game.
     */
-    function _checkMTPW(uint8 value) private pure {
-        _revertOnZeroUint(value);
+    function _gameUpdate(uint256 gameID)
+        private
+        view
+        returns (
+            Status stat,
+            int256 eligibleToSell,
+            uint256 currentWave,
+            bytes memory remainingTickets
+        )
+    {
+        GameData memory GD = gameData[gameID];
+        remainingTickets = GD.tickets;
+        eligibleToSell = GD.eligibleToSell;
 
-        if (value > FOUR) revert VALUE_CANT_BE_GREATER_THAN(FOUR);
+        uint256 currentL1Block = FRAXTAL_L1_BLOCK.number();
+
+        if (GD.startedL1Block == ZERO) stat = Status.ticketSale;
+        else if (GD.mooTokenBalance == ZERO) {
+            stat = Status.completed;
+            eligibleToSell = N_ONE;
+        } else {
+            currentWave = GD.updatedWave;
+            uint256 lastUpdatedWave;
+            uint256 accumulatedBlocks;
+            uint256 waitingDuration = SAFTY_DURATION + GD.prngPeriod;
+
+            if (GD.updatedWave != ZERO) {
+                lastUpdatedWave = GD.updatedWave + ONE;
+
+                for (uint256 i = ONE; i < lastUpdatedWave; ) {
+                    unchecked {
+                        accumulatedBlocks += WAVE_ELIGIBLES_TIME / i;
+                        i++;
+                    }
+                }
+
+                if (GD.eligibleToSell == N_ONE) {
+                    stat = GD.startedL1Block +
+                        L1_BLOCK_LOCK_TIME +
+                        accumulatedBlocks +
+                        currentWave *
+                        waitingDuration <
+                        currentL1Block
+                        ? Status.claimable
+                        : Status.finished;
+
+                    return (
+                        stat,
+                        eligibleToSell,
+                        currentWave,
+                        remainingTickets
+                    );
+                }
+            } else {
+                if (!(GD.startedL1Block + waitingDuration < currentL1Block))
+                    return (
+                        Status.commingWave,
+                        eligibleToSell,
+                        currentWave,
+                        remainingTickets
+                    );
+
+                lastUpdatedWave = ONE;
+            }
+
+            stat = Status.operational;
+            uint256 prngDuration = GD.prngPeriod;
+
+            while (true) {
+                if (
+                    GD.startedL1Block +
+                        (lastUpdatedWave * waitingDuration) +
+                        accumulatedBlocks <
+                    currentL1Block
+                ) {
+                    remainingTickets = _shuffleBytedArray(
+                        remainingTickets,
+                        _createRandomSeed(
+                            GD.startedL1Block +
+                                (lastUpdatedWave * waitingDuration) +
+                                accumulatedBlocks,
+                            prngDuration
+                        ),
+                        remainingTickets.length / TWO
+                    );
+
+                    eligibleToSell = int256(remainingTickets.length / TWO);
+
+                    if (remainingTickets.length == ONE) {
+                        eligibleToSell = N_ONE;
+                        currentWave = lastUpdatedWave;
+
+                        stat = GD.startedL1Block +
+                            L1_BLOCK_LOCK_TIME +
+                            accumulatedBlocks +
+                            currentWave *
+                            waitingDuration <
+                            currentL1Block
+                            ? Status.claimable
+                            : Status.finished;
+
+                        break;
+                    }
+
+                    unchecked {
+                        accumulatedBlocks +=
+                            WAVE_ELIGIBLES_TIME /
+                            lastUpdatedWave;
+                        currentWave++;
+                        lastUpdatedWave++;
+                    }
+                } else {
+                    if (
+                        GD.startedL1Block +
+                            (currentWave * waitingDuration) +
+                            accumulatedBlocks <
+                        currentL1Block
+                    ) stat = Status.commingWave;
+
+                    break;
+                }
+            }
+        }
     }
 
     /**
-        @dev Checks if the provided ticket price value is within the valid range.
-            It verifies that the ticket price value is not lower than the {MIN_TICKET_PRICE}.
-            If the value is outside the valid range
-            it reverts the transaction with an appropriate error message.
+        @dev It verifies that the value is not zero
+            and not greater than the maximum limit predefined as {EIGHT}.
+        @param value The value to be checked for maximum tickets per game.
+    */
+    function _checkMTPG(uint8 value) private pure {
+        _revertOnZeroUint(value);
+
+        // if (value > EIGHT) revert VALUE_CANT_BE_GREATER_THAN(EIGHT);
+    }
+
+    /**
+        @dev It verifies that the value is not zero
+            and not lower than the minimum limit predefined as {MIN_PRNG_PERIOD}.
+        @param value The value to be checked for maximum tickets per game.
+    */
+    function _checkPRNGP(uint256 value) private pure {
+        _revertOnZeroUint(value);
+
+        if (value < MIN_PRNG_PERIOD)
+            revert VALUE_CANT_BE_LOWER_THAN(MIN_PRNG_PERIOD);
+    }
+
+    /**
+        @dev It verifies that the value is not zero
+            and not lower than the minimum limit predefined as {MIN_TICKET_PRICE}.
         @param value The ticket price value to be checked
     */
     function _checkTP(uint80 value) private pure {
+        _revertOnZeroUint(value);
+
         if (value < MIN_TICKET_PRICE)
             revert VALUE_CANT_BE_LOWER_THAN(MIN_TICKET_PRICE);
+    }
+
+    /**
+        @dev It verifies that the value is not zero
+            and not greater than the maximum limit predefined as {SIX}.
+        @param value The value to be checked for game strategy.
+    */
+    function _checkGS(uint8 value) private pure {
+        if (value > SIX) revert VALUE_CANT_BE_GREATER_THAN(SIX);
     }
 
     /**
@@ -1155,14 +1709,16 @@ contract Come2Top {
     }
 
     /**
-        @dev Checks the current status of the wager and reverts the transaction
-            if the wager status is not withrawable.
-        @param stat The current status of the wager (ticketSale, waitForCommingWave, Withdrawable, finished).
+        @dev Checks the current status of the game and reverts the transaction
+            if the game status is not Operational.
+        @param stat The current status of the game
+            {ticketSale, commingWave, operational, finished, claimable, completed}.
+
     */
-    function _onlyWithrawable(uint256 currentWave, Status stat) private pure {
+    function _onlyOperational(uint256 currentWave, Status stat) private pure {
         if (currentWave == ZERO) revert WAIT_FOR_FIRST_WAVE();
 
-        if (stat != Status.Withdrawable) revert ONLY_WITHDRAWABLE_MODE(stat);
+        if (stat != Status.operational) revert ONLY_OPERATIONAL_MODE(stat);
     }
 
     /**
@@ -1170,7 +1726,7 @@ contract Come2Top {
             If the ticket ID is not found in the list of tickets, the transaction will be reverted.
         @param tickets The list of tickets to search within.
         @param ticketID The ticket ID to search for.
-        @return uint8 The index of the found ticket ID in the list.
+        @return The index of the found ticket ID in the list.
     */
     function _onlyWinnerTicket(bytes memory tickets, uint8 ticketID)
         private
@@ -1178,43 +1734,8 @@ contract Come2Top {
         returns (uint8)
     {
         (bool found, uint8 index) = _findTicket(tickets, ticketID);
-
         if (!found) revert ONLY_WINNER_TICKET(ticketID);
 
         return index;
     }
-}
-
-/// @notice IUSDT interface, which is used for easier interactions with USDT contracts.
-interface IUSDT {
-    /**
-        @notice Allows the contract to transfer USDT tokens to a specified address.
-        @dev Allows the contract to transfer USDT tokens to a specified address.
-        @param to The address to which the USDT tokens will be transferred.
-        @param amount The amount of USDT tokens to be transferred.
-    */
-    function transfer(address to, uint256 amount) external returns (bool);
-
-    /**
-        @notice Allows the contract to transfer USDT tokens from one address to another.
-        @dev Allows the contract to transfer USDT tokens from one address to another.
-        @param from The address from which the USDT tokens will be transferred.
-        @param to The address to which the USDT tokens will be transferred.
-        @param amount The amount of USDT tokens to be transferred.
-        @return bool indicating if the transfer was successful or not.
-    */
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool);
-
-    /**
-        @notice Retrieves the balance of USDT tokens for a specific account.
-        @dev Allows anyone to retrieve the balance of USDT tokens 
-            for a specific account by calling the balanceOf function of the IUSDT interface.
-        @param account The address of the account for which the balance is being retrieved.
-        @return uint256 The balance of USDT tokens for the specified account.
-    */
-    function balanceOf(address account) external view returns (uint256);
 }
