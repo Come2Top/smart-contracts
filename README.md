@@ -26,14 +26,14 @@ Also, it might be questioned how we handle the randaos in such a way that they a
 ## Deployments
 ## Fraxtal (Main-net)
 ### Come2Top: ``After +90% test coverage and C4/Sherlock audit``
-### Frax:  ``After +90% test coverage and C4/Sherlock audit``
-### L1Block: ``After +90% test coverage and C4/Sherlock audit``
+### FraxStablecoin:  ``0xfc00000000000000000000000000000000000001``
+### FraxchainL1Block: ``0x4200000000000000000000000000000000000015``
 ### Treasury: ``After +90% test coverage and C4/Sherlock audit``
 
 ## Fraxtal (Test-net)
 ### Come2Top: ``0x87ad7BCb46509B7E3369790E66A42BEd8fCCC011``
-### Frax: ``0xAb2C350b83D727C1b545CF9475C543826E88270c``
-### L1Block: ``0x13B43491ebf9eF28B4A306f6774C81e08A49C2BB``
+### DummyFraxStablecoin: ``0xAb2C350b83D727C1b545CF9475C543826E88270c``
+### DummyFraxchainL1Block: ``0x13B43491ebf9eF28B4A306f6774C81e08A49C2BB``
 ### Treasury: ``0x3166d0da11b8e5C18201E199F32d69f8d1d8ec8a``
 
 
