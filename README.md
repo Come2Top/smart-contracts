@@ -27,7 +27,9 @@ Also, it might be questioned how we handle the randaos in such a way that they a
 ***For more information, consider reading the litepaper provided in this [link](https://github.com/DeftFinance/deft-dex-contracts/blob/main/assets/Come2TopGame-Litepaper.pdf).***
 
 ## Script to start a game
-```$ forge script ./script/MultiJoin.s.sol:MultiJoin --rpc-url fraxtal-test --broadcast -vvvvv --legacy```
+```shell
+$ forge script ./script/MultiJoin.s.sol:MultiJoin --rpc-url fraxtal-test --broadcast -vvvvv --legacy
+```
 
 ## Deployments
 ## Fraxtal (Main-net)
