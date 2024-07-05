@@ -23,6 +23,9 @@ Also, it might be questioned how we handle the randaos in such a way that they a
 
 **As a short answer, the randaos are required and used only BETWEEN the actionable rounds or waves on which players can act, and we call them ***ComingWave***, where we calculate the received randaos within this period of time. For safety, we have a safety duration of at least 48 L1 blocks, and after these L1 blocks elapse, the shuffling algo finds its needed randaos and calculates so on.**
 
+## Lite-paper
+*For more information, consider reading the litepaper provided in this [link](https://github.com/DeftFinance/deft-dex-contracts/blob/main/assets/Come2TopGame-Litepaper.pdf).*
+
 ## Deployments
 ## Fraxtal (Main-net)
 ### Come2Top: ``After +90% test coverage and C4/Sherlock audit``
