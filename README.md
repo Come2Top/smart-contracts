@@ -28,7 +28,7 @@ Also, it might be questioned how we handle the randaos in such a way that they a
 
 ## Script to start a game
 ```shell
-$ forge script ./script/MultiJoin.s.sol:MultiJoin --rpc-url fraxtal-test --broadcast -vvvvv --legacy
+forge script ./script/MultiJoin.s.sol:MultiJoin --rpc-url fraxtal-test --broadcast -vvvvv --legacy
 ```
 
 ## Deployments
