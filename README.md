@@ -26,6 +26,9 @@ Also, it might be questioned how we handle the randaos in such a way that they a
 ## Lite-paper
 ***For more information, consider reading the litepaper provided in this [link](https://github.com/DeftFinance/deft-dex-contracts/blob/main/assets/Come2TopGame-Litepaper.pdf).***
 
+## Script to start a game
+```$ forge script ./script/MultiJoin.s.sol:MultiJoin --rpc-url fraxtal-test --broadcast -vvvvv --legacy```
+
 ## Deployments
 ## Fraxtal (Main-net)
 ### Come2Top: ``After +90% test coverage and C4/Sherlock audit``
@@ -38,7 +41,3 @@ Also, it might be questioned how we handle the randaos in such a way that they a
 ### DummyFraxStablecoin: ``0xAb2C350b83D727C1b545CF9475C543826E88270c``
 ### DummyFraxchainL1Block: ``0x13B43491ebf9eF28B4A306f6774C81e08A49C2BB``
 ### Treasury: ``0x3166d0da11b8e5C18201E199F32d69f8d1d8ec8a``
-
-
-## Script to start a game
-``forge script ./script/MultiJoin.s.sol:MultiJoin --rpc-url fraxtal-test --broadcast -vvvvv --legacy``
