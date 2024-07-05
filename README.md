@@ -1,6 +1,17 @@
 # <img src="https://github.com/DeftFinance/deft-game-contracts/blob/main/assets/COME2TOP-Logo.svg" width="32px" height="32px"> Come2Top Game
 
-# Deployments
+## Introduction
+Come2Top operates as a decentralized, permissionless, fully on-chain, and peer-to-peer financial investing protocol. It employs a completely random process to distribute accumulated rewards from a farming campaign among investors. Unlike other reward distribution protocols, such as PoolTogether, where assets are locked until a winner is declared, Come2Top allows contributors to participate and withdraw their assets after the game’s lock period ends. By connecting to robust and trusted farming campaigns with a well-defined strategy, Come2Top offers a secure investment platform.
+
+
+## important points
+**Due to time constraints, fuzzy and functional tests are currently not available, although the system's operation has been ensured.**
+ 
+**To quickly and accurately demonstrate performance under test conditions on the test network, the game concludes after an hour, unlike the mainnet system where the maximum duration is approximately 6 hours. As a result, all eligible participants can claim their base investment and saved amounts. Instead of the standard 30-day lock period required in the mainnet to ensure profitable performance and sufficient farming, the testnet awards approximately 1% profit to winners every hour.**
+ 
+***Under these conditions, participants who do not win might experience a slight loss in their initial investment. However, in the mainnet, this potential loss is minimal and close to zero.***
+
+## Deployments
 ## Fraxtal (Main-net)
 ### Come2Top: ``After Mannual Tests``
 ### Frax:  ``After Mannual Tests``
