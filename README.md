@@ -24,10 +24,10 @@ Come2Top operates as a decentralized, permissionless, fully on-chain, and peer-t
 
 ## Deployments
 ## Fraxtal (Main-net)
-### Come2Top: ``After Mannual Tests``
-### Frax:  ``After Mannual Tests``
-### L1Block: ``After Mannual Tests``
-### Treasury: ``After Mannual Tests``
+### Come2Top: ``After +90% test coverage and C4/Sherlock audit``
+### Frax:  ``After +90% test coverage and C4/Sherlock audit``
+### L1Block: ``After +90% test coverage and C4/Sherlock audit``
+### Treasury: ``After +90% test coverage and C4/Sherlock audit``
 
 ## Fraxtal (Test-net)
 ### Come2Top: ``0x87ad7BCb46509B7E3369790E66A42BEd8fCCC011``
