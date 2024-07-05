@@ -11,6 +11,13 @@ Come2Top operates as a decentralized, permissionless, fully on-chain, and peer-t
  
 ***Under these conditions, participants who do not win might experience a slight loss in their initial investment. However, in the mainnet, this potential loss is minimal and close to zero.***
 
+## Required Feature (might be a FIP)
+**Since this project works with Prevrandao (L1 block.prevrandao) for RNG, there is no other way to create it; thus, for testing purposes, we made some dummy contracts that are used ONLY for test cases to demonstrate the potential of the current project.**
+
+**So as a result, one of the most important parts of this project that needed to be integrated on top of the Fraxtal Mainnet is the ***FraxchainL1Block*** contract, which is a systematic contract that stores the latest L1 block data.**
+
+**Since there are some modifications on this contract by the Frax.Finance team and it's an upgradeable contract, our team thought that it would be possible and great if we had a data storage like a mapping (mapping(uint64 => bytes32) public numberToRandao) in which, every time the new L1 block arrives, the secuencer can pass it by the msg.data form within the modified version of setL1BlockValuesEcotone(), which only stores the new randao when there is a new L1 block.**
+
 ## Deployments
 ## Fraxtal (Main-net)
 ### Come2Top: ``After Mannual Tests``
