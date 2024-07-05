@@ -1,5 +1,6 @@
-# <img src="https://github.com/DeftFinance/deft-game-contracts/blob/main/assets/COME2TOP-Logo.svg"  width="28px" height="28px"> Come2Top Game
+# <img src="https://github.com/DeftFinance/deft-game-contracts/blob/main/assets/COME2TOP-Logo.svg" width="32px" height="32px"> Come2Top Game
 
+# Deployments
 ## Fraxtal (Main-net)
 ### Come2Top: ``After Mannual Tests``
 ### Frax:  ``After Mannual Tests``
