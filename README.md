@@ -13,13 +13,13 @@ Come2Top operates as a decentralized, permissionless, fully on-chain, and peer-t
 ***Under these conditions, participants who do not win might experience a slight loss in their initial investment. However, in the mainnet, this potential loss is minimal and close to zero.***
 
 ## Required Feature (might be a FIP)
-**Since this project works with Prevrandao (L1 block.prevrandao) for RNG, there is no other way to create it; thus, for testing purposes, we made some dummy contracts that are used ONLY for test cases to demonstrate the potential of the current project.**
+*Since this project works with Prevrandao (L1 block.prevrandao) for RNG, there is no other way to create it; thus, for testing purposes, we made some dummy contracts that are used ONLY for test cases to demonstrate the potential of the current project.*
 
 **So as a result, one of the most important parts of this project that needed to be integrated on top of the Fraxtal Mainnet is the ***FraxchainL1Block*** contract, which is a systematic contract that stores the latest L1 block data.**
 
 **Since there are some modifications on this contract by the Frax.Finance team and it's an upgradeable contract, our team thought that it would be possible and great if we had a data storage like a mapping (mapping(uint64 => bytes32) public numberToRandao) in which, every time the new L1 block arrives, the secuencer can pass it by the msg.data form within the modified version of setL1BlockValuesEcotone(), which only stores the new randao when there is a new L1 block.**
 
-**Also, it might be questioned how we handle the randaos in such a way that they are not gussable, since the OP-Stack chains are all 5˜7 L1 blocks posterior in storing compared to their L1, which is Ethereum here too!**
+*Also, it might be questioned how we handle the randaos in such a way that they are not gussable, since the OP-Stack chains are all 5˜7 L1 blocks posterior in storing compared to their L1, which is Ethereum here too!*
 
 **As a short answer, the randaos are required and used only BETWEEN the actionable rounds or waves on which players can act, and we call them ***ComingWave***, where we calculate the received randaos within this period of time. For safety, we have a safety duration of at least 48 L1 blocks, and after these L1 blocks elapse, the shuffling algo finds its needed randaos and calculates so on.**
 
