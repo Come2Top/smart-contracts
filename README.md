@@ -21,7 +21,7 @@ Since this project works with Prevrandao (L1 block.prevrandao) for RNG, there is
 
 Also, it might be questioned how we handle the randaos in such a way that they are not gussable, since the OP-Stack chains are all 5˜7 L1 blocks posterior in storing compared to their L1, which is Ethereum here too!
 
-**As a short answer, the randaos are required and used only BETWEEN the actionable rounds or waves on which players can act, and we call them ***ComingWave***, where we calculate the received randaos within this period of time. For safety, we have a safety duration of at least 48 L1 blocks, and after these L1 blocks elapse, the shuffling algo finds its needed randaos and calculates so on.**
+**As a short answer, the randaos are required and used only BETWEEN the actionable rounds or waves on which players can act, and we call them ***ComingWave***, where we calculate the received randaos within this period of time. For safety, we have a safety duration of at least 48 L1 blocks on mainnet, and after these L1 blocks elapse, the shuffling algo finds its needed randaos and calculates so on.**
 
 ## Lite-paper
 ***For more information, consider reading the litepaper provided in this [link](https://github.com/DeftFinance/deft-game-contracts/blob/main/assets/Come2TopGame-Litepaper.pdf).***
