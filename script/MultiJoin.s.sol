@@ -13,45 +13,107 @@ contract MultiJoin is Script, Storage {
 
         uint256 ticketID;
         uint256 totalPlayers;
-        uint8[] memory tickets = new uint8[](4);
-
+        uint256 totalPlayerTickets;
         if (
             stat != ICome2Top.Status.commingWave &&
             stat != ICome2Top.Status.operational
         )
             while (totalPlayers < 64) {
-                tickets[0] = uint8(ticketID);
-                tickets[1] = uint8(ticketID + 1);
-                tickets[2] = uint8(ticketID + 2);
-                tickets[3] = uint8(ticketID + 3);
+                totalPlayerTickets = _COME2TOP_.totalPlayerTickets(
+                    currentGameID,
+                    vm.addr(_privateKeys_[totalPlayers])
+                );
 
-                while (
-                    _COME2TOP_.totalPlayerTickets(
-                        currentGameID,
-                        vm.addr(_privateKeys_[totalPlayers])
-                    ) == _COME2TOP_.maxTicketsPerGame()
-                ) totalPlayers++;
+                if (totalPlayerTickets == 4) totalPlayers++;
+                else {
+                    uint8[] memory tickets = new uint8[](
+                        4 - totalPlayerTickets
+                    );
 
-                if (
-                    _COME2TOP_.tempTicketOwnership(currentGameID, tickets[0]) ==
-                    address(0) ||
-                    _COME2TOP_.tempTicketOwnership(currentGameID, tickets[1]) ==
-                    address(0) ||
-                    _COME2TOP_.tempTicketOwnership(currentGameID, tickets[2]) ==
-                    address(0) ||
-                    _COME2TOP_.tempTicketOwnership(currentGameID, tickets[3]) ==
-                    address(0) ||
-                    firstEnter
-                ) {
+                    bool shouldBreak;
+
+                    while (true) {
+                        if (ticketID == 256) {
+                            shouldBreak = true;
+                            break;
+                        }
+                        if (
+                            _COME2TOP_.tempTicketOwnership(
+                                currentGameID,
+                                uint8(ticketID)
+                            ) != address(0)
+                        ) ticketID++;
+                        else {
+                            tickets[0] = uint8(ticketID);
+                            ticketID++;
+                            break;
+                        }
+                    }
+
+                    if (totalPlayerTickets < 3 && !shouldBreak)
+                        while (true) {
+                            if (ticketID == 256) {
+                                shouldBreak = true;
+                                break;
+                            }
+                            if (
+                                _COME2TOP_.tempTicketOwnership(
+                                    currentGameID,
+                                    uint8(ticketID)
+                                ) != address(0)
+                            ) ticketID++;
+                            else {
+                                tickets[1] = uint8(ticketID);
+                                ticketID++;
+                                break;
+                            }
+                        }
+                    if (totalPlayerTickets < 2 && !shouldBreak)
+                        while (true) {
+                            if (ticketID == 256) {
+                                shouldBreak = true;
+                                break;
+                            }
+                            if (
+                                _COME2TOP_.tempTicketOwnership(
+                                    currentGameID,
+                                    uint8(ticketID)
+                                ) != address(0)
+                            ) ticketID++;
+                            else {
+                                tickets[2] = uint8(ticketID);
+                                ticketID++;
+                                break;
+                            }
+                        }
+                    if (totalPlayerTickets == 0 && !shouldBreak)
+                        while (true) {
+                            if (ticketID == 256) {
+                                shouldBreak = true;
+                                break;
+                            }
+                            if (
+                                _COME2TOP_.tempTicketOwnership(
+                                    currentGameID,
+                                    uint8(ticketID)
+                                ) != address(0)
+                            ) ticketID++;
+                            else {
+                                tickets[3] = uint8(ticketID);
+                                ticketID++;
+                                break;
+                            }
+                        }
+
                     vmSafe.startBroadcast(_privateKeys_[totalPlayers]);
                     _COME2TOP_.ticketSaleOperation(tickets);
                     vmSafe.stopBroadcast();
-                }
 
-                if (firstEnter) delete firstEnter;
+                    if (firstEnter) {
+                        firstEnter = false;
+                        currentGameID++;
+                    }
 
-                unchecked {
-                    ticketID += 4;
                     totalPlayers++;
                 }
             }
