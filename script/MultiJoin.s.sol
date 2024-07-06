@@ -25,6 +25,13 @@ contract MultiJoin is Script, Storage {
                 tickets[2] = uint8(ticketID + 2);
                 tickets[3] = uint8(ticketID + 3);
 
+                while (
+                    _COME2TOP_.totalPlayerTickets(
+                        currentGameID,
+                        vm.addr(_privateKeys_[totalPlayers])
+                    ) == _COME2TOP_.maxTicketsPerGame()
+                ) totalPlayers++;
+
                 if (
                     _COME2TOP_.tempTicketOwnership(currentGameID, tickets[0]) ==
                     address(0) ||
