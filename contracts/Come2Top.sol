@@ -803,6 +803,9 @@ contract Come2Top {
         uint256 gameRewardedMoo = ((gameMooBalance * mooShare) / 1e18) -
             gameMooBalance;
 
+        gameRewardedMoo = (gameRewardedMoo * 1e18) / ((gameMooBalance * mooShare) / 1e18);
+        gameMooBalance -= gameRewardedMoo;
+
         uint256 gameInitialFraxBalance = gameData[gameID].initialFraxBalance;
         uint256 gameLoanedFraxBalance = gameData[gameID].loanedFraxBalance +
             gameData[gameID].virtualFraxBalance;
@@ -810,7 +813,7 @@ contract Come2Top {
         uint256 playerClaimableMooAmount;
 
         if (gameInitialFraxBalance == playerInitialFraxBalance) {
-            playerClaimableMooAmount = gameMooBalance;
+            playerClaimableMooAmount = gameData[gameID].mooTokenBalance;
 
             delete gameData[gameID].mooTokenBalance;
             delete gameData[gameID].initialFraxBalance;
@@ -822,8 +825,8 @@ contract Come2Top {
                 ((((playerInitialFraxBalance * 1e18) / gameInitialFraxBalance) *
                     (
                         gameLoanedFraxBalance == ZERO
-                            ? gameMooBalance
-                            : (gameMooBalance - gameRewardedMoo)
+                            ? gameData[gameID].mooTokenBalance
+                            : gameMooBalance
                     )) / 1e18) +
                 (
                     gameLoanedFraxBalance == ZERO
@@ -936,6 +939,9 @@ contract Come2Top {
         uint256 gameRewardedMoo = ((gameMooBalance * mooShare) / 1e18) -
             gameMooBalance;
 
+        gameRewardedMoo = (gameRewardedMoo * 1e18) / ((gameMooBalance * mooShare) / 1e18);
+        gameMooBalance -= gameRewardedMoo;
+
         uint256 gameInitialFraxBalance = gameData[gameID].initialFraxBalance;
         uint256 gameLoanedFraxBalance = gameData[gameID].loanedFraxBalance +
             gameData[gameID].virtualFraxBalance;
@@ -943,7 +949,7 @@ contract Come2Top {
         uint256 playerClaimableMooAmount;
 
         if (gameInitialFraxBalance == playerInitialFraxBalance) {
-            playerClaimableMooAmount = gameMooBalance;
+            playerClaimableMooAmount = gameData[gameID].mooTokenBalance;
 
             delete gameData[gameID].mooTokenBalance;
             delete gameData[gameID].initialFraxBalance;
@@ -955,8 +961,8 @@ contract Come2Top {
                 ((((playerInitialFraxBalance * 1e18) / gameInitialFraxBalance) *
                     (
                         gameLoanedFraxBalance == ZERO
-                            ? gameMooBalance
-                            : (gameMooBalance - gameRewardedMoo)
+                            ? gameData[gameID].mooTokenBalance
+                            : gameMooBalance
                     )) / 1e18) +
                 (
                     gameLoanedFraxBalance == ZERO
