@@ -3,7 +3,8 @@
 ## Introduction
 Come2Top operates as a decentralized, permissionless, fully on-chain, and peer-to-peer financial investing protocol. It employs a completely random process to distribute accumulated rewards from a farming campaign among investors. Unlike other reward distribution protocols, such as PoolTogether, where assets are locked until a winner is declared, Come2Top allows contributors to participate and withdraw their assets after the game’s lock period ends. By connecting to robust and trusted farming campaigns with a well-defined strategy, Come2Top offers a secure investment platform.
 
-## Flowchart
+## Flow
+<img src="https://github.com/DeftFinance/deft-game-contracts/blob/main/assets/Come2Top-Flow.png" width="100%" height="100%">
 
 ## important points
 **Due to time constraints, fuzzy and functional tests are currently not available, although the system's operation has been ensured.**
