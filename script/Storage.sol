@@ -6,9 +6,9 @@ import {ICome2Top} from "../test/interface/ICome2Top.sol";
 
 abstract contract Storage {
     ICome2Top internal constant _COME2TOP_ =
-        ICome2Top(0x7f5002eD66e7759c6C05d657FC1cec8Dca66b834);
+        ICome2Top(0x6DCA7999d5925234d9dB4073A6Ec184b5022CaA2);
     IFrax internal constant _FRAX_ =
-        IFrax(0x502C17468b5d10466aBB4aB5F4E50E4c68941476);
+        IFrax(0x053318f90daaF4e5080600594C7eb42FEd8627Ce);
     uint256[] internal _privateKeys_ = [
         0x7fc66c1f98a1cc8355601f5620e44328d3c7a4eff2cbf37d3705832e697c79a4,
         0x249b1b58b770c5a26cbedbd78f15d2c2784bccaf4833b7e895603a4397567297,
