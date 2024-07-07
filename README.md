@@ -52,7 +52,7 @@ forge script ./script/MultiJoin.s.sol:MultiJoin --rpc-url fraxtal-test --broadca
 ### Treasury: ``After +90% test coverage and C4/Sherlock audit``
 
 ## Fraxtal (Test-net)
-### Come2Top: ``0x87ad7BCb46509B7E3369790E66A42BEd8fCCC011``
-### DummyFraxStablecoin: ``0xAb2C350b83D727C1b545CF9475C543826E88270c``
-### DummyFraxchainL1Block: ``0x13B43491ebf9eF28B4A306f6774C81e08A49C2BB``
-### Treasury: ``0x3166d0da11b8e5C18201E199F32d69f8d1d8ec8a``
+### Come2Top: ``0x7f5002eD66e7759c6C05d657FC1cec8Dca66b834``
+### DummyFraxStablecoin: ``0x502C17468b5d10466aBB4aB5F4E50E4c68941476``
+### DummyFraxchainL1Block: ``0xD28feab50F6f4545771914FA36E2107B4e9c3928``
+### Treasury: ``0x7e021A6756Db8baC4FE4731eeF41a660d27C99cc``
