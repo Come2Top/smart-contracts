@@ -9,9 +9,7 @@ Come2Top operates as a decentralized, permissionless, fully on-chain, and peer-t
 ## important points
 **Due to time constraints, fuzzy and functional tests are currently not available, although the system's operation has been ensured.**
  
-**To quickly and accurately demonstrate performance under test conditions on the test network, the game concludes after an hour, unlike the mainnet system where the maximum duration is approximately 6 hours. As a result, all eligible participants can claim their base investment and saved amounts. Instead of the standard 30-day lock period required in the mainnet to ensure profitable performance and sufficient farming, the testnet awards approximately 1% profit to winners every hour.**
- 
-***Under these conditions, participants who do not win might experience a slight loss in their initial investment. However, in the mainnet, this potential loss is minimal and close to zero.***
+**To quickly and accurately demonstrate performance under test conditions on the test network, the game concludes after an hour, unlike the mainnet system where the maximum duration is approximately 6 hours. As a result, all eligible participants can claim their base investment and saved amounts. Instead of the standard 30-day lock period required in the mainnet to ensure profitable performance and sufficient farming, the testnet awards approximately 1% profit to winners every day.**
 
 ## Required Feature (might be a FIP)
 Since this project works with Prevrandao (L1 block.prevrandao) for RNG, there is no other way to create it; thus, for testing purposes, we made some dummy contracts that are used ONLY for test cases to demonstrate the potential of the current project.
