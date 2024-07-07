@@ -8,7 +8,21 @@ Come2Top operates as a decentralized, permissionless, fully on-chain, and peer-t
 
 ## important points
 **Due to time constraints, fuzzy and functional tests are currently not available, although the system's operation has been ensured.**
- 
+
+**Everything in this game, relies on L1 Block, as a unit of time.**
+
+**In each wave with operational status, the amount of time for that wave is based on the contracted amount divided by the wave counter, for e.g:**
+
+*Operational Wave Period Time = 80 L1 Blocks*
+
+*Wave 1 = 80 L1 Blocks*
+
+*Wave 2 = 80/2 L1 Blocks*
+
+...
+
+*Wave 7 = 80/7 L1 Blocks*
+
 **To quickly and accurately demonstrate performance under test conditions on the test network, the game concludes after an hour, unlike the mainnet system where the maximum duration is approximately 6 hours. As a result, all eligible participants can claim their base investment and saved amounts. Instead of the standard 30-day lock period required in the mainnet to ensure profitable performance and sufficient farming, the testnet awards approximately 1% profit to winners every day.**
 
 ## Required Feature (might be a FIP)
