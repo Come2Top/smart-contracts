@@ -77,8 +77,8 @@ contract DummyBeefyVaultV7 {
         uint256 n = block.timestamp - supplyWatcher;
         if (n == 0) n = 1;
 
-        // interest rate = 2777777777777/s (1e18 base -> 1% every hour == 1e16 of balance)
-        return bal + ((bal * n * 2777777777777) / 1e18);
+        // interest rate = 115740740740/s (1e18 base -> 1% every day == 1e16 of balance)
+        return bal + ((bal * n * 115740740740) / 1e18);
     }
 
     function want() external view returns (address) {
