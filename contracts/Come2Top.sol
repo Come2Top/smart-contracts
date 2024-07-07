@@ -803,7 +803,10 @@ contract Come2Top {
         uint256 gameRewardedMoo = ((gameMooBalance * mooShare) / 1e18) -
             gameMooBalance;
 
-        gameRewardedMoo = (gameRewardedMoo * 1e18) / ((gameMooBalance * mooShare) / 1e18);
+        gameRewardedMoo =
+            (((gameRewardedMoo * 1e18) / ((gameMooBalance * mooShare) / 1e18)) *
+                1e18) /
+            gameData[gameID].mooTokenBalance;
         gameMooBalance -= gameRewardedMoo;
 
         uint256 gameInitialFraxBalance = gameData[gameID].initialFraxBalance;
@@ -939,7 +942,10 @@ contract Come2Top {
         uint256 gameRewardedMoo = ((gameMooBalance * mooShare) / 1e18) -
             gameMooBalance;
 
-        gameRewardedMoo = (gameRewardedMoo * 1e18) / ((gameMooBalance * mooShare) / 1e18);
+        gameRewardedMoo =
+            (((gameRewardedMoo * 1e18) / ((gameMooBalance * mooShare) / 1e18)) *
+                1e18) /
+            gameData[gameID].mooTokenBalance;
         gameMooBalance -= gameRewardedMoo;
 
         uint256 gameInitialFraxBalance = gameData[gameID].initialFraxBalance;
@@ -1245,8 +1251,7 @@ contract Come2Top {
         uint256 diffLength = playerRecentGames[player].length -
             (totalPages * 10);
 
-        if (totalPages * 10 < playerRecentGames[player].length)
-            totalPages++;
+        if (totalPages * 10 < playerRecentGames[player].length) totalPages++;
         if (page > totalPages) page = totalPages;
         currentPage = page;
 
