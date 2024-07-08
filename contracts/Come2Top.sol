@@ -38,7 +38,9 @@ contract Come2Top {
         uint8 chosenConfig;
         uint112 prngPeriod;
         uint112 startedL1Block;
+        uint256 mooShare;
         uint256 mooTokenBalance;
+        uint256 rewardedMoo;
         uint256 initialFraxBalance;
         uint256 loanedFraxBalance;
         uint256 virtualFraxBalance;
@@ -508,6 +510,7 @@ contract Come2Top {
             ).depositLPT(beefyVault);
 
             GD.mooTokenBalance = beefyVault.balanceOf(THIS) - beforeBalance;
+            GD.mooShare = beefyVault.getPricePerFullShare();
 
             emit GameStarted(gameID, currentL1Block, MAX_PARTIES * neededToken);
         } else {
@@ -549,53 +552,52 @@ contract Come2Top {
         @param ticketID The ID of the ticket for which the offer is being accepted.
     */
     function winnerOperation(uint8 ticketID) external {
-        uint256 gameID = currentGameID;
         (
             Status stat,
             int256 eligibleToSell,
             uint256 currentWave,
             bytes memory tickets
-        ) = _gameUpdate(gameID);
+        ) = _gameUpdate(currentGameID);
 
         _onlyOperational(currentWave, stat);
         uint8 index = _onlyWinnerTicket(tickets, ticketID);
 
-        uint256 plus10PCT = _ticketValue(tickets.length, gameID);
+        uint256 plus10PCT = _ticketValue(tickets.length, currentGameID);
         plus10PCT += (plus10PCT * MIN_TICKET_VALUE_OFFER) / BASIS;
 
         if (
-            offer[gameID][ticketID].amount >= plus10PCT &&
-            offer[gameID][ticketID].maker != ZERO_ADDRESS
+            offer[currentGameID][ticketID].amount >= plus10PCT &&
+            offer[currentGameID][ticketID].maker != ZERO_ADDRESS
         ) {
-            Offer memory O = offer[gameID][ticketID];
-            if (msg.sender != tempTicketOwnership[gameID][ticketID])
+            Offer memory O = offer[currentGameID][ticketID];
+            if (msg.sender != tempTicketOwnership[currentGameID][ticketID])
                 revert ONLY_TICKET_OWNER(ticketID);
 
-            delete offer[gameID][ticketID].maker;
+            delete offer[currentGameID][ticketID].maker;
 
             unchecked {
                 offerorData[O.maker].latestGameIDoffersValue -= O.amount;
                 offerorData[O.maker].totalOffersValue -= O.amount;
-                totalPlayerTickets[gameID][msg.sender]--;
-                totalPlayerTickets[gameID][O.maker]++;
+                totalPlayerTickets[currentGameID][msg.sender]--;
+                totalPlayerTickets[currentGameID][O.maker]++;
             }
 
-            tempTicketOwnership[gameID][ticketID] = O.maker;
+            tempTicketOwnership[currentGameID][ticketID] = O.maker;
 
-            uint256 ticketValue_ = _ticketValue(tickets.length, gameID);
+            uint256 ticketValue_ = _ticketValue(tickets.length, currentGameID);
             uint256 halfOfOfferProfit = (O.amount - ticketValue_) / 2;
 
             unchecked {
-                gameData[gameID].initialFraxBalance += O.amount;
-                gameData[gameID].loanedFraxBalance += (ticketValue_ +
+                gameData[currentGameID].initialFraxBalance += O.amount;
+                gameData[currentGameID].loanedFraxBalance += (ticketValue_ +
                     halfOfOfferProfit);
-                gameData[gameID].virtualFraxBalance +=
+                gameData[currentGameID].virtualFraxBalance +=
                     O.amount -
                     (ticketValue_ + halfOfOfferProfit);
 
-                playerBalanceData[gameID][O.maker]
+                playerBalanceData[currentGameID][O.maker]
                     .initialFraxBalance += uint120(O.amount);
-                playerBalanceData[gameID][msg.sender]
+                playerBalanceData[currentGameID][msg.sender]
                     .loanedFraxBalance += uint120(
                     ticketValue_ + halfOfOfferProfit
                 );
@@ -603,7 +605,7 @@ contract Come2Top {
 
             _transferFromHelper(TREASURY, THIS, O.amount);
 
-            uint256 chosenConfig = gameData[gameID].chosenConfig;
+            uint256 chosenConfig = gameData[currentGameID].chosenConfig;
             IBeefyVault beefyVault = gameStratConfig[chosenConfig].beefyVault;
 
             uint256 beforeBalance = beefyVault.balanceOf(THIS);
@@ -615,11 +617,19 @@ contract Come2Top {
                 )
             ).depositLPT(beefyVault);
 
+            gameData[currentGameID].rewardedMoo +=
+                ((gameData[currentGameID].mooTokenBalance *
+                    beefyVault.getPricePerFullShare()) / 1e18) -
+                ((gameData[currentGameID].mooTokenBalance *
+                    gameData[currentGameID].mooShare) / 1e18);
+
             unchecked {
-                gameData[gameID].mooTokenBalance +=
+                gameData[currentGameID].mooTokenBalance +=
                     beefyVault.balanceOf(THIS) -
                     beforeBalance;
             }
+
+            gameData[currentGameID].mooShare = beefyVault.getPricePerFullShare();
 
             emit OfferAccepted(
                 O.maker,
@@ -633,13 +643,15 @@ contract Come2Top {
                 playerRecentGames[O.maker][
                     playerRecentGames[O.maker].length - 1
                 ] !=
-                gameID
-            ) playerRecentGames[O.maker].push(gameID);
+                currentGameID
+            ) playerRecentGames[O.maker].push(currentGameID);
 
             return;
         }
 
         if (eligibleToSell == int8(ZERO)) revert WAIT_FOR_NEXT_WAVE();
+
+        uint256 gameID = currentGameID;
 
         uint256 virtualFraxBalance = gameData[gameID].virtualFraxBalance;
 
@@ -800,13 +812,12 @@ contract Come2Top {
         uint256 mooShare = (gameStratConfig[chosenConfig].beefyVault)
             .getPricePerFullShare();
         uint256 gameMooBalance = gameData[gameID].mooTokenBalance;
-        uint256 gameRewardedMoo = ((gameMooBalance * mooShare) / 1e18) -
-            gameMooBalance;
-
-        gameRewardedMoo =
-            (((gameRewardedMoo * 1e18) / ((gameMooBalance * mooShare) / 1e18)) *
-                1e18) /
-            gameData[gameID].mooTokenBalance;
+        // aware of underflow possibility - revert is desired.
+        uint256 gameRewardedMoo = ((((gameData[gameID].rewardedMoo +
+            (((gameMooBalance * mooShare) / 1e18) -
+                ((gameMooBalance * gameData[gameID].mooShare) / 1e18))) *
+            1e18) / ((gameMooBalance * mooShare) / 1e18)) *
+            gameData[gameID].mooTokenBalance) / 1e18;
         gameMooBalance -= gameRewardedMoo;
 
         uint256 gameInitialFraxBalance = gameData[gameID].initialFraxBalance;
@@ -899,19 +910,10 @@ contract Come2Top {
         emit StaleOffersTookBack(msg.sender, refundableAmount);
     }
 
-    /// @dev Strange, isn't it? << Error Prone Getter >>
+    // @dev Strange, isn't it? << Error Prone Getter >>
     function claimableAmount(address player, uint256 gameID) external {
         if (gameID > currentGameID) gameID = currentGameID;
         (Status stat, , , bytes memory tickets) = _gameUpdate(gameID);
-
-        if (stat != Status.finished && stat != Status.claimable)
-            revert FETCHED_CLAIMABLE_AMOUNT(
-                stat,
-                ZERO,
-                ZERO,
-                ZERO,
-                int256(uint256(ZERO))
-            );
 
         uint256 playerInitialFraxBalance = playerBalanceData[gameID][player]
             .initialFraxBalance;
@@ -926,26 +928,20 @@ contract Come2Top {
             delete totalPlayerTickets[gameID][player];
         }
 
-        if (playerInitialFraxBalance == ZERO)
-            revert FETCHED_CLAIMABLE_AMOUNT(
-                stat,
-                ZERO,
-                ZERO,
-                ZERO,
-                int256(uint256(ZERO))
-            );
+        if (
+            (stat != Status.finished && stat != Status.claimable) ||
+            playerInitialFraxBalance == ZERO
+        ) revert FETCHED_CLAIMABLE_AMOUNT(stat, ZERO, ZERO, ZERO, 0);
 
         uint256 chosenConfig = gameData[gameID].chosenConfig;
         uint256 mooShare = (gameStratConfig[chosenConfig].beefyVault)
             .getPricePerFullShare();
         uint256 gameMooBalance = gameData[gameID].mooTokenBalance;
-        uint256 gameRewardedMoo = ((gameMooBalance * mooShare) / 1e18) -
-            gameMooBalance;
-
-        gameRewardedMoo =
-            (((gameRewardedMoo * 1e18) / ((gameMooBalance * mooShare) / 1e18)) *
-                1e18) /
-            gameData[gameID].mooTokenBalance;
+        uint256 gameRewardedMoo = ((((gameData[gameID].rewardedMoo +
+            (((gameMooBalance * mooShare) / 1e18) -
+                ((gameMooBalance * gameData[gameID].mooShare) / 1e18))) *
+            1e18) / ((gameMooBalance * mooShare) / 1e18)) *
+            gameData[gameID].mooTokenBalance) / 1e18;
         gameMooBalance -= gameRewardedMoo;
 
         uint256 gameInitialFraxBalance = gameData[gameID].initialFraxBalance;
