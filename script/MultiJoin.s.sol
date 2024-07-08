@@ -19,7 +19,9 @@ contract MultiJoin is Script, Storage {
             stat != ICome2Top.Status.operational
         )
             while (totalPlayers < 64) {
-                totalPlayerTickets = _COME2TOP_.totalPlayerTickets(
+                firstEnter
+                    ? totalPlayerTickets = 0
+                    : totalPlayerTickets = _COME2TOP_.totalPlayerTickets(
                     currentGameID,
                     vm.addr(_privateKeys_[totalPlayers])
                 );
