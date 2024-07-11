@@ -24,8 +24,6 @@ contract MultiJoin is Script, Storage {
                     vm.addr(_privateKeys_[totalPlayers])
                 );
 
-                totalPlayerTickets > 4 ? totalPlayerTickets = 0 : totalPlayerTickets;
-
                 if (totalPlayerTickets == 4) totalPlayers++;
                 else {
                     uint8[] memory tickets = new uint8[](
