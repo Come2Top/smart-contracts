@@ -5,7 +5,7 @@ Come2Top operates as a decentralized, permissionless, fully on-chain, and peer-t
 
 ## Flow
 <img src="https://github.com/DeftFinance/deft-game-contracts/blob/main/assets/Come2Top-Flow.png" width="100%" height="100%">
-Also watch the prototype [here](https://youtu.be/JeNjhU44VUM).
+Also watch the prototype [here](https://youtu.be/JeNjhU44VUM?si=eKGlQz2Dv-h2fDdK).
 
 ## important points
 **Due to time constraints, fuzzy and functional tests are currently not available, although the system's operation has been ensured.**
