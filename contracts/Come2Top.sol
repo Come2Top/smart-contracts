@@ -6,7 +6,7 @@ import {IFraxtalL1Block} from "./interfaces/IFraxtalL1Block.sol";
 import {IBeefyVault} from "./interfaces/IBeefyVault.sol";
 import {ICurveStableNG} from "./interfaces/ICurveStableNG.sol";
 
-import {CurveMooLib} from "./libraries/CurveMooLib.sol";
+import {CurveMooLib} from "./DiamondMock/libraries/CurveMooLib.sol";
 
 /**
     @author @4BitLab

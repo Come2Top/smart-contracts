@@ -20,6 +20,15 @@ import {GameActionsFacet} from "./facets/GameActionsFacet.sol";
 import {CommonGettersFacet} from "./facets/CommonGettersFacet.sol";
 import {GameGettersFacet} from "./facets/GameGettersFacet.sol";
 
+
+/**
+    @author @4BitLab
+    @title Come2Top System Contract.
+    @notice Come2Top is a secure, automated, and fully decentralized GameFi platform
+        built on top of the Fraxtal Mainnet, Frax Protocol & Curve Protocol
+        that works without the involvement of third parties.
+        For more information & further questions, visit: https://come2.top
+*/
 contract Come2TopDiamond {
     /*******************************\
     |-*-*-*-*   CONSTANTS   *-*-*-*-|
