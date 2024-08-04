@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: -- Come2Top --
 pragma solidity 0.8.20;
 
-import {IERC20} from "../interfaces/IERC20.sol";
-import {IFraxtalL1Block} from "../interfaces/IFraxtalL1Block.sol";
-import {IBeefyVault} from "../interfaces/IBeefyVault.sol";
-import {ICurveStableNG} from "../interfaces/ICurveStableNG.sol";
+import {IERC20} from "../../interfaces/IERC20.sol";
+import {IFraxtalL1Block} from "../../interfaces/IFraxtalL1Block.sol";
+import {IBeefyVault} from "../../interfaces/IBeefyVault.sol";
+import {ICurveStableNG} from "../../interfaces/ICurveStableNG.sol";
 
 import {GameStorageLib, GameStorage, Status, GameData, Offer, OfferorData, PlayerGameBalance, StratConfig} from "../libraries/GameStorageLib.sol";
 import {GameConstantsLib} from "../libraries/GameConstantsLib.sol";

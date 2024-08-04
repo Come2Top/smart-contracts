@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: -- Come2Top --
 pragma solidity 0.8.20;
 
-import {IFraxtalL1Block} from "../interfaces/IFraxtalL1Block.sol";
+import {IFraxtalL1Block} from "../../interfaces/IFraxtalL1Block.sol";
 import {GameImmutablesLib} from "./GameImmutablesLib.sol";
 
 library GameRNGlib {

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {IERC165} from "../interfaces/IERC165.sol";
-import {IDiamondLoupe} from "../interfaces/IDiamondLoupe.sol";
+import {IERC165} from "../../interfaces/IERC165.sol";
+import {IDiamondLoupe} from "../../interfaces/IDiamondLoupe.sol";
 
 import {DiamondLib} from "../libraries/DiamondLib.sol";
 

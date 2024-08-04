@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: -- Come2Top --
 pragma solidity 0.8.20;
 
-import {ICurveStableNG} from "../interfaces/ICurveStableNG.sol";
+import {ICurveStableNG} from "../../interfaces/ICurveStableNG.sol";
 
 import {GameStorageLib, GameStorage, Status, GameData, Offer, OfferorData, TicketInfo, PlayerGameBalance, StratConfig} from "../libraries/GameStorageLib.sol";
 import {GameConstantsLib} from "../libraries/GameConstantsLib.sol";

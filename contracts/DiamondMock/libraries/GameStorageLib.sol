@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: -- Come2Top --
 pragma solidity 0.8.20;
 
-import {IBeefyVault} from "../interfaces/IBeefyVault.sol";
-import {ICurveStableNG} from "../interfaces/ICurveStableNG.sol";
+import {IBeefyVault} from "../../interfaces/IBeefyVault.sol";
+import {ICurveStableNG} from "../../interfaces/ICurveStableNG.sol";
 
 enum Status {
     ticketSale,

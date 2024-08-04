@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: -- Come2Top --
 pragma solidity 0.8.20;
 
-import {IDiamondCut} from "./interfaces/IDiamondCut.sol";
-import {IERC20} from "./interfaces/IERC20.sol";
-import {IFraxtalL1Block} from "./interfaces/IFraxtalL1Block.sol";
-import {IBeefyVault} from "./interfaces/IBeefyVault.sol";
-import {ICurveStableNG} from "./interfaces/ICurveStableNG.sol";
+import {IDiamondCut} from "../interfaces/IDiamondCut.sol";
+import {IERC20} from "../interfaces/IERC20.sol";
+import {IFraxtalL1Block} from "../interfaces/IFraxtalL1Block.sol";
+import {IBeefyVault} from "../interfaces/IBeefyVault.sol";
+import {ICurveStableNG} from "../interfaces/ICurveStableNG.sol";
 
 import {DiamondLib} from "./libraries/DiamondLib.sol";
 import {GameStorageLib, GameStorage, StratConfig} from "./libraries/GameStorageLib.sol";

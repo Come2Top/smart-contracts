@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {IERC165} from "../interfaces/IERC165.sol";
-import {IERC173} from "../interfaces/IERC173.sol";
-import {IDiamondCut} from "../interfaces/IDiamondCut.sol";
-import {IDiamondLoupe} from "../interfaces/IDiamondLoupe.sol";
+import {IERC165} from "../../interfaces/IERC165.sol";
+import {IERC173} from "../../interfaces/IERC173.sol";
+import {IDiamondCut} from "../../interfaces/IDiamondCut.sol";
+import {IDiamondLoupe} from "../../interfaces/IDiamondLoupe.sol";
 
 library DiamondLib {
     bytes32 constant DIAMOND_STORAGE_POSITION =
