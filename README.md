@@ -12,9 +12,9 @@ Also watch the prototype [here](https://youtu.be/SfZRGiNYYuE).
 
 ## New Main Game Mode Paper + Features (Under Development)
 
-Read the Concept [Here](https://github.com/DeftFinance/deft-game-contracts/blob/main/assets/NewMainGameMode_Features.pdf)
+Read the concept [here](https://github.com/DeftFinance/deft-game-contracts/blob/main/assets/NewMainGameMode_Features.pdf)
 
-Also watch [here](https://youtu.be/R2Pql0sPp8Y)
+Also watch [this](https://youtu.be/R2Pql0sPp8Y)
 
 ## important points
 **Due to time constraints, fuzzy and functional tests are currently not available, although the system's operation has been ensured.**
