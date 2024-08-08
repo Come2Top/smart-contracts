@@ -10,6 +10,8 @@ Introduction [demo video](https://youtu.be/kNm0-bpKwhY).
 
 Also watch the prototype [here](https://youtu.be/SfZRGiNYYuE).
 
+## [New Game Mode Paper](https://github.com/DeftFinance/deft-game-contracts/blob/main/assets/NewMainGameMode.png) (Under Development)
+
 ## important points
 **Due to time constraints, fuzzy and functional tests are currently not available, although the system's operation has been ensured.**
 
