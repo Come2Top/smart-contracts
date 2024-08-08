@@ -11,7 +11,9 @@ Introduction [demo video](https://youtu.be/kNm0-bpKwhY).
 Also watch the prototype [here](https://youtu.be/SfZRGiNYYuE).
 
 ## New Main Game Mode Paper + Features (Under Development)
+
 Read the Concept [Here](https://github.com/DeftFinance/deft-game-contracts/blob/main/assets/NewMainGameMode_Features.pdf)
+
 Also watch [here](https://youtu.be/R2Pql0sPp8Y)
 
 ## important points
