@@ -1,4 +1,4 @@
-//  SPDX-License-Identifier: -- Come2Top --
+// SPDX-License-Identifier: -- Come2Top --
 pragma solidity 0.8.20;
 
 import {IERC20} from "./interfaces/IERC20.sol";
@@ -6,13 +6,13 @@ import {IFraxtalL1Block} from "./interfaces/IFraxtalL1Block.sol";
 import {IBeefyVault} from "./interfaces/IBeefyVault.sol";
 import {ICurveStableNG} from "./interfaces/ICurveStableNG.sol";
 
-import {CurveMooLib} from "./libraries/CurveMooLib.sol";
+import {CurveMooLib} from "./DiamondMock/libraries/CurveMooLib.sol";
 
 /**
     @author @4BitLab
     @title Come2Top System Contract.
     @notice Come2Top is a secure, automated, and fully decentralized GameFi platform
-        built on top of the Fraxtal Mainnet, Curve Protocol & Beefy Yield Farming Protocol
+        built on top of the Fraxtal Mainnet, Frax Protocol & Curve Protocol
         that works without the involvement of third parties.
         For more information & further questions, visit: https://come2.top
 */
@@ -128,14 +128,6 @@ contract Come2Top {
     // Testnet
     uint256 private constant L1_BLOCK_LOCK_TIME = 50; // l1 avg block time ˜12.5
     address private constant ZERO_ADDRESS = address(0x0);
-    int8 private constant N_ONE = -1;
-    uint8 private constant ZERO = 0;
-    uint8 private constant ONE = 1;
-    uint8 private constant TWO = 2;
-    uint8 private constant THREE = 3;
-    uint8 private constant SIX = 6;
-    uint8 private constant SEVEN = 7;
-    uint8 private constant EIGHT = 8;
 
     /********************************\
     |-*-*-*-*-*   EVENTS   *-*-*-*-*-|
@@ -171,9 +163,9 @@ contract Come2Top {
 
     event GameFinished(
         uint256 indexed gameID,
-        address[TWO] winners,
-        uint256[TWO] amounts,
-        uint256[TWO] ticketIDs
+        address[2] winners,
+        uint256[2] amounts,
+        uint256[2] ticketIDs
     );
 
     event Claimed(
@@ -245,7 +237,7 @@ contract Come2Top {
     modifier onlyPausedAndFinishedGame() {
         (Status stat, , , ) = _gameUpdate(currentGameID);
 
-        if (!pause || uint256(stat) <= TWO)
+        if (!pause || uint256(stat) <= 2)
             revert ONLY_PAUSED_AND_FINISHED_MODE(pause, stat);
 
         _;
@@ -262,7 +254,7 @@ contract Come2Top {
         address frax,
         address treasury,
         address fraxtalL1Block,
-        address[SEVEN] memory beefyVaults
+        address[7] memory beefyVaults
     ) {
         _checkMTPG(mtpg);
         _checkTP(tp);
@@ -283,7 +275,7 @@ contract Come2Top {
         FRAX = IERC20(frax);
         TREASURY = treasury;
         FRAXTAL_L1_BLOCK = IFraxtalL1Block(fraxtalL1Block);
-        gameData[ZERO].tickets = BYTE_TICKETS;
+        gameData[0].tickets = BYTE_TICKETS;
         unchecked {
             MAGIC_VALUE = uint160(address(this)) * block.chainid;
         }
@@ -293,11 +285,11 @@ contract Come2Top {
 
         address curveStableNG;
         uint256 fraxTokenPosition;
-        for (uint256 i; i < SEVEN; ) {
-            if (beefyVaults[i] == address(0)) revert ZERO_ADDRESS_PROVIDED();
+        for (uint256 i; i < 7; ) {
+            if (beefyVaults[i] == ZERO_ADDRESS) revert ZERO_ADDRESS_PROVIDED();
             curveStableNG = IBeefyVault(beefyVaults[i]).want();
 
-            if (ICurveStableNG(curveStableNG).N_COINS() != TWO)
+            if (ICurveStableNG(curveStableNG).N_COINS() != 2)
                 revert INVALID_CURVE_PAIR();
 
             IERC20(frax).approve(curveStableNG, type(uint256).max);
@@ -306,11 +298,10 @@ contract Come2Top {
                 type(uint256).max
             );
 
-            fraxTokenPosition = frax ==
-                ICurveStableNG(curveStableNG).coins(ZERO)
-                ? ZERO
-                : frax == ICurveStableNG(curveStableNG).coins(ONE)
-                ? ONE
+            fraxTokenPosition = frax == ICurveStableNG(curveStableNG).coins(0)
+                ? 0
+                : frax == ICurveStableNG(curveStableNG).coins(1)
+                ? 1
                 : 404;
 
             if (fraxTokenPosition == 404) revert FRAX_TOKEN_NOT_FOUND();
@@ -408,9 +399,9 @@ contract Come2Top {
         prngPeriod = newPRNGP;
     }
 
-    /*********************************\
+    /********************************\
     |-*-*-*-*   GAME-LOGIC   *-*-*-*-|
-    \*********************************/
+    \********************************/
     /**
         @notice Players can buy tickets to join the game.
         @dev Manages the ticket allocation, ownership, and purchase process.
@@ -430,7 +421,7 @@ contract Come2Top {
         GameData storage GD;
 
         (Status stat, , , ) = _gameUpdate(gameID);
-        if (uint256(stat) > TWO) {
+        if (uint256(stat) > 2) {
             unchecked {
                 gameID++;
                 currentGameID++;
@@ -443,23 +434,23 @@ contract Come2Top {
         uint256 remainingTickets = MAX_PARTIES - GD.soldTickets;
         bytes memory tickets = GD.tickets;
 
-        if (pause && GD.soldTickets == ZERO)
+        if (pause && GD.soldTickets == 0)
             revert ONLY_UNPAUSED_OR_TICKET_SALE_MODE(pause);
 
-        if (totalTickets == ZERO || totalTickets > ticketLimit)
+        if (totalTickets == 0 || totalTickets > ticketLimit)
             revert CHECK_TICKETS_LENGTH(totalTickets);
 
-        if (GD.startedL1Block != ZERO) revert WAIT_FOR_NEXT_MATCH();
+        if (GD.startedL1Block != 0) revert WAIT_FOR_NEXT_MATCH();
 
         if (totalTickets + totalPlayerTickets[gameID][msg.sender] > ticketLimit)
             revert PARTICIPATED_BEFORE();
 
         for (uint256 i; i < totalTickets; ) {
-            if (ticketIDs[i] == ZERO) {
-                if (tickets[ZERO] != 0xff) {
-                    tickets[ZERO] = 0xff;
+            if (ticketIDs[i] == 0) {
+                if (tickets[0] != 0xff) {
+                    tickets[0] = 0xff;
                     realTickets = abi.encodePacked(realTickets, bytes1(0x00));
-                    tempTicketOwnership[gameID][ZERO] = msg.sender;
+                    tempTicketOwnership[gameID][0] = msg.sender;
                 }
             } else {
                 if (tickets[ticketIDs[i]] != 0x00) {
@@ -479,7 +470,7 @@ contract Come2Top {
 
         totalTickets = realTickets.length;
 
-        if (totalTickets == ZERO) revert SELECTED_TICKETS_SOLDOUT_BEFORE();
+        if (totalTickets == 0) revert SELECTED_TICKETS_SOLDOUT_BEFORE();
 
         _transferFromHelper(msg.sender, THIS, (totalTickets * neededToken));
 
@@ -629,7 +620,8 @@ contract Come2Top {
                     beforeBalance;
             }
 
-            gameData[currentGameID].mooShare = beefyVault.getPricePerFullShare();
+            gameData[currentGameID].mooShare = beefyVault
+                .getPricePerFullShare();
 
             emit OfferAccepted(
                 O.maker,
@@ -649,22 +641,22 @@ contract Come2Top {
             return;
         }
 
-        if (eligibleToSell == int8(ZERO)) revert WAIT_FOR_NEXT_WAVE();
+        if (eligibleToSell == int8(0)) revert WAIT_FOR_NEXT_WAVE();
 
         uint256 gameID = currentGameID;
 
         uint256 virtualFraxBalance = gameData[gameID].virtualFraxBalance;
 
-        if (tickets.length == TWO) {
+        if (tickets.length == 2) {
             gameData[gameID].tickets = tickets;
-            gameData[gameID].eligibleToSell = N_ONE;
+            gameData[gameID].eligibleToSell = -1;
 
             if (msg.sender != tempTicketOwnership[gameID][ticketID])
                 revert ONLY_TICKET_OWNER(ticketID);
 
-            address winner1 = tempTicketOwnership[gameID][uint8(tickets[ZERO])];
-            address winner2 = tempTicketOwnership[gameID][uint8(tickets[ONE])];
-            uint256 winner1Amount = virtualFraxBalance / TWO;
+            address winner1 = tempTicketOwnership[gameID][uint8(tickets[0])];
+            address winner2 = tempTicketOwnership[gameID][uint8(tickets[1])];
+            uint256 winner1Amount = virtualFraxBalance / 2;
 
             delete gameData[gameID].virtualFraxBalance;
             delete totalPlayerTickets[gameID][winner1];
@@ -684,7 +676,7 @@ contract Come2Top {
                 gameID,
                 [winner1, winner2],
                 [winner1Amount, virtualFraxBalance - winner1Amount],
-                [uint256(uint8(tickets[ZERO])), uint256(uint8(tickets[ONE]))]
+                [uint256(uint8(tickets[0])), uint256(uint8(tickets[1]))]
             );
         } else {
             if (msg.sender != tempTicketOwnership[gameID][ticketID])
@@ -695,7 +687,7 @@ contract Come2Top {
             totalPlayerTickets[gameID][msg.sender]--;
 
             gameData[gameID].tickets = _deleteIndex(index, tickets);
-            gameData[gameID].eligibleToSell = int8(eligibleToSell) + N_ONE;
+            gameData[gameID].eligibleToSell = int8(eligibleToSell) - 1;
 
             if (gameData[gameID].updatedWave != currentWave)
                 gameData[gameID].updatedWave = uint8(currentWave);
@@ -799,14 +791,14 @@ contract Come2Top {
             .loanedFraxBalance;
 
         if (
-            tickets.length == ONE &&
-            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == msg.sender
+            tickets.length == 1 &&
+            tempTicketOwnership[gameID][uint8(tickets[0])] == msg.sender
         ) {
             playerLoanedFraxBalance += gameData[gameID].virtualFraxBalance;
             delete totalPlayerTickets[gameID][msg.sender];
         }
 
-        if (playerInitialFraxBalance == ZERO) revert NO_AMOUNT_TO_CLAIM();
+        if (playerInitialFraxBalance == 0) revert NO_AMOUNT_TO_CLAIM();
 
         uint256 chosenConfig = gameData[gameID].chosenConfig;
         uint256 mooShare = (gameStratConfig[chosenConfig].beefyVault)
@@ -838,20 +830,20 @@ contract Come2Top {
             playerClaimableMooAmount =
                 ((((playerInitialFraxBalance * 1e18) / gameInitialFraxBalance) *
                     (
-                        gameLoanedFraxBalance == ZERO
+                        gameLoanedFraxBalance == 0
                             ? gameData[gameID].mooTokenBalance
                             : gameMooBalance
                     )) / 1e18) +
                 (
-                    gameLoanedFraxBalance == ZERO
-                        ? ZERO
+                    gameLoanedFraxBalance == 0
+                        ? 0
                         : (((playerLoanedFraxBalance * 1e18) /
                             gameLoanedFraxBalance) * gameRewardedMoo) / 1e18
                 );
 
             gameData[gameID].mooTokenBalance -= playerClaimableMooAmount;
             gameData[gameID].initialFraxBalance -= playerInitialFraxBalance;
-            if (gameLoanedFraxBalance != ZERO)
+            if (gameLoanedFraxBalance != 0)
                 gameData[gameID].loanedFraxBalance -= playerBalanceData[gameID][
                     msg.sender
                 ].loanedFraxBalance;
@@ -859,8 +851,8 @@ contract Come2Top {
 
         delete playerBalanceData[gameID][msg.sender];
         if (
-            tickets.length == ONE &&
-            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == msg.sender
+            tickets.length == 1 &&
+            tempTicketOwnership[gameID][uint8(tickets[0])] == msg.sender
         ) delete gameData[gameID].virtualFraxBalance;
 
         ICurveStableNG curveStableNG = gameStratConfig[chosenConfig]
@@ -899,7 +891,7 @@ contract Come2Top {
     function takeBackStaleOffers() external {
         uint256 refundableAmount = _staleOffers(msg.sender);
 
-        if (refundableAmount == ZERO) revert NO_AMOUNT_TO_REFUND();
+        if (refundableAmount == 0) revert NO_AMOUNT_TO_REFUND();
 
         unchecked {
             offerorData[msg.sender].totalOffersValue -= refundableAmount;
@@ -921,8 +913,8 @@ contract Come2Top {
             .loanedFraxBalance;
 
         if (
-            tickets.length == ONE &&
-            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == player
+            tickets.length == 1 &&
+            tempTicketOwnership[gameID][uint8(tickets[0])] == player
         ) {
             playerLoanedFraxBalance += gameData[gameID].virtualFraxBalance;
             delete totalPlayerTickets[gameID][player];
@@ -930,8 +922,8 @@ contract Come2Top {
 
         if (
             (stat != Status.finished && stat != Status.claimable) ||
-            playerInitialFraxBalance == ZERO
-        ) revert FETCHED_CLAIMABLE_AMOUNT(stat, ZERO, ZERO, ZERO, 0);
+            playerInitialFraxBalance == 0
+        ) revert FETCHED_CLAIMABLE_AMOUNT(stat, 0, 0, 0, 0);
 
         uint256 chosenConfig = gameData[gameID].chosenConfig;
         uint256 mooShare = (gameStratConfig[chosenConfig].beefyVault)
@@ -962,20 +954,20 @@ contract Come2Top {
             playerClaimableMooAmount =
                 ((((playerInitialFraxBalance * 1e18) / gameInitialFraxBalance) *
                     (
-                        gameLoanedFraxBalance == ZERO
+                        gameLoanedFraxBalance == 0
                             ? gameData[gameID].mooTokenBalance
                             : gameMooBalance
                     )) / 1e18) +
                 (
-                    gameLoanedFraxBalance == ZERO
-                        ? ZERO
+                    gameLoanedFraxBalance == 0
+                        ? 0
                         : (((playerLoanedFraxBalance * 1e18) /
                             gameLoanedFraxBalance) * gameRewardedMoo) / 1e18
                 );
 
             gameData[gameID].mooTokenBalance -= playerClaimableMooAmount;
             gameData[gameID].initialFraxBalance -= playerInitialFraxBalance;
-            if (gameLoanedFraxBalance != ZERO)
+            if (gameLoanedFraxBalance != 0)
                 gameData[gameID].loanedFraxBalance -= playerBalanceData[gameID][
                     player
                 ].loanedFraxBalance;
@@ -983,8 +975,8 @@ contract Come2Top {
 
         delete playerBalanceData[gameID][player];
         if (
-            tickets.length == ONE &&
-            tempTicketOwnership[gameID][uint8(tickets[ZERO])] == player
+            tickets.length == 1 &&
+            tempTicketOwnership[gameID][uint8(tickets[0])] == player
         ) delete gameData[gameID].virtualFraxBalance;
 
         ICurveStableNG curveStableNG = gameStratConfig[chosenConfig]
@@ -1059,14 +1051,14 @@ contract Come2Top {
 
         if (stat != Status.commingWave && stat != Status.operational) {
             currentTicketValue = ticketPrice;
-            nextWaveTicketValue = currentTicketValue * TWO;
-            nextWaveWinrate = (BASIS**TWO) / TWO;
+            nextWaveTicketValue = currentTicketValue * 2;
+            nextWaveWinrate = (BASIS**2) / 2;
 
             if (stat == Status.ticketSale) {
                 remainingTickets = MAX_PARTIES - gameData[gameID].soldTickets;
                 while (index != MAX_PARTIES) {
                     ticketsData[index] = TicketInfo(
-                        Offer(ZERO, ZERO_ADDRESS),
+                        Offer(0, ZERO_ADDRESS),
                         index,
                         tempTicketOwnership[gameID][uint8(index)]
                     );
@@ -1076,17 +1068,17 @@ contract Come2Top {
                     }
                 }
             } else {
-                ticketsData[uint8(tickets[ZERO])] = TicketInfo(
-                    Offer(ZERO, ZERO_ADDRESS),
-                    uint8(tickets[ZERO]),
-                    tempTicketOwnership[gameID][uint8(tickets[ZERO])]
+                ticketsData[uint8(tickets[0])] = TicketInfo(
+                    Offer(0, ZERO_ADDRESS),
+                    uint8(tickets[0]),
+                    tempTicketOwnership[gameID][uint8(tickets[0])]
                 );
 
-                if (tickets.length == TWO)
-                    ticketsData[uint8(tickets[ONE])] = TicketInfo(
-                        Offer(ZERO, ZERO_ADDRESS),
-                        uint8(tickets[ONE]),
-                        tempTicketOwnership[gameID][uint8(tickets[ONE])]
+                if (tickets.length == 2)
+                    ticketsData[uint8(tickets[1])] = TicketInfo(
+                        Offer(0, ZERO_ADDRESS),
+                        uint8(tickets[1]),
+                        tempTicketOwnership[gameID][uint8(tickets[1])]
                     );
             }
         } else {
@@ -1095,9 +1087,9 @@ contract Come2Top {
             currentTicketValue = _ticketValue(tickets.length, gameID);
             nextWaveTicketValue =
                 gameData[gameID].virtualFraxBalance /
-                (tickets.length / TWO);
+                (tickets.length / 2);
             nextWaveWinrate =
-                ((tickets.length / TWO) * BASIS**TWO) /
+                ((tickets.length / 2) * BASIS**2) /
                 tickets.length;
 
             uint256 plus10PCT = currentTicketValue +
@@ -1109,7 +1101,7 @@ contract Come2Top {
                     .amount;
                 ticketsData[uint8(tickets[index])] = TicketInfo(
                     Offer(
-                        loadedOffer >= plus10PCT ? uint96(loadedOffer) : ZERO,
+                        loadedOffer >= plus10PCT ? uint96(loadedOffer) : 0,
                         loadedOffer >= plus10PCT
                             ? offer[gameID][uint8(tickets[index])].maker
                             : ZERO_ADDRESS
@@ -1123,7 +1115,7 @@ contract Come2Top {
                 }
             }
 
-            index = ZERO;
+            index = 0;
 
             while (index != MAX_PARTIES) {
                 if (ticketsData[index].owner == ZERO_ADDRESS)
@@ -1177,7 +1169,7 @@ contract Come2Top {
         @return winnerTickets The array containing the winning ticket IDs for the given game ID.
     */
     function gameStatus(uint256 gameID_)
-        public
+        external
         view
         returns (
             uint256 gameID,
@@ -1333,15 +1325,6 @@ contract Come2Top {
     |-*-*-*-*   PRIVATE   *-*-*-*-|
     \*****************************/
     /**
-        @dev Allows the contract to transfer {FRAX} tokens to a specified address.
-        @param to The address to which the {FRAX} tokens will be transferred.
-        @param amount The amount of {FRAX} tokens to be transferred.
-    */
-    function _transferHelper(address to, uint256 amount) private {
-        FRAX.transfer(to, amount);
-    }
-
-    /**
         @dev Allows the contract to transfer {FRAX} tokens from one address to another.
         @param from The address from which the {FRAX} tokens will be transferred.
         @param to The address to which the {FRAX} tokens will be transferred.
@@ -1396,13 +1379,13 @@ contract Come2Top {
             unchecked {
                 j =
                     uint256(keccak256(abi.encodePacked(randomSeed, i))) %
-                    (i + ONE);
+                    (i + 1);
                 (array[i], array[j]) = (array[j], array[i]);
                 i++;
             }
         }
 
-        return this.sliceBytedArray(array, ZERO, to);
+        return this.sliceBytedArray(array, 0, to);
     }
 
     /**
@@ -1418,16 +1401,16 @@ contract Come2Top {
         returns (bytes memory)
     {
         return
-            index != (bytesArray.length - ONE)
+            index != (bytesArray.length - 1)
                 ? abi.encodePacked(
-                    this.sliceBytedArray(bytesArray, ZERO, index),
+                    this.sliceBytedArray(bytesArray, 0, index),
                     this.sliceBytedArray(
                         bytesArray,
-                        index + ONE,
+                        index + 1,
                         bytesArray.length
                     )
                 )
-                : this.sliceBytedArray(bytesArray, ZERO, index);
+                : this.sliceBytedArray(bytesArray, 0, index);
     }
 
     /**
@@ -1466,16 +1449,14 @@ contract Come2Top {
                                     abi.encodePacked(
                                         FRAXTAL_L1_BLOCK.numberToRandao(
                                             uint64(
-                                                startBlock -
-                                                    prngDuration /
-                                                    THREE
+                                                startBlock - prngDuration / 3
                                             )
                                         )
                                     )
                                 )
                             ) +
                                 FRAXTAL_L1_BLOCK.numberToRandao(
-                                    uint64(startBlock - prngDuration / TWO)
+                                    uint64(startBlock - prngDuration / 2)
                                 ) +
                                 uint160(
                                     ripemd160(
@@ -1484,9 +1465,8 @@ contract Come2Top {
                                                 FRAXTAL_L1_BLOCK.numberToRandao(
                                                     uint64(
                                                         startBlock -
-                                                            (prngDuration *
-                                                                TWO) /
-                                                            THREE
+                                                            (prngDuration * 2) /
+                                                            3
                                                     )
                                                 )
                                             )
@@ -1512,19 +1492,19 @@ contract Come2Top {
         pure
         returns (bool, uint8)
     {
-        uint256 i = tickets.length - ONE;
+        uint256 i = tickets.length - 1;
         while (true) {
             if (uint8(tickets[i]) == ticketID) {
                 return (true, uint8(i));
             }
 
-            if (i == ZERO) break;
+            if (i == 0) break;
             unchecked {
                 i--;
             }
         }
 
-        return (false, ZERO);
+        return (false, 0);
     }
 
     /**
@@ -1554,27 +1534,27 @@ contract Come2Top {
 
         uint256 currentL1Block = FRAXTAL_L1_BLOCK.number();
 
-        if (GD.startedL1Block == ZERO) stat = Status.ticketSale;
-        else if (GD.mooTokenBalance == ZERO) {
+        if (GD.startedL1Block == 0) stat = Status.ticketSale;
+        else if (GD.mooTokenBalance == 0) {
             stat = Status.completed;
-            eligibleToSell = N_ONE;
+            eligibleToSell = -1;
         } else {
             currentWave = GD.updatedWave;
             uint256 lastUpdatedWave;
             uint256 accumulatedBlocks;
             uint256 waitingDuration = SAFTY_DURATION + GD.prngPeriod;
 
-            if (GD.updatedWave != ZERO) {
-                lastUpdatedWave = GD.updatedWave + ONE;
+            if (GD.updatedWave != 0) {
+                lastUpdatedWave = GD.updatedWave + 1;
 
-                for (uint256 i = ONE; i < lastUpdatedWave; ) {
+                for (uint256 i = 1; i < lastUpdatedWave; ) {
                     unchecked {
                         accumulatedBlocks += WAVE_ELIGIBLES_TIME / i;
                         i++;
                     }
                 }
 
-                if (GD.eligibleToSell == N_ONE) {
+                if (GD.eligibleToSell == -1) {
                     stat = GD.startedL1Block +
                         L1_BLOCK_LOCK_TIME +
                         accumulatedBlocks +
@@ -1600,7 +1580,7 @@ contract Come2Top {
                         remainingTickets
                     );
 
-                lastUpdatedWave = ONE;
+                lastUpdatedWave = 1;
             }
 
             stat = Status.operational;
@@ -1621,13 +1601,13 @@ contract Come2Top {
                                 accumulatedBlocks,
                             prngDuration
                         ),
-                        remainingTickets.length / TWO
+                        remainingTickets.length / 2
                     );
 
-                    eligibleToSell = int256(remainingTickets.length / TWO);
+                    eligibleToSell = int256(remainingTickets.length / 2);
 
-                    if (remainingTickets.length == ONE) {
-                        eligibleToSell = N_ONE;
+                    if (remainingTickets.length == 1) {
+                        eligibleToSell = -1;
                         currentWave = lastUpdatedWave;
 
                         stat = GD.startedL1Block +
@@ -1665,13 +1645,13 @@ contract Come2Top {
 
     /**
         @dev It verifies that the value is not zero
-            and not greater than the maximum limit predefined as {EIGHT}.
+            and not greater than the maximum limit predefined as {8}.
         @param value The value to be checked for maximum tickets per game.
     */
     function _checkMTPG(uint8 value) private pure {
         _revertOnZeroUint(value);
 
-        // if (value > EIGHT) revert VALUE_CANT_BE_GREATER_THAN(EIGHT);
+        // if (value > 8) revert VALUE_CANT_BE_GREATER_THAN(8);
     }
 
     /**
@@ -1700,11 +1680,11 @@ contract Come2Top {
 
     /**
         @dev It verifies that the value is not zero
-            and not greater than the maximum limit predefined as {SIX}.
+            and not greater than the maximum limit predefined as {6}.
         @param value The value to be checked for game strategy.
     */
     function _checkGS(uint8 value) private pure {
-        if (value > SIX) revert VALUE_CANT_BE_GREATER_THAN(SIX);
+        if (value > 6) revert VALUE_CANT_BE_GREATER_THAN(6);
     }
 
     /**
@@ -1712,7 +1692,7 @@ contract Come2Top {
         @param uInt The uint value to be checked.
     */
     function _revertOnZeroUint(uint256 uInt) private pure {
-        if (uInt == ZERO) revert ZERO_UINT_PROVIDED();
+        if (uInt == 0) revert ZERO_UINT_PROVIDED();
     }
 
     /**
@@ -1723,7 +1703,7 @@ contract Come2Top {
 
     */
     function _onlyOperational(uint256 currentWave, Status stat) private pure {
-        if (currentWave == ZERO) revert WAIT_FOR_FIRST_WAVE();
+        if (currentWave == 0) revert WAIT_FOR_FIRST_WAVE();
 
         if (stat != Status.operational) revert ONLY_OPERATIONAL_MODE(stat);
     }

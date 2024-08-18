@@ -1,19 +1,24 @@
 //  SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {Come2Top} from "../../contracts/Come2Top.sol";
+import {Script} from "forge-std/Script.sol";
+
+import {Come2TopDiamond} from "../../contracts/Come2TopDiamond.sol";
 import {Treasury} from "../../contracts/Treasury.sol";
 import {DummyL1Block} from "../../contracts/mock/DummyL1Block.sol";
 import {DummyFraxStablecoin} from "../../contracts/mock/DummyFraxStablecoin.sol";
 import {DummyBeefyVaultV7, DummyCurveStableNG} from "../../contracts/mock/DummyBeefyVaultV7.sol";
 
-contract Deployer {
-    Come2Top public immutable Come2TopSC;
-    Treasury public immutable TreasurySC;
-    DummyL1Block public immutable DummyL1BlockSC;
-    DummyFraxStablecoin public immutable DummyFraxStablecoinSC;
+contract Deployer is Script {
+    Come2TopDiamond public Come2TopSC;
+    Treasury public TreasurySC;
+    DummyL1Block public DummyL1BlockSC;
+    DummyFraxStablecoin public DummyFraxStablecoinSC;
 
-    constructor() {
+    function run() external {
+        vmSafe.startBroadcast(
+            0x7fc66c1f98a1cc8355601f5620e44328d3c7a4eff2cbf37d3705832e697c79a4
+        );
         TreasurySC = new Treasury();
         DummyL1BlockSC = new DummyL1Block();
         DummyFraxStablecoinSC = new DummyFraxStablecoin(1e5);
@@ -84,8 +89,7 @@ contract Deployer {
             )
         );
 
-
-        Come2TopSC = new Come2Top(
+        Come2TopSC = new Come2TopDiamond(
             4,
             1e20,
             12,
@@ -106,5 +110,7 @@ contract Deployer {
                 i++;
             }
         }
+
+        vmSafe.stopBroadcast();
     }
 }
