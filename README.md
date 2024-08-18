@@ -1,10 +1,10 @@
-# <img src="https://github.com/DeftFinance/deft-game-contracts/blob/main/assets/COME2TOP-Logo.svg" width="28px" height="28px"> Come2Top Game
+# <img src="https://github.com/Come2Top/smart-contracts/blob/main/assets/COME2TOP-Logo.svg" width="28px" height="28px"> Come2Top Game
 
 ## Introduction
 Come2Top operates as a decentralized, permissionless, fully on-chain, and peer-to-peer financial investing protocol. It employs a completely random process to distribute accumulated rewards from a farming campaign among investors. Unlike other reward distribution protocols, such as PoolTogether, where assets are locked until a winner is declared, Come2Top allows contributors to participate and withdraw their assets after the game’s lock period ends. By connecting to robust and trusted farming campaigns with a well-defined strategy, Come2Top offers a secure investment platform.
 
 ## Classic Game Mode Flow
-<img src="https://github.com/DeftFinance/deft-game-contracts/blob/main/assets/Come2Top-ClassicModeFlow.png" width="100%" height="100%">
+<img src="https://github.com/Come2Top/smart-contracts/blob/main/assets/Come2Top-ClassicModeFlow.png" width="100%" height="100%">
 
 Introduction [demo video](https://youtu.be/kNm0-bpKwhY).
 
@@ -12,7 +12,7 @@ Also watch the prototype [here](https://youtu.be/SfZRGiNYYuE).
 
 ## New Main Game Mode Paper + Features (Under Development)
 
-Read the concept [here](https://github.com/DeftFinance/deft-game-contracts/blob/main/assets/NewMainGameMode_Features.pdf)
+Read the concept [here](https://github.com/Come2Top/smart-contracts/blob/main/assets/NewMainGameMode_Features.pdf)
 
 Also watch [this](https://youtu.be/R2Pql0sPp8Y)
 
@@ -47,7 +47,7 @@ Also, it might be questioned how we handle the randaos in such a way that they a
 **As a short answer, the randaos are required and used only BETWEEN the actionable rounds or waves on which players can act, and we call them ***ComingWave***, where we calculate the received randaos within this period of time. For safety, we have a safety duration of at least 48 L1 blocks on mainnet, and after these L1 blocks elapse, the shuffling algo finds its needed randaos and calculates so on.**
 
 ## Lite-paper
-***For more information, consider reading the litepaper provided in this [link](https://github.com/DeftFinance/deft-game-contracts/blob/main/assets/Come2TopGame-Litepaper.pdf).***
+***For more information, consider reading the litepaper provided in this [link](https://github.com/Come2Top/smart-contracts/blob/main/assets/Come2TopGame-Litepaper.pdf).***
 
 ## Script to start a game
 ```shell
